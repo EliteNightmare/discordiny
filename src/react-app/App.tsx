@@ -1,23 +1,15 @@
-import "./App.css";
-
-import TopBar from "./components/TopBar";
-import Home from "./pages/Home";
-
-import background from "./assets/background.jpg";
+import { useState } from "react";
+import Home from "./Home";
+import AuthCallback from "./AuthCallback";
 
 function App() {
-  return (
-    <div
-      className="app"
-      style={{
-        backgroundImage: `url(${background})`,
-      }}
-    >
-      <TopBar />
+  const [count, setCount] = useState(0);
 
-      <Home />
-    </div>
-  );
+  if (window.location.pathname === "/auth/callback") {
+    return <AuthCallback />;
+  }
+
+  return <Home />;
 }
 
 export default App;
