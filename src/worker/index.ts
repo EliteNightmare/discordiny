@@ -32,6 +32,7 @@ app.get("/api/auth/login", (c) => {
 
 app.get("/api/auth/callback", async (c) => {
   const code = c.req.query("code");
+
   console.log(
     "Discord client secret present:",
     Boolean(c.env.DISCORD_CLIENT_SECRET)
@@ -54,10 +55,9 @@ app.get("/api/auth/callback", async (c) => {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Basic ${basicAuth}`,
       },
       body: new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: c.env.DISCORD_CLIENT_SECRET,
         grant_type: "authorization_code",
         code,
         redirect_uri: DISCORD_REDIRECT_URI,
@@ -67,9 +67,9 @@ app.get("/api/auth/callback", async (c) => {
 
   if (!tokenResponse.ok) {
     const error = await tokenResponse.text();
-  
+
     console.error("Discord token exchange failed:", error);
-  
+
     return c.json(
       {
         error: "Discord token exchange failed",
