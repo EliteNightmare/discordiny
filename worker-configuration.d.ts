@@ -13364,6 +13364,7 @@ declare namespace Cloudflare {
     //
     // You can use `wrangler types` to generate the `Env` type automatically.
     interface Env {
+		   DISCORD_CLIENT_SECRET: string;
     }
     // Project-specific parameters used to inform types.
     //
