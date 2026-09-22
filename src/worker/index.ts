@@ -39,19 +39,19 @@ app.get("/api/auth/callback", async (c) => {
     );
   }
 
-  const secret = c.env.DISCORD_CLIENT_SECRET;
-
+  const basicAuth = btoa(
+    `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
+  );
+  
   const tokenResponse = await fetch(
     "https://discord.com/api/v10/oauth2/token",
     {
       method: "POST",
       headers: {
-        "Content-Type":
-          "application/x-www-form-urlencoded",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": `Basic ${basicAuth}`,
       },
       body: new URLSearchParams({
-        client_id: DISCORD_CLIENT_ID,
-        client_secret: secret,
         grant_type: "authorization_code",
         code,
         redirect_uri: DISCORD_REDIRECT_URI,
