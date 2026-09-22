@@ -32,6 +32,10 @@ app.get("/api/auth/login", (c) => {
 
 app.get("/api/auth/callback", async (c) => {
   const code = c.req.query("code");
+  console.log(
+    "Discord client secret present:",
+    Boolean(c.env.DISCORD_CLIENT_SECRET)
+  );
 
   if (!code) {
     return c.json(
