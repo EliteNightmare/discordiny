@@ -14,10 +14,6 @@ export default function Home() {
           <span className="start-button-title">
             Enter the World
           </span>
-        
-          <span className="start-button-subtitle">
-            Login with Discord
-          </span>
         </button>
       </section>
     </main>
