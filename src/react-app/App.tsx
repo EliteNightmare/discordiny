@@ -3,7 +3,7 @@ import "./App.css";
 import TopBar from "./components/TopBar";
 import Home from "./pages/Home";
 
-import background from "./assets/discordinybackground.jpg";
+import background from "./assets/background.jpg";
 
 function App() {
   return (
