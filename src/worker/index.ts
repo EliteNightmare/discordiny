@@ -6,6 +6,11 @@ declare global {
 }
 
 import { Hono } from "hono";
+import {
+  deleteCookie,
+  getCookie,
+  setCookie,
+} from "hono/cookie";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -14,9 +19,17 @@ const DISCORD_CLIENT_ID = "1529513718176813166";
 const DISCORD_REDIRECT_URI =
   "https://discordiny.com/api/auth/callback";
 
+const SESSION_COOKIE = "__Host-discordiny_session";
+
+const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
+
 app.get("/api/", (c) => {
   return c.json({ name: "Discordiny" });
 });
+
+/* =========================================================
+   DISCORD LOGIN
+========================================================= */
 
 app.get("/api/auth/login", (c) => {
   const params = new URLSearchParams({
@@ -31,6 +44,10 @@ app.get("/api/auth/login", (c) => {
   );
 });
 
+/* =========================================================
+   DISCORD CALLBACK
+========================================================= */
+
 app.get("/api/auth/callback", async (c) => {
   const code = c.req.query("code");
 
@@ -42,6 +59,10 @@ app.get("/api/auth/callback", async (c) => {
       400
     );
   }
+
+  /* -------------------------------------------------------
+     Exchange Discord authorization code for access token
+  ------------------------------------------------------- */
 
   const basicAuth = btoa(
     `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
@@ -75,7 +96,6 @@ app.get("/api/auth/callback", async (c) => {
     return c.json(
       {
         error: "Discord token exchange failed",
-        discord_error: error,
       },
       500
     );
@@ -89,6 +109,10 @@ app.get("/api/auth/callback", async (c) => {
       refresh_token?: string;
       scope: string;
     }>();
+
+  /* -------------------------------------------------------
+     Retrieve Discord user
+  ------------------------------------------------------- */
 
   const userResponse = await fetch(
     "https://discord.com/api/users/@me",
@@ -123,6 +147,10 @@ app.get("/api/auth/callback", async (c) => {
       global_name?: string | null;
       avatar?: string | null;
     }>();
+
+  /* =======================================================
+     FIND OR CREATE DISCORDINY USER
+  ======================================================= */
 
   const existingUser = await c.env.DB
     .prepare(
@@ -194,15 +222,187 @@ app.get("/api/auth/callback", async (c) => {
     };
   }
 
-  console.log(
-    "Discordiny user:",
-    discordinyUser
+  /* =======================================================
+     CREATE LOGIN SESSION
+  ======================================================= */
+
+  const sessionId = crypto.randomUUID();
+
+  const expiresAt = new Date(
+    Date.now() +
+      SESSION_DURATION_SECONDS * 1000
+  ).toISOString();
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO sessions
+       (id, user_id, expires_at)
+       VALUES (?, ?, ?)`
+    )
+    .bind(
+      sessionId,
+      discordinyUser.id,
+      expiresAt
+    )
+    .run();
+
+  /* =======================================================
+     SET SECURE SESSION COOKIE
+  ======================================================= */
+
+  setCookie(
+    c,
+    SESSION_COOKIE,
+    sessionId,
+    {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: SESSION_DURATION_SECONDS,
+      prefix: "host",
+    }
   );
 
+  /* =======================================================
+     SEND USER BACK TO THE GAME
+  ======================================================= */
+
+  return c.redirect("/");
+});
+
+/* =========================================================
+   CURRENT USER
+========================================================= */
+
+app.get("/api/auth/me", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        sessions.id,
+        sessions.user_id,
+        sessions.expires_at,
+        users.discord_id,
+        users.username,
+        users.global_name,
+        users.avatar
+       FROM sessions
+       INNER JOIN users
+         ON users.id = sessions.user_id
+       WHERE sessions.id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      id: string;
+      user_id: number;
+      expires_at: string;
+      discord_id: string;
+      username: string;
+      global_name: string | null;
+      avatar: string | null;
+    }>();
+
+  if (!session) {
+    deleteCookie(c, SESSION_COOKIE, {
+      path: "/",
+      secure: true,
+      prefix: "host",
+    });
+
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  /* -------------------------------------------------------
+     Check expiration
+  ------------------------------------------------------- */
+
+  if (
+    new Date(session.expires_at).getTime() <=
+    Date.now()
+  ) {
+    await c.env.DB
+      .prepare(
+        `DELETE FROM sessions
+         WHERE id = ?`
+      )
+      .bind(sessionId)
+      .run();
+
+    deleteCookie(c, SESSION_COOKIE, {
+      path: "/",
+      secure: true,
+      prefix: "host",
+    });
+
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
   return c.json({
-    message: "Discord authentication successful",
-    user: discordinyUser,
+    authenticated: true,
+    user: {
+      id: session.user_id,
+      discord_id: session.discord_id,
+      username: session.username,
+      global_name: session.global_name,
+      avatar: session.avatar,
+    },
   });
+});
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+app.get("/api/auth/logout", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (sessionId) {
+    await c.env.DB
+      .prepare(
+        `DELETE FROM sessions
+         WHERE id = ?`
+      )
+      .bind(sessionId)
+      .run();
+  }
+
+  deleteCookie(c, SESSION_COOKIE, {
+    path: "/",
+    secure: true,
+    prefix: "host",
+  });
+
+  return c.redirect("/");
 });
 
 export default app;
