@@ -1,11 +1,7 @@
-import AuthCallback from "./AuthCallback";
+import Home from "./Home";
 
 function App() {
-  if (window.location.pathname === "/auth/callback") {
-    return <AuthCallback />;
-  }
-
-  return null;
+  return <Home />;
 }
 
 export default App;
