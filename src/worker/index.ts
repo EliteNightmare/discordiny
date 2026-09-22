@@ -10,7 +10,7 @@ const app = new Hono<{ Bindings: Env }>();
 
 const DISCORD_CLIENT_ID = "1529513718176813166";
 const DISCORD_REDIRECT_URI =
-  "https://discordiny.com/api/auth/callback";
+  "https://discordiny.com/auth/callback";
 
 app.get("/api/", (c) => {
   return c.json({ name: "Discordiny" });
