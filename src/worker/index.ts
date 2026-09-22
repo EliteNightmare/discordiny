@@ -119,22 +119,5 @@ app.get("/api/auth/callback", async (c) => {
   });
 });
 
-app.get("/api/debug/secret", async (c) => {
-  const secret = c.env.DISCORD_CLIENT_SECRET;
-
-  const data = new TextEncoder().encode(secret);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-
-  const fingerprint = Array.from(
-    new Uint8Array(hash)
-  )
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-
-  return c.json({
-    secretLength: secret.length,
-    fingerprint,
-  });
-});
 
 export default app;
