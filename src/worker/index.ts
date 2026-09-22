@@ -49,6 +49,13 @@ app.get("/api/auth/callback", async (c) => {
     `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
   );
 
+  console.log("OAuth diagnostic:", {
+    clientId: DISCORD_CLIENT_ID,
+    redirectUri: DISCORD_REDIRECT_URI,
+    secretLength: c.env.DISCORD_CLIENT_SECRET.length,
+    basicAuthLength: basicAuth.length,
+  });
+
   const tokenResponse = await fetch(
     "https://discord.com/api/v10/oauth2/token",
     {
