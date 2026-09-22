@@ -23,14 +23,15 @@
 .top-bar-left {
   display: flex;
   align-items: center;
+  min-width: 0;
   height: 100%;
 }
 
 .logo-button {
-  height: 100%;
-
   display: flex;
   align-items: center;
+
+  height: 100%;
 
   padding: 0 24px 0 4px;
 
@@ -42,21 +43,27 @@
 
 .discordiny-logo {
   display: block;
+
+  max-width: 180px;
   max-height: 52px;
+
   width: auto;
+  height: auto;
 }
 
 .main-navigation {
   display: flex;
   align-items: center;
-  gap: 6px;
+
+  gap: 4px;
+
   height: 100%;
 }
 
 .main-navigation button {
   height: 40px;
 
-  padding: 0 16px;
+  padding: 0 14px;
 
   border: 0;
   border-radius: 8px;
@@ -65,7 +72,10 @@
   background: transparent;
 
   font: inherit;
+  font-size: 0.95rem;
   font-weight: 500;
+
+  white-space: nowrap;
 
   cursor: pointer;
 
@@ -82,7 +92,10 @@
 .account-button {
   display: flex;
   align-items: center;
+
   gap: 10px;
+
+  flex-shrink: 0;
 
   height: 44px;
 
