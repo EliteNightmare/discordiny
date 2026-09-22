@@ -1,0 +1,119 @@
+.top-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  height: 72px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 24px;
+
+  z-index: 100;
+
+  background: rgba(10, 10, 14, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+
+  backdrop-filter: blur(10px);
+}
+
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.logo-button {
+  height: 100%;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 24px 0 4px;
+
+  border: 0;
+  background: transparent;
+
+  cursor: pointer;
+}
+
+.discordiny-logo {
+  display: block;
+  max-height: 52px;
+  width: auto;
+}
+
+.main-navigation {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.main-navigation button {
+  height: 40px;
+
+  padding: 0 16px;
+
+  border: 0;
+  border-radius: 8px;
+
+  color: rgba(255, 255, 255, 0.75);
+  background: transparent;
+
+  font: inherit;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.main-navigation button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  height: 44px;
+
+  padding: 0 14px 0 8px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+
+  font: inherit;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.account-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.account-button img {
+  width: 28px;
+  height: 28px;
+
+  object-fit: contain;
+
+  border-radius: 50%;
+}
