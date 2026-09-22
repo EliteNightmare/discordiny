@@ -8,6 +8,13 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"d1_databases": [
+	  {
+	    "binding": "DB",
+	    "database_name": "discordiny",
+	    "database_id": "YOUR_DATABASE_ID"
+	  }
+	],
 	"assets": {
 	  "directory": "./dist/client",
 	  "not_found_handling": "single-page-application",
