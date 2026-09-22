@@ -1,6 +1,7 @@
 declare global {
   interface Env {
     DISCORD_CLIENT_SECRET: string;
+    DB: D1Database;
   }
 }
 
