@@ -10,7 +10,13 @@ export default function Home() {
           Your adventure begins here.
         </p>
 
-        <button className="start-button" type="button">
+        <button
+          className="start-button"
+          type="button"
+          onClick={() => {
+            window.location.href = "/api/auth/login";
+          }}
+        >
           <span className="start-button-title">
             Enter the World
           </span>
