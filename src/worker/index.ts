@@ -1,4 +1,3 @@
-```ts
 declare global {
   interface Env {
     DISCORD_CLIENT_SECRET: string;
@@ -207,4 +206,3 @@ app.get("/api/auth/callback", async (c) => {
 });
 
 export default app;
-```
