@@ -11,7 +11,13 @@ export default function Home() {
         </p>
 
         <button className="start-button" type="button">
-          Enter the World
+          <span className="start-button-title">
+            Enter the World
+          </span>
+        
+          <span className="start-button-subtitle">
+            Login with Discord
+          </span>
         </button>
       </section>
     </main>
