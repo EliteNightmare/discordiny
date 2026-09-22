@@ -1,5 +1,6 @@
 .home-page {
   min-height: calc(100vh - 72px);
+  width: 100%;
 
   display: flex;
   align-items: center;
@@ -8,6 +9,10 @@
   text-align: center;
   padding: 40px 24px;
   box-sizing: border-box;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .home-content {
