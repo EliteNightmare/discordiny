@@ -1,3 +1,9 @@
+declare global {
+  interface Env {
+    DISCORD_CLIENT_SECRET: string;
+  }
+}
+
 import { Hono } from "hono";
 
 const app = new Hono<{ Bindings: Env }>();
