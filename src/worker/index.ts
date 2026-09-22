@@ -1,3 +1,4 @@
+```ts
 declare global {
   interface Env {
     DISCORD_CLIENT_SECRET: string;
@@ -10,6 +11,7 @@ import { Hono } from "hono";
 const app = new Hono<{ Bindings: Env }>();
 
 const DISCORD_CLIENT_ID = "1529513718176813166";
+
 const DISCORD_REDIRECT_URI =
   "https://discordiny.com/api/auth/callback";
 
@@ -35,7 +37,9 @@ app.get("/api/auth/callback", async (c) => {
 
   if (!code) {
     return c.json(
-      { error: "Missing authorization code" },
+      {
+        error: "Missing authorization code",
+      },
       400
     );
   }
@@ -43,13 +47,14 @@ app.get("/api/auth/callback", async (c) => {
   const basicAuth = btoa(
     `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
   );
-  
+
   const tokenResponse = await fetch(
     "https://discord.com/api/v10/oauth2/token",
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type":
+          "application/x-www-form-urlencoded",
         "Authorization": `Basic ${basicAuth}`,
       },
       body: new URLSearchParams({
@@ -105,20 +110,101 @@ app.get("/api/auth/callback", async (c) => {
     );
 
     return c.json(
-      { error: "Could not retrieve Discord user" },
+      {
+        error: "Could not retrieve Discord user",
+      },
       500
     );
   }
 
-  const user = await userResponse.json();
+  const user =
+    await userResponse.json<{
+      id: string;
+      username: string;
+      global_name?: string | null;
+      avatar?: string | null;
+    }>();
 
-  console.log("Discord user authenticated:", user);
+  const existingUser = await c.env.DB
+    .prepare(
+      `SELECT
+        id,
+        discord_id,
+        username,
+        global_name,
+        avatar
+       FROM users
+       WHERE discord_id = ?`
+    )
+    .bind(user.id)
+    .first<{
+      id: number;
+      discord_id: string;
+      username: string;
+      global_name: string | null;
+      avatar: string | null;
+    }>();
+
+  let discordinyUser;
+
+  if (existingUser) {
+    await c.env.DB
+      .prepare(
+        `UPDATE users
+         SET username = ?,
+             global_name = ?,
+             avatar = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE discord_id = ?`
+      )
+      .bind(
+        user.username,
+        user.global_name ?? null,
+        user.avatar ?? null,
+        user.id
+      )
+      .run();
+
+    discordinyUser = {
+      ...existingUser,
+      username: user.username,
+      global_name: user.global_name ?? null,
+      avatar: user.avatar ?? null,
+    };
+  } else {
+    const result = await c.env.DB
+      .prepare(
+        `INSERT INTO users
+         (discord_id, username, global_name, avatar)
+         VALUES (?, ?, ?, ?)`
+      )
+      .bind(
+        user.id,
+        user.username,
+        user.global_name ?? null,
+        user.avatar ?? null
+      )
+      .run();
+
+    discordinyUser = {
+      id: result.meta.last_row_id,
+      discord_id: user.id,
+      username: user.username,
+      global_name: user.global_name ?? null,
+      avatar: user.avatar ?? null,
+    };
+  }
+
+  console.log(
+    "Discordiny user:",
+    discordinyUser
+  );
 
   return c.json({
     message: "Discord authentication successful",
-    user,
+    user: discordinyUser,
   });
 });
 
-
 export default app;
+```
