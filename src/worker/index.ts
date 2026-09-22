@@ -59,11 +59,14 @@ app.get("/api/auth/callback", async (c) => {
 
   if (!tokenResponse.ok) {
     const error = await tokenResponse.text();
-
+  
     console.error("Discord token exchange failed:", error);
-
+  
     return c.json(
-      { error: "Discord authentication failed" },
+      {
+        error: "Discord token exchange failed",
+        discord_error: error,
+      },
       500
     );
   }
