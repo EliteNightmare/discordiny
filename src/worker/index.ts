@@ -44,6 +44,10 @@ app.get("/api/auth/callback", async (c) => {
     );
   }
 
+  const basicAuth = btoa(
+    `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
+  );
+
   const tokenResponse = await fetch(
     "https://discord.com/api/oauth2/token",
     {
