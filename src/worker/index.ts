@@ -24,4 +24,76 @@ app.get("/api/auth/login", (c) => {
   return c.redirect(discordUrl);
 });
 
+app.get("/api/auth/callback", async (c) => {
+  const code = c.req.query("code");
+
+  if (!code) {
+    return c.json(
+      { error: "Missing authorization code" },
+      400
+    );
+  }
+
+  const tokenResponse = await fetch(
+    "https://discord.com/api/oauth2/token",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        client_secret: c.env.DISCORD_CLIENT_SECRET,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: DISCORD_REDIRECT_URI,
+      }),
+    }
+  );
+
+  if (!tokenResponse.ok) {
+    const error = await tokenResponse.text();
+
+    console.error("Discord token exchange failed:", error);
+
+    return c.json(
+      { error: "Discord authentication failed" },
+      500
+    );
+  }
+
+  const tokenData = await tokenResponse.json<{
+    access_token: string;
+    token_type: string;
+    expires_in: number;
+    refresh_token: string;
+    scope: string;
+  }>();
+
+  const userResponse = await fetch(
+    "https://discord.com/api/users/@me",
+    {
+      headers: {
+        Authorization: `${tokenData.token_type} ${tokenData.access_token}`,
+      },
+    }
+  );
+
+  if (!userResponse.ok) {
+    return c.json(
+      { error: "Could not retrieve Discord user" },
+      500
+    );
+  }
+
+  const user = await userResponse.json();
+
+  console.log("Discord user authenticated:", user);
+
+  return c.json({
+    message: "Discord authentication successful",
+    user,
+  });
+});
+
 export default app;
