@@ -39,7 +39,7 @@ export default function Home() {
       client_id: "1529513718176813166",
       response_type: "code",
       redirect_uri:
-        "https://discordiny.com/api/auth/callback",
+        "https://discordiny.com/auth/callback",
       scope: "identify",
       code_challenge: challenge,
       code_challenge_method: "S256",
