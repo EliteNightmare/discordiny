@@ -54,6 +54,9 @@ app.get("/api/auth/callback", async (c) => {
     redirectUri: DISCORD_REDIRECT_URI,
     secretLength: c.env.DISCORD_CLIENT_SECRET.length,
     basicAuthLength: basicAuth.length,
+    secretHashWhitespace:
+      c.env.DISCORD_CLIENT_SECRET !==
+      c.env.DISCORD_CLIENT_SECRET.trim(),
   });
 
   const tokenResponse = await fetch(
