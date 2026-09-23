@@ -1217,4 +1217,68 @@ app.post("/api/game/stats", async (c) => {
   });
 });
 
+app.get("/api/game/cooldowns", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT
+        activity,
+        timestamp
+       FROM player_cooldowns
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .all<{
+      activity: string;
+      timestamp: number;
+    }>();
+
+  const cooldowns: Record<string, number> = {};
+
+  for (const row of rows.results) {
+    cooldowns[row.activity] = row.timestamp;
+  }
+
+  return c.json({
+    authenticated: true,
+    cooldowns,
+  });
+});
+
 export default app;
