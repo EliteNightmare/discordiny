@@ -922,4 +922,59 @@ app.get("/api/bungie/me", async (c) => {
   });
 });
 
+/* =========================================================
+   UNLINK BUNGIE ACCOUNT
+========================================================= */
+
+app.post("/api/bungie/unlink", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        error: "Not authenticated",
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        error: "Not authenticated",
+      },
+      401
+    );
+  }
+
+  await c.env.DB
+    .prepare(
+      `DELETE FROM bungie_accounts
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
 export default app;
