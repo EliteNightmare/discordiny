@@ -259,3 +259,112 @@
     height: 38px;
   }
 }
+/* =========================================================
+   ACCOUNT MENU
+========================================================= */
+
+.account-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+
+  width: 220px;
+
+  padding: 8px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+
+  background: rgba(15, 15, 20, 0.97);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35);
+
+  backdrop-filter: blur(12px);
+
+  z-index: 300;
+}
+
+.account-menu-user {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 8px;
+}
+
+.account-menu-user img {
+  width: 38px;
+  height: 38px;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+}
+
+.account-menu-user div {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.account-menu-user strong {
+  color: white;
+
+  font-size: 0.9rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-user span {
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 0.75rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-divider {
+  height: 1px;
+
+  margin: 6px 0;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-menu-logout {
+  width: 100%;
+
+  padding: 10px;
+
+  border: 0;
+  border-radius: 7px;
+
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+
+  font: inherit;
+  font-size: 0.85rem;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.account-menu-logout:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
