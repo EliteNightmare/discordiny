@@ -19,9 +19,12 @@ export default function Account() {
   useEffect(() => {
     async function loadUser() {
       try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
+        const response = await fetch(
+          "/api/auth/me",
+          {
+            credentials: "include",
+          }
+        );
 
         if (!response.ok) {
           window.location.href = "/";
@@ -37,7 +40,11 @@ export default function Account() {
 
         setUser(data.user);
       } catch (error) {
-        console.error("Failed to load account:", error);
+        console.error(
+          "Failed to load account:",
+          error
+        );
+
         window.location.href = "/";
       } finally {
         setLoading(false);
@@ -71,12 +78,16 @@ export default function Account() {
   }
 
   const displayName =
-    user.global_name ||
-    user.username;
+    user.global_name || user.username;
 
   const avatarUrl = user.avatar
     ? `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.avatar}.png?size=256`
     : discordIcon;
+
+  function linkBungieAccount() {
+    window.location.href =
+      "/api/bungie/link";
+  }
 
   return (
     <>
@@ -112,8 +123,9 @@ export default function Account() {
               </div>
 
               <button
-                className="bungie-link-button"
+                className="account-link-button"
                 type="button"
+                onClick={linkBungieAccount}
               >
                 Link
               </button>
@@ -126,7 +138,7 @@ export default function Account() {
               </div>
 
               <button
-                className="patreon-link-button"
+                className="account-link-button"
                 type="button"
               >
                 Link
