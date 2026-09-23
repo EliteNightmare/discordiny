@@ -2668,4 +2668,29 @@ app.post("/api/game/armor", async (c) => {
   });
 });
 
+app.get("/api/game/weapons/catalog", async (c) => {
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT
+         name,
+         emoji_id,
+         rarity,
+         source,
+         activity_type
+       FROM weapons
+       ORDER BY name`
+    )
+    .all<{
+      name: string;
+      emoji_id: string | null;
+      rarity: string | null;
+      source: string | null;
+      activity_type: string | null;
+    }>();
+
+  return c.json({
+    weapons: rows.results,
+  });
+});
+
 export default app;
