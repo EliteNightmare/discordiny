@@ -12,33 +12,62 @@ type User = {
   avatar: string | null;
 };
 
+type BungieAccount = {
+  membership_id: string;
+  membership_type: number;
+  bungie_name: string;
+};
+
 export default function Account() {
   const [user, setUser] = useState<User | null>(null);
+  const [bungieAccount, setBungieAccount] =
+    useState<BungieAccount | null>(null);
+
   const [loading, setLoading] = useState(true);
+  const [bungieLoading, setBungieLoading] =
+    useState(true);
 
   useEffect(() => {
-    async function loadUser() {
+    async function loadAccount() {
       try {
-        const response = await fetch(
-          "/api/auth/me",
-          {
-            credentials: "include",
+        const [userResponse, bungieResponse] =
+          await Promise.all([
+            fetch("/api/auth/me", {
+              credentials: "include",
+            }),
+
+            fetch("/api/bungie/me", {
+              credentials: "include",
+            }),
+          ]);
+
+        if (!userResponse.ok) {
+          window.location.href = "/";
+          return;
+        }
+
+        const userData =
+          await userResponse.json();
+
+        if (!userData.authenticated) {
+          window.location.href = "/";
+          return;
+        }
+
+        setUser(userData.user);
+
+        if (bungieResponse.ok) {
+          const bungieData =
+            await bungieResponse.json();
+
+          if (bungieData.linked) {
+            setBungieAccount(
+              bungieData.account
+            );
+          } else {
+            setBungieAccount(null);
           }
-        );
-
-        if (!response.ok) {
-          window.location.href = "/";
-          return;
         }
-
-        const data = await response.json();
-
-        if (!data.authenticated) {
-          window.location.href = "/";
-          return;
-        }
-
-        setUser(data.user);
       } catch (error) {
         console.error(
           "Failed to load account:",
@@ -48,10 +77,11 @@ export default function Account() {
         window.location.href = "/";
       } finally {
         setLoading(false);
+        setBungieLoading(false);
       }
     }
 
-    loadUser();
+    loadAccount();
   }, []);
 
   if (loading) {
@@ -119,16 +149,32 @@ export default function Account() {
             <div className="account-information-item">
               <div className="account-information-text">
                 <span>Bungie Account</span>
-                <strong>Not linked</strong>
+
+                {bungieLoading ? (
+                  <strong>
+                    Loading...
+                  </strong>
+                ) : bungieAccount ? (
+                  <strong>
+                    {bungieAccount.bungie_name}
+                  </strong>
+                ) : (
+                  <strong>
+                    Not linked
+                  </strong>
+                )}
               </div>
 
-              <button
-                className="account-link-button"
-                type="button"
-                onClick={linkBungieAccount}
-              >
-                Link
-              </button>
+              {!bungieLoading &&
+                !bungieAccount && (
+                  <button
+                    className="account-link-button"
+                    type="button"
+                    onClick={linkBungieAccount}
+                  >
+                    Link
+                  </button>
+                )}
             </div>
 
             <div className="account-information-item">
