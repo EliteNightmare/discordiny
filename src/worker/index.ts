@@ -6,6 +6,8 @@ declare global {
   }
 }
 
+import { ACTIVITIES } from "./game/activities";
+
 import { Hono } from "hono";
 import {
   deleteCookie,
@@ -2690,6 +2692,12 @@ app.get("/api/game/weapons/catalog", async (c) => {
 
   return c.json({
     weapons: rows.results,
+  });
+});
+
+app.get("/api/game/activities", (c) => {
+  return c.json({
+    activities: ACTIVITIES,
   });
 });
 
