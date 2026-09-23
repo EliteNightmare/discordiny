@@ -842,5 +842,84 @@ app.get("/api/bungie/callback", async (c) => {
   });
 });
 
+/* =========================================================
+   CURRENT BUNGIE ACCOUNT
+========================================================= */
+
+app.get("/api/bungie/me", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        linked: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        linked: false,
+      },
+      401
+    );
+  }
+
+  const bungieAccount = await c.env.DB
+    .prepare(
+      `SELECT
+        membership_id,
+        membership_type,
+        bungie_name
+       FROM bungie_accounts
+       WHERE user_id = ?
+       LIMIT 1`
+    )
+    .bind(session.user_id)
+    .first<{
+      membership_id: string;
+      membership_type: number;
+      bungie_name: string;
+    }>();
+
+  if (!bungieAccount) {
+    return c.json({
+      linked: false,
+    });
+  }
+
+  return c.json({
+    linked: true,
+    account: {
+      membership_id:
+        bungieAccount.membership_id,
+
+      membership_type:
+        bungieAccount.membership_type,
+
+      bungie_name:
+        bungieAccount.bungie_name,
+    },
+  });
+});
 
 export default app;
