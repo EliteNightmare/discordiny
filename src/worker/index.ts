@@ -2233,4 +2233,122 @@ app.post("/api/game/fish", async (c) => {
   });
 });
 
+app.post("/api/game/fish", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  let body: {
+    fish_name?: string;
+    amount?: number;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (
+    typeof body.fish_name !== "string" ||
+    body.fish_name.trim() === ""
+  ) {
+    return c.json({ error: "Invalid fish name" }, 400);
+  }
+
+  if (
+    typeof body.amount !== "number" ||
+    !Number.isInteger(body.amount)
+  ) {
+    return c.json({ error: "Invalid amount" }, 400);
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_fish
+        (
+          user_id,
+          fish_name,
+          amount
+        )
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, fish_name)
+       DO UPDATE SET
+         amount = excluded.amount`
+    )
+    .bind(
+      session.user_id,
+      body.fish_name,
+      body.amount
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
+app.get("/api/game/weapons", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT weapon_name, masterwork
+       FROM player_weapons
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .all<{
+      weapon_name: string;
+      masterwork: number;
+    }>();
+
+  const weapons: Record<string, { mw: number }> = {};
+
+  for (const row of rows.results) {
+    weapons[row.weapon_name] = {
+      mw: row.masterwork,
+    };
+  }
+
+  return c.json({
+    authenticated: true,
+    weapons,
+  });
+});
+
 export default app;
