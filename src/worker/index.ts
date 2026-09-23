@@ -1885,5 +1885,49 @@ app.post("/api/game/destination-materials", async (c) => {
   });
 });
 
+app.get("/api/game/dungeon-materials", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT material_name, amount
+       FROM player_dungeon_materials
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .all<{
+      material_name: string;
+      amount: number;
+    }>();
+
+  const materials: Record<string, number> = {};
+
+  for (const row of rows.results) {
+    materials[row.material_name] = row.amount;
+  }
+
+  return c.json({
+    authenticated: true,
+    materials,
+  });
+});
 
 export default app;
