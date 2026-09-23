@@ -1,0 +1,148 @@
+.account-page {
+  min-height: calc(100vh - 72px);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 110px 24px 40px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.account-card {
+  width: 100%;
+  max-width: 760px;
+  padding: 32px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(15, 15, 20, 0.78);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+}
+
+.account-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.account-avatar {
+  width: 96px;
+  height: 96px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.account-identity h1 {
+  margin: 0;
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.account-identity p {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.95rem;
+}
+
+.account-divider {
+  width: 100%;
+  height: 1px;
+  margin: 28px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-information {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.account-information-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.account-information-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-information-text span {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.account-information-text strong {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.bungie-link-button {
+  flex-shrink: 0;
+  padding: 9px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 7px;
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bungie-link-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.account-loading {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 767px) {
+  .account-page {
+    padding: 100px 14px 30px;
+  }
+
+  .account-card {
+    padding: 22px;
+  }
+
+  .account-header {
+    gap: 16px;
+  }
+
+  .account-avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .account-identity h1 {
+    font-size: 1.5rem;
+  }
+
+  .account-information-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bungie-link-button {
+    width: 100%;
+  }
+}
