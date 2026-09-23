@@ -2592,4 +2592,80 @@ app.get("/api/game/armor", async (c) => {
   });
 });
 
+app.post("/api/game/armor", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  let body: {
+    helmet?: string;
+    arms?: string;
+    chest?: string;
+    legs?: string;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (
+    typeof body.helmet !== "string" ||
+    typeof body.arms !== "string" ||
+    typeof body.chest !== "string" ||
+    typeof body.legs !== "string"
+  ) {
+    return c.json({ error: "Invalid armor data" }, 400);
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_armor
+        (
+          user_id,
+          helmet,
+          arms,
+          chest,
+          legs
+        )
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(user_id)
+       DO UPDATE SET
+         helmet = excluded.helmet,
+         arms = excluded.arms,
+         chest = excluded.chest,
+         legs = excluded.legs,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .bind(
+      session.user_id,
+      body.helmet,
+      body.arms,
+      body.chest,
+      body.legs
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
 export default app;
