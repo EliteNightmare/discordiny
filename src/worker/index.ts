@@ -2467,4 +2467,129 @@ app.get("/api/game/artifacts", async (c) => {
   });
 });
 
+app.post("/api/game/artifacts", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  let body: {
+    artifact_name?: string;
+    level?: number;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (
+    typeof body.artifact_name !== "string" ||
+    body.artifact_name.trim() === ""
+  ) {
+    return c.json({ error: "Invalid artifact name" }, 400);
+  }
+
+  if (
+    typeof body.level !== "number" ||
+    !Number.isInteger(body.level)
+  ) {
+    return c.json({ error: "Invalid artifact level" }, 400);
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_artifacts
+        (
+          user_id,
+          artifact_name,
+          level
+        )
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, artifact_name)
+       DO UPDATE SET
+         level = excluded.level`
+    )
+    .bind(
+      session.user_id,
+      body.artifact_name,
+      body.level
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
+app.get("/api/game/armor", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const armor = await c.env.DB
+    .prepare(
+      `SELECT helmet, arms, chest, legs
+       FROM player_armor
+       WHERE user_id = ?
+       LIMIT 1`
+    )
+    .bind(session.user_id)
+    .first<{
+      helmet: string;
+      arms: string;
+      chest: string;
+      legs: string;
+    }>();
+
+  if (!armor) {
+    return c.json({
+      authenticated: true,
+      armor: {
+        helmet: "placeholder",
+        arms: "placeholder",
+        chest: "placeholder",
+        legs: "placeholder",
+      },
+    });
+  }
+
+  return c.json({
+    authenticated: true,
+    armor,
+  });
+});
+
 export default app;
