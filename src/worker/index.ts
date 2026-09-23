@@ -1281,4 +1281,107 @@ app.get("/api/game/cooldowns", async (c) => {
   });
 });
 
+app.post("/api/game/cooldowns", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  let body: {
+    activity?: string;
+    timestamp?: number;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        error: "Invalid JSON body",
+      },
+      400
+    );
+  }
+
+  if (
+    typeof body.activity !== "string" ||
+    body.activity.trim() === ""
+  ) {
+    return c.json(
+      {
+        error: "Invalid activity",
+      },
+      400
+    );
+  }
+
+  if (
+    typeof body.timestamp !== "number" ||
+    !Number.isFinite(body.timestamp)
+  ) {
+    return c.json(
+      {
+        error: "Invalid timestamp",
+      },
+      400
+    );
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_cooldowns
+        (
+          user_id,
+          activity,
+          timestamp
+        )
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, activity)
+       DO UPDATE SET
+         timestamp = excluded.timestamp`
+    )
+    .bind(
+      session.user_id,
+      body.activity,
+      body.timestamp
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
 export default app;
