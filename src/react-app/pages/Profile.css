@@ -1,0 +1,156 @@
+.profile-page {
+  min-height: calc(100vh - 72px);
+
+  padding: 110px 24px 40px;
+
+  box-sizing: border-box;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.profile-card {
+  width: 100%;
+  max-width: 760px;
+
+  padding: 32px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+
+  background: rgba(15, 15, 20, 0.78);
+
+  box-shadow:
+    0 15px 40px rgba(0, 0, 0, 0.25);
+
+  backdrop-filter: blur(12px);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+
+  gap: 22px;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.profile-identity h1 {
+  margin: 0;
+
+  color: white;
+
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.profile-identity p {
+  margin: 5px 0 0;
+
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 0.95rem;
+}
+
+.profile-divider {
+  width: 100%;
+  height: 1px;
+
+  margin: 28px 0;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profile-information {
+  display: grid;
+
+  grid-template-columns: repeat(2, 1fr);
+
+  gap: 16px;
+}
+
+.profile-information-item {
+  display: flex;
+  flex-direction: column;
+
+  gap: 6px;
+
+  padding: 16px;
+
+  border-radius: 9px;
+
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.profile-information-item span {
+  color: rgba(255, 255, 255, 0.45);
+
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.profile-information-item strong {
+  color: white;
+
+  font-size: 0.95rem;
+}
+
+.profile-loading {
+  color: rgba(255, 255, 255, 0.6);
+
+  font-size: 0.95rem;
+}
+
+@media (max-width: 767px) {
+  .profile-page {
+    padding: 100px 14px 30px;
+  }
+
+  .profile-card {
+    padding: 22px;
+  }
+
+  .profile-header {
+    gap: 16px;
+  }
+
+  .profile-avatar {
+    width: 72px;
+    height: 72px;
+  }
+
+  .profile-identity h1 {
+    font-size: 1.5rem;
+  }
+
+  .profile-information {
+    grid-template-columns: 1fr;
+  }
+}
