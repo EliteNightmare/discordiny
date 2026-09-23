@@ -829,17 +829,10 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
-     Return successful response
+     Redirect Success
   ------------------------------------------------------- */
 
-  return c.json({
-    success: true,
-    message:
-      "Bungie account linked successfully",
-    bungie_name: bungieName,
-    membership_id: membershipId,
-    membership_type: membershipType,
-  });
+  return c.redirect("/account");
 });
 
 /* =========================================================
