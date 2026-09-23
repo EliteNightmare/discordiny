@@ -1,6 +1,7 @@
 declare global {
   interface Env {
     DISCORD_CLIENT_SECRET: string;
+    BUNGIE_API_KEY: string;
     DB: D1Database;
   }
 }
@@ -25,7 +26,8 @@ const BUNGIE_CLIENT_ID =
 const BUNGIE_REDIRECT_URI =
   "https://discordiny.com/api/bungie/callback";
 
-const SESSION_COOKIE = "__Host-discordiny_session";
+const SESSION_COOKIE =
+  "__Host-discordiny_session";
 
 const BUNGIE_STATE_COOKIE =
   "__Host-discordiny_bungie_state";
@@ -37,8 +39,14 @@ const BUNGIE_STATE_DURATION_SECONDS =
   60 * 10; // 10 minutes
 
 
+/* =========================================================
+   API ROOT
+========================================================= */
+
 app.get("/api/", (c) => {
-  return c.json({ name: "Discordiny" });
+  return c.json({
+    name: "Discordiny",
+  });
 });
 
 
@@ -465,10 +473,9 @@ app.get("/api/bungie/link", async (c) => {
   /*
      Generate a unique OAuth state value.
 
-     This will be returned by Bungie during the
-     callback and allows us to verify that the
-     callback belongs to the authorization request
-     started by this browser.
+     This is returned by Bungie during the callback
+     and allows us to verify that the callback belongs
+     to the authorization request started by this browser.
   */
 
   const state = crypto.randomUUID();
@@ -497,6 +504,183 @@ app.get("/api/bungie/link", async (c) => {
   return c.redirect(
     `https://www.bungie.net/en/OAuth/Authorize?${params.toString()}`
   );
+});
+
+
+/* =========================================================
+   BUNGIE CALLBACK
+========================================================= */
+
+app.get("/api/bungie/callback", async (c) => {
+  const code = c.req.query("code");
+
+  const returnedState = c.req.query("state");
+
+  const savedState = getCookie(
+    c,
+    BUNGIE_STATE_COOKIE,
+    "host"
+  );
+
+  /* -------------------------------------------------------
+     Make sure Bungie returned an authorization code
+  ------------------------------------------------------- */
+
+  if (!code) {
+    return c.json(
+      {
+        error:
+          "Missing Bungie authorization code",
+      },
+      400
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Verify OAuth state
+  ------------------------------------------------------- */
+
+  if (
+    !returnedState ||
+    !savedState ||
+    returnedState !== savedState
+  ) {
+    return c.json(
+      {
+        error:
+          "Invalid Bungie OAuth state",
+      },
+      400
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Find the logged-in Discordiny user
+  ------------------------------------------------------- */
+
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.redirect(
+      "/api/auth/login"
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.redirect(
+      "/api/auth/login"
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Exchange Bungie authorization code for access token
+  ------------------------------------------------------- */
+
+  const tokenResponse = await fetch(
+    "https://www.bungie.net/Platform/App/OAuth/Token/",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/x-www-form-urlencoded",
+
+        "X-API-Key":
+          c.env.BUNGIE_API_KEY,
+      },
+
+      body: new URLSearchParams({
+        grant_type:
+          "authorization_code",
+
+        client_id:
+          BUNGIE_CLIENT_ID,
+
+        code,
+
+        redirect_uri:
+          BUNGIE_REDIRECT_URI,
+      }),
+    }
+  );
+
+  if (!tokenResponse.ok) {
+    const error =
+      await tokenResponse.text();
+
+    console.error(
+      "Bungie token exchange failed:",
+      error
+    );
+
+    return c.json(
+      {
+        error:
+          "Bungie token exchange failed",
+      },
+      500
+    );
+  }
+
+
+  const tokenData =
+    await tokenResponse.json<{
+      access_token: string;
+      token_type: string;
+      expires_in: number;
+      refresh_token?: string;
+    }>();
+
+
+  /* -------------------------------------------------------
+     Remove OAuth state cookie
+  ------------------------------------------------------- */
+
+  deleteCookie(
+    c,
+    BUNGIE_STATE_COOKIE,
+    {
+      path: "/",
+      secure: true,
+      prefix: "host",
+    }
+  );
+
+
+  /* -------------------------------------------------------
+     Temporary response
+
+     We will replace this with the Bungie account lookup
+     and D1 database save in the next step.
+  ------------------------------------------------------- */
+
+  return c.json({
+    success: true,
+    message:
+      "Bungie authorization successful",
+    has_access_token:
+      Boolean(tokenData.access_token),
+  });
 });
 
 
