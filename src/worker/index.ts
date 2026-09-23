@@ -2351,4 +2351,120 @@ app.get("/api/game/weapons", async (c) => {
   });
 });
 
+app.post("/api/game/weapons", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  let body: {
+    weapon_name?: string;
+    masterwork?: number;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "Invalid JSON body" }, 400);
+  }
+
+  if (
+    typeof body.weapon_name !== "string" ||
+    body.weapon_name.trim() === ""
+  ) {
+    return c.json({ error: "Invalid weapon name" }, 400);
+  }
+
+  if (
+    typeof body.masterwork !== "number" ||
+    !Number.isInteger(body.masterwork)
+  ) {
+    return c.json({ error: "Invalid masterwork value" }, 400);
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_weapons
+        (
+          user_id,
+          weapon_name,
+          masterwork
+        )
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, weapon_name)
+       DO UPDATE SET
+         masterwork = excluded.masterwork`
+    )
+    .bind(
+      session.user_id,
+      body.weapon_name,
+      body.masterwork
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
+app.get("/api/game/artifacts", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const rows = await c.env.DB
+    .prepare(
+      `SELECT artifact_name, level
+       FROM player_artifacts
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .all<{
+      artifact_name: string;
+      level: number;
+    }>();
+
+  const artifacts: Record<string, number> = {};
+
+  for (const row of rows.results) {
+    artifacts[row.artifact_name] = row.level;
+  }
+
+  return c.json({
+    authenticated: true,
+    artifacts,
+  });
+});
+
 export default app;
