@@ -1448,4 +1448,107 @@ app.get("/api/game/currencies", async (c) => {
   });
 });
 
+app.post("/api/game/currencies", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  let body: {
+    currency_name?: string;
+    amount?: number;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        error: "Invalid JSON body",
+      },
+      400
+    );
+  }
+
+  if (
+    typeof body.currency_name !== "string" ||
+    body.currency_name.trim() === ""
+  ) {
+    return c.json(
+      {
+        error: "Invalid currency name",
+      },
+      400
+    );
+  }
+
+  if (
+    typeof body.amount !== "number" ||
+    !Number.isInteger(body.amount)
+  ) {
+    return c.json(
+      {
+        error: "Invalid amount",
+      },
+      400
+    );
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_currencies
+        (
+          user_id,
+          currency_name,
+          amount
+        )
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, currency_name)
+       DO UPDATE SET
+         amount = excluded.amount`
+    )
+    .bind(
+      session.user_id,
+      body.currency_name,
+      body.amount
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
 export default app;
