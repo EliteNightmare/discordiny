@@ -970,4 +970,91 @@ app.post("/api/bungie/unlink", async (c) => {
   });
 });
 
+app.get("/api/game/profile", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  let profile = await c.env.DB
+    .prepare(
+      `SELECT
+        level,
+        exp,
+        power,
+        zone
+       FROM player_profiles
+       WHERE user_id = ?
+       LIMIT 1`
+    )
+    .bind(session.user_id)
+    .first<{
+      level: number;
+      exp: number;
+      power: number;
+      zone: string;
+    }>();
+
+  if (!profile) {
+    await c.env.DB
+      .prepare(
+        `INSERT INTO player_profiles
+          (
+            user_id,
+            level,
+            exp,
+            power,
+            zone
+          )
+         VALUES (?, 0, 0, 0, 'Cosmodrome')`
+      )
+      .bind(session.user_id)
+      .run();
+
+    profile = {
+      level: 0,
+      exp: 0,
+      power: 0,
+      zone: "Cosmodrome",
+    };
+  }
+
+  return c.json({
+    authenticated: true,
+    profile,
+  });
+});
+
 export default app;
