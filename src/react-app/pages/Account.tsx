@@ -118,6 +118,20 @@ export default function Account() {
                 Link
               </button>
             </div>
+
+            <div className="account-information-item">
+              <div className="account-information-text">
+                <span>Patreon Account</span>
+                <strong>Not linked</strong>
+              </div>
+
+              <button
+                className="patreon-link-button"
+                type="button"
+              >
+                Link
+              </button>
+            </div>
           </div>
         </section>
       </main>
