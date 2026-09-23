@@ -26,6 +26,8 @@ export default function Account() {
   const [loading, setLoading] = useState(true);
   const [bungieLoading, setBungieLoading] =
     useState(true);
+  const [unlinking, setUnlinking] =
+    useState(false);
 
   useEffect(() => {
     async function loadAccount() {
@@ -119,6 +121,51 @@ export default function Account() {
       "/api/bungie/link";
   }
 
+  async function unlinkBungieAccount() {
+    if (unlinking) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Are you sure you want to unlink your Bungie account?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setUnlinking(true);
+
+    try {
+      const response = await fetch(
+        "/api/bungie/unlink",
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to unlink Bungie account"
+        );
+      }
+
+      setBungieAccount(null);
+    } catch (error) {
+      console.error(
+        "Failed to unlink Bungie account:",
+        error
+      );
+
+      window.alert(
+        "Failed to unlink Bungie account. Please try again."
+      );
+    } finally {
+      setUnlinking(false);
+    }
+  }
+
   return (
     <>
       <TopBar />
@@ -166,7 +213,18 @@ export default function Account() {
               </div>
 
               {!bungieLoading &&
-                !bungieAccount && (
+                (bungieAccount ? (
+                  <button
+                    className="account-link-button"
+                    type="button"
+                    onClick={unlinkBungieAccount}
+                    disabled={unlinking}
+                  >
+                    {unlinking
+                      ? "Unlinking..."
+                      : "Unlink"}
+                  </button>
+                ) : (
                   <button
                     className="account-link-button"
                     type="button"
@@ -174,7 +232,7 @@ export default function Account() {
                   >
                     Link
                   </button>
-                )}
+                ))}
             </div>
 
             <div className="account-information-item">
