@@ -1129,4 +1129,92 @@ app.get("/api/game/stats", async (c) => {
   });
 });
 
+app.post("/api/game/stats", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  let body: {
+    stats?: Record<string, unknown>;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        error: "Invalid JSON body",
+      },
+      400
+    );
+  }
+
+  if (!body.stats || typeof body.stats !== "object") {
+    return c.json(
+      {
+        error: "Invalid stats data",
+      },
+      400
+    );
+  }
+
+  const statsJson = JSON.stringify(body.stats);
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_stats
+        (
+          user_id,
+          stats
+        )
+       VALUES (?, ?)
+       ON CONFLICT(user_id)
+       DO UPDATE SET
+         stats = excluded.stats,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .bind(
+      session.user_id,
+      statsJson
+    )
+    .run();
+
+  return c.json({
+    success: true,
+  });
+});
+
 export default app;
