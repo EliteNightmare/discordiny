@@ -19,13 +19,28 @@ const DISCORD_CLIENT_ID = "1529513718176813166";
 const DISCORD_REDIRECT_URI =
   "https://discordiny.com/api/auth/callback";
 
+const BUNGIE_CLIENT_ID =
+  "55059";
+
+const BUNGIE_REDIRECT_URI =
+  "https://discordiny.com/api/bungie/callback";
+
 const SESSION_COOKIE = "__Host-discordiny_session";
 
-const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
+const BUNGIE_STATE_COOKIE =
+  "__Host-discordiny_bungie_state";
+
+const SESSION_DURATION_SECONDS =
+  60 * 60 * 24 * 30; // 30 days
+
+const BUNGIE_STATE_DURATION_SECONDS =
+  60 * 10; // 10 minutes
+
 
 app.get("/api/", (c) => {
   return c.json({ name: "Discordiny" });
 });
+
 
 /* =========================================================
    DISCORD LOGIN
@@ -43,6 +58,7 @@ app.get("/api/auth/login", (c) => {
     `https://discord.com/oauth2/authorize?${params.toString()}`
   );
 });
+
 
 /* =========================================================
    DISCORD CALLBACK
@@ -110,6 +126,7 @@ app.get("/api/auth/callback", async (c) => {
       scope: string;
     }>();
 
+
   /* -------------------------------------------------------
      Retrieve Discord user
   ------------------------------------------------------- */
@@ -147,6 +164,7 @@ app.get("/api/auth/callback", async (c) => {
       global_name?: string | null;
       avatar?: string | null;
     }>();
+
 
   /* =======================================================
      FIND OR CREATE DISCORDINY USER
@@ -222,6 +240,7 @@ app.get("/api/auth/callback", async (c) => {
     };
   }
 
+
   /* =======================================================
      CREATE LOGIN SESSION
   ======================================================= */
@@ -246,6 +265,7 @@ app.get("/api/auth/callback", async (c) => {
     )
     .run();
 
+
   /* =======================================================
      SET SECURE SESSION COOKIE
   ======================================================= */
@@ -264,12 +284,14 @@ app.get("/api/auth/callback", async (c) => {
     }
   );
 
+
   /* =======================================================
      SEND USER BACK TO THE GAME
   ======================================================= */
 
   return c.redirect("/");
 });
+
 
 /* =========================================================
    CURRENT USER
@@ -333,6 +355,7 @@ app.get("/api/auth/me", async (c) => {
     );
   }
 
+
   /* -------------------------------------------------------
      Check expiration
   ------------------------------------------------------- */
@@ -375,6 +398,7 @@ app.get("/api/auth/me", async (c) => {
   });
 });
 
+
 /* =========================================================
    LOGOUT
 ========================================================= */
@@ -404,5 +428,76 @@ app.get("/api/auth/logout", async (c) => {
 
   return c.redirect("/");
 });
+
+
+/* =========================================================
+   BUNGIE LINK
+========================================================= */
+
+app.get("/api/bungie/link", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.redirect("/api/auth/login");
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      id: string;
+    }>();
+
+  if (!session) {
+    return c.redirect("/api/auth/login");
+  }
+
+  /*
+     Generate a unique OAuth state value.
+
+     This will be returned by Bungie during the
+     callback and allows us to verify that the
+     callback belongs to the authorization request
+     started by this browser.
+  */
+
+  const state = crypto.randomUUID();
+
+  setCookie(
+    c,
+    BUNGIE_STATE_COOKIE,
+    state,
+    {
+      httpOnly: true,
+      secure: true,
+      sameSite: "Lax",
+      path: "/",
+      maxAge: BUNGIE_STATE_DURATION_SECONDS,
+      prefix: "host",
+    }
+  );
+
+  const params = new URLSearchParams({
+    client_id: BUNGIE_CLIENT_ID,
+    response_type: "code",
+    state,
+    redirect_uri: BUNGIE_REDIRECT_URI,
+  });
+
+  return c.redirect(
+    `https://www.bungie.net/en/OAuth/Authorize?${params.toString()}`
+  );
+});
+
 
 export default app;
