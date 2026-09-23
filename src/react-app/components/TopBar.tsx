@@ -41,6 +41,7 @@ export default function TopBar() {
           "Failed to load authenticated user:",
           error
         );
+
         setUser(null);
       }
     }
@@ -109,6 +110,7 @@ export default function TopBar() {
           }
         >
           <span>Menu</span>
+
           <span
             className={`mobile-navigation-arrow ${
               mobileMenuOpen ? "open" : ""
