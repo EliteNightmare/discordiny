@@ -1057,4 +1057,76 @@ app.get("/api/game/profile", async (c) => {
   });
 });
 
+app.get("/api/game/stats", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+        user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+      },
+      401
+    );
+  }
+
+  const stats = await c.env.DB
+    .prepare(
+      `SELECT
+        stats
+       FROM player_stats
+       WHERE user_id = ?
+       LIMIT 1`
+    )
+    .bind(session.user_id)
+    .first<{
+      stats: string;
+    }>();
+
+  if (!stats) {
+    return c.json({
+      authenticated: true,
+      stats: {},
+    });
+  }
+
+  let parsedStats: Record<string, unknown>;
+
+  try {
+    parsedStats = JSON.parse(stats.stats);
+  } catch {
+    parsedStats = {};
+  }
+
+  return c.json({
+    authenticated: true,
+    stats: parsedStats,
+  });
+});
+
 export default app;
