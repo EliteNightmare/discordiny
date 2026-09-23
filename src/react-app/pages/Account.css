@@ -93,7 +93,8 @@
   font-weight: 500;
 }
 
-.bungie-link-button {
+.bungie-link-button,
+.patreon-link-button {
   flex-shrink: 0;
   padding: 9px 18px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -106,7 +107,8 @@
   cursor: pointer;
 }
 
-.bungie-link-button:hover {
+.bungie-link-button:hover,
+.patreon-link-button:hover {
   background: rgba(255, 255, 255, 0.14);
 }
 
@@ -142,7 +144,8 @@
     flex-direction: column;
   }
 
-  .bungie-link-button {
+  .bungie-link-button,
+  .patreon-link-button {
     width: 100%;
   }
 }
