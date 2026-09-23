@@ -16,6 +16,7 @@ type User = {
 export default function TopBar() {
   const [user, setUser] = useState<User | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -50,12 +51,17 @@ export default function TopBar() {
   }, []);
 
   function handleAccountClick() {
-    if (user) {
-      window.location.href = "/api/auth/logout";
+    if (!user) {
+      window.location.href = "/api/auth/login";
       return;
     }
 
-    window.location.href = "/api/auth/login";
+    setAccountMenuOpen(!accountMenuOpen);
+    setMobileMenuOpen(false);
+  }
+
+  function handleLogout() {
+    window.location.href = "/api/auth/logout";
   }
 
   function getAvatarUrl() {
@@ -105,9 +111,10 @@ export default function TopBar() {
           type="button"
           aria-label="Open navigation menu"
           aria-expanded={mobileMenuOpen}
-          onClick={() =>
-            setMobileMenuOpen(!mobileMenuOpen)
-          }
+          onClick={() => {
+            setMobileMenuOpen(!mobileMenuOpen);
+            setAccountMenuOpen(false);
+          }}
         >
           <span>Menu</span>
 
@@ -167,24 +174,55 @@ export default function TopBar() {
         )}
       </div>
 
-      <button
-        className="account-button"
-        type="button"
-        onClick={handleAccountClick}
-      >
-        <img
-          src={getAvatarUrl()}
-          alt={
-            user
-              ? `${displayName}'s Discord avatar`
-              : "Discord account"
-          }
-        />
+      <div className="account-container">
+        <button
+          className="account-button"
+          type="button"
+          onClick={handleAccountClick}
+        >
+          <img
+            src={getAvatarUrl()}
+            alt={
+              user
+                ? `${displayName}'s Discord avatar`
+                : "Discord account"
+            }
+          />
 
-        <span>
-          {user ? displayName : "Account"}
-        </span>
-      </button>
+          <span>
+            {user ? displayName : "Account"}
+          </span>
+        </button>
+
+        {user && accountMenuOpen && (
+          <div className="account-menu">
+            <div className="account-menu-user">
+              <img
+                src={getAvatarUrl()}
+                alt=""
+              />
+
+              <div>
+                <strong>{displayName}</strong>
+
+                <span>
+                  @{user.username}
+                </span>
+              </div>
+            </div>
+
+            <div className="account-menu-divider" />
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="account-menu-logout"
+            >
+              Log Out
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
