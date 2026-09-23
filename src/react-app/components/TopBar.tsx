@@ -54,6 +54,10 @@ export default function TopBar() {
     window.location.href = "/profile";
   }
 
+  function goToAccount() {
+    window.location.href = "/account";
+  }
+
   function handleAccountClick() {
     if (!user) {
       window.location.href = "/api/auth/login";
@@ -91,6 +95,9 @@ export default function TopBar() {
         <button
           className="logo-button"
           type="button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
         >
           <img
             src={logo}
@@ -250,10 +257,10 @@ export default function TopBar() {
               className="account-menu-profile"
               onClick={() => {
                 setAccountMenuOpen(false);
-                goToProfile();
+                goToAccount();
               }}
             >
-              Profile
+              Account
             </button>
 
             <button
