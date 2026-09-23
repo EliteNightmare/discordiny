@@ -50,6 +50,10 @@ export default function TopBar() {
     loadUser();
   }, []);
 
+  function goToProfile() {
+    window.location.href = "/profile";
+  }
+
   function handleAccountClick() {
     if (!user) {
       window.location.href = "/api/auth/login";
@@ -95,16 +99,38 @@ export default function TopBar() {
           />
         </button>
 
+        {/* Desktop navigation */}
         <nav className="main-navigation">
-          <button type="button">Profile</button>
-          <button type="button">Inventories</button>
-          <button type="button">Activities</button>
-          <button type="button">Triumphs</button>
-          <button type="button">Events</button>
-          <button type="button">About</button>
+          <button
+            type="button"
+            onClick={goToProfile}
+          >
+            Profile
+          </button>
+
+          <button type="button">
+            Inventories
+          </button>
+
+          <button type="button">
+            Activities
+          </button>
+
+          <button type="button">
+            Triumphs
+          </button>
+
+          <button type="button">
+            Events
+          </button>
+
+          <button type="button">
+            About
+          </button>
         </nav>
       </div>
 
+      {/* Mobile navigation */}
       <div className="mobile-navigation">
         <button
           className="mobile-navigation-button"
@@ -131,7 +157,10 @@ export default function TopBar() {
           <nav className="mobile-navigation-menu">
             <button
               type="button"
-              onClick={closeMobileMenu}
+              onClick={() => {
+                closeMobileMenu();
+                goToProfile();
+              }}
             >
               Profile
             </button>
@@ -174,6 +203,7 @@ export default function TopBar() {
         )}
       </div>
 
+      {/* Account */}
       <div className="account-container">
         <button
           className="account-button"
@@ -203,7 +233,9 @@ export default function TopBar() {
               />
 
               <div>
-                <strong>{displayName}</strong>
+                <strong>
+                  {displayName}
+                </strong>
 
                 <span>
                   @{user.username}
@@ -215,8 +247,19 @@ export default function TopBar() {
 
             <button
               type="button"
-              onClick={handleLogout}
+              className="account-menu-profile"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                goToProfile();
+              }}
+            >
+              Profile
+            </button>
+
+            <button
+              type="button"
               className="account-menu-logout"
+              onClick={handleLogout}
             >
               Log Out
             </button>
