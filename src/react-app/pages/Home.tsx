@@ -4,7 +4,7 @@ import TopBar from "../components/TopBar";
 
 export default function Home() {
   function startDiscordLogin() {
-    window.location.href = "/api/auth/login";
+    window.location.href = "/profile";
   }
 
   return (
