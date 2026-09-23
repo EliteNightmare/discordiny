@@ -33,10 +33,10 @@ const BUNGIE_STATE_COOKIE =
   "__Host-discordiny_bungie_state";
 
 const SESSION_DURATION_SECONDS =
-  60 * 60 * 24 * 30; // 30 days
+  60 * 60 * 24 * 30;
 
 const BUNGIE_STATE_DURATION_SECONDS =
-  60 * 10; // 10 minutes
+  60 * 10;
 
 
 /* =========================================================
@@ -84,10 +84,6 @@ app.get("/api/auth/callback", async (c) => {
     );
   }
 
-  /* -------------------------------------------------------
-     Exchange Discord authorization code for access token
-  ------------------------------------------------------- */
-
   const basicAuth = btoa(
     `${DISCORD_CLIENT_ID}:${c.env.DISCORD_CLIENT_SECRET}`
   );
@@ -133,11 +129,6 @@ app.get("/api/auth/callback", async (c) => {
       refresh_token?: string;
       scope: string;
     }>();
-
-
-  /* -------------------------------------------------------
-     Retrieve Discord user
-  ------------------------------------------------------- */
 
   const userResponse = await fetch(
     "https://discord.com/api/users/@me",
@@ -292,11 +283,6 @@ app.get("/api/auth/callback", async (c) => {
     }
   );
 
-
-  /* =======================================================
-     SEND USER BACK TO THE GAME
-  ======================================================= */
-
   return c.redirect("/");
 });
 
@@ -362,11 +348,6 @@ app.get("/api/auth/me", async (c) => {
       401
     );
   }
-
-
-  /* -------------------------------------------------------
-     Check expiration
-  ------------------------------------------------------- */
 
   if (
     new Date(session.expires_at).getTime() <=
@@ -470,14 +451,6 @@ app.get("/api/bungie/link", async (c) => {
     return c.redirect("/api/auth/login");
   }
 
-  /*
-     Generate a unique OAuth state value.
-
-     This is returned by Bungie during the callback
-     and allows us to verify that the callback belongs
-     to the authorization request started by this browser.
-  */
-
   const state = crypto.randomUUID();
 
   setCookie(
@@ -523,7 +496,7 @@ app.get("/api/bungie/callback", async (c) => {
   );
 
   /* -------------------------------------------------------
-     Make sure Bungie returned an authorization code
+     Verify authorization code
   ------------------------------------------------------- */
 
   if (!code) {
@@ -557,7 +530,7 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
-     Find the logged-in Discordiny user
+     Find logged-in Discordiny user
   ------------------------------------------------------- */
 
   const sessionId = getCookie(
@@ -593,7 +566,8 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
-     Exchange Bungie authorization code for access token
+     Exchange Bungie authorization code
+     for an access token
   ------------------------------------------------------- */
 
   const tokenResponse = await fetch(
@@ -653,6 +627,193 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
+     Get Bungie memberships for current user
+  ------------------------------------------------------- */
+
+  const membershipResponse = await fetch(
+    "https://www.bungie.net/Platform/User/GetMembershipsForCurrentUser/",
+    {
+      method: "GET",
+
+      headers: {
+        "X-API-Key":
+          c.env.BUNGIE_API_KEY,
+
+        "Authorization":
+          `Bearer ${tokenData.access_token}`,
+      },
+    }
+  );
+
+  if (!membershipResponse.ok) {
+    const error =
+      await membershipResponse.text();
+
+    console.error(
+      "Bungie membership lookup failed:",
+      error
+    );
+
+    return c.json(
+      {
+        error:
+          "Could not retrieve Bungie account",
+      },
+      500
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Bungie membership response
+  ------------------------------------------------------- */
+
+  const membershipData =
+    await membershipResponse.json<{
+      Response?: {
+        bungieNetUser?: {
+          membershipId?: string;
+          displayName?: string;
+          uniqueName?: string;
+        };
+        destinyMemberships?: Array<{
+          membershipId?: string;
+          membershipType?: number;
+          displayName?: string;
+          displayNameCode?: number;
+          uniqueName?: string;
+          crossSaveOverride?: number;
+        }>;
+      };
+      ErrorCode?: number;
+      ErrorStatus?: string;
+      Message?: string;
+    }>();
+
+
+  /* -------------------------------------------------------
+     Make sure Bungie returned account information
+  ------------------------------------------------------- */
+
+  const bungieNetUser =
+    membershipData.Response?.bungieNetUser;
+
+  const destinyMemberships =
+    membershipData.Response?.destinyMemberships ?? [];
+
+  if (
+    !bungieNetUser ||
+    !bungieNetUser.membershipId
+  ) {
+    console.error(
+      "Bungie membership response did not contain a Bungie.net user:",
+      JSON.stringify(membershipData)
+    );
+
+    return c.json(
+      {
+        error:
+          "Bungie account information was not returned",
+      },
+      500
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Determine Bungie Name
+  ------------------------------------------------------- */
+
+  const bungieName =
+    bungieNetUser.uniqueName ||
+    bungieNetUser.displayName;
+
+  if (!bungieName) {
+    console.error(
+      "Bungie membership response did not contain a Bungie name:",
+      JSON.stringify(membershipData)
+    );
+
+    return c.json(
+      {
+        error:
+          "Bungie account name was not returned",
+      },
+      500
+    );
+  }
+
+
+  /* -------------------------------------------------------
+     Determine membership type
+     
+     Prefer the active/cross-save membership when available.
+     Otherwise use the first Destiny membership returned.
+  ------------------------------------------------------- */
+
+  let selectedMembership =
+    destinyMemberships.find(
+      (membership) =>
+        membership.membershipId &&
+        membership.membershipType !== undefined
+    );
+
+  if (!selectedMembership) {
+    return c.json(
+      {
+        error:
+          "No Destiny membership was returned for this Bungie account",
+      },
+      400
+    );
+  }
+
+
+  const membershipId =
+    selectedMembership.membershipId!;
+
+  const membershipType =
+    selectedMembership.membershipType!;
+
+
+  /* -------------------------------------------------------
+     Save Bungie account
+     
+     If this Discordiny user already has a Bungie
+     account linked, update it instead.
+  ------------------------------------------------------- */
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO bungie_accounts
+       (
+         user_id,
+         membership_id,
+         membership_type,
+         bungie_name,
+         access_token,
+         updated_at
+       )
+       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(user_id)
+       DO UPDATE SET
+         membership_id = excluded.membership_id,
+         membership_type = excluded.membership_type,
+         bungie_name = excluded.bungie_name,
+         access_token = excluded.access_token,
+         updated_at = CURRENT_TIMESTAMP`
+    )
+    .bind(
+      session.user_id,
+      membershipId,
+      membershipType,
+      bungieName,
+      tokenData.access_token
+    )
+    .run();
+
+
+  /* -------------------------------------------------------
      Remove OAuth state cookie
   ------------------------------------------------------- */
 
@@ -668,18 +829,16 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
-     Temporary response
-
-     We will replace this with the Bungie account lookup
-     and D1 database save in the next step.
+     Return successful response
   ------------------------------------------------------- */
 
   return c.json({
     success: true,
     message:
-      "Bungie authorization successful",
-    has_access_token:
-      Boolean(tokenData.access_token),
+      "Bungie account linked successfully",
+    bungie_name: bungieName,
+    membership_id: membershipId,
+    membership_type: membershipType,
   });
 });
 
