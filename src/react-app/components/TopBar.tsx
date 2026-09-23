@@ -15,6 +15,7 @@ type User = {
 
 export default function TopBar() {
   const [user, setUser] = useState<User | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -36,7 +37,10 @@ export default function TopBar() {
           setUser(null);
         }
       } catch (error) {
-        console.error("Failed to load authenticated user:", error);
+        console.error(
+          "Failed to load authenticated user:",
+          error
+        );
         setUser(null);
       }
     }
@@ -59,6 +63,10 @@ export default function TopBar() {
     }
 
     return `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.avatar}.png?size=128`;
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
   }
 
   const displayName =
@@ -88,6 +96,73 @@ export default function TopBar() {
           <button type="button">Events</button>
           <button type="button">About</button>
         </nav>
+      </div>
+
+      <div className="mobile-navigation">
+        <button
+          className="mobile-navigation-button"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() =>
+            setMobileMenuOpen(!mobileMenuOpen)
+          }
+        >
+          <span>Menu</span>
+          <span
+            className={`mobile-navigation-arrow ${
+              mobileMenuOpen ? "open" : ""
+            }`}
+          >
+            ▼
+          </span>
+        </button>
+
+        {mobileMenuOpen && (
+          <nav className="mobile-navigation-menu">
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Profile
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Inventories
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Activities
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Triumphs
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Events
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              About
+            </button>
+          </nav>
+        )}
       </div>
 
       <button
