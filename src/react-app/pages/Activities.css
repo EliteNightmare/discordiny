@@ -245,24 +245,32 @@
 
 
 
-.activity-dashboard-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.activity-dashboard-name-icon {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+.activity-dashboard-label-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  min-height: 16px;
+  max-height: 16px;
+  flex: 0 0 16px;
   object-fit: contain;
+  object-position: center;
 }
 
 .activities-heading-timer {
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
+  justify-content: flex-start;
   gap: 7px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.activities-heading-timer .activity-clock {
+  order: -1;
+  flex: 0 0 15px;
 }
 
 /* =========================================================
@@ -560,7 +568,9 @@
   z-index: 1;
   inset: 0;
   overflow: hidden;
-  border-radius: inherit;
+  border-radius: 12px;
+  clip-path: inset(0 round 12px);
+  contain: paint;
   background:
     linear-gradient(
       104deg,
@@ -608,7 +618,9 @@
   z-index: 1;
   inset: 0;
   overflow: hidden;
-  border-radius: inherit;
+  border-radius: 12px;
+  clip-path: inset(0 round 12px);
+  contain: paint;
   pointer-events: none;
 }
 
