@@ -6,14 +6,31 @@ declare global {
   }
 }
 
-import { ACTIVITIES } from "./game/activities";
-
 import { Hono } from "hono";
 import {
   deleteCookie,
   getCookie,
   setCookie,
 } from "hono/cookie";
+import { ACTIVITIES } from "./game/activities";
+
+type WeaponRow = {
+  weapon_name: string;
+  masterwork: number;
+  rarity: string | null;
+};
+
+type ArmorRow = {
+  helmet: string;
+  arms: string;
+  chest: string;
+  legs: string;
+};
+
+type ArtifactRow = {
+  artifact_name: string;
+  level: number;
+};
 
 const app = new Hono<{ Bindings: Env }>();
 
