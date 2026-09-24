@@ -3259,9 +3259,561 @@ app.get("/api/game/weapons/catalog", async (c) => {
   });
 });
 
-app.get("/api/game/activities", (c) => {
+/* =========================================================
+   GAME - ACTIVITY ROTATIONS
+========================================================= */
+
+type ActivityEntry = {
+  id: string;
+  name: string;
+  type: string;
+  destination?: string;
+  weapon_source?: string;
+  reward_table?: string;
+  unique_material?: string;
+  encounters?: readonly string[];
+};
+
+type ActivityLike = {
+  readonly name: string;
+  readonly type: string;
+  readonly destination?: string;
+  readonly weapon_source?: string;
+  readonly reward_table?: string;
+  readonly unique_material?: string;
+  readonly encounters?: readonly string[];
+};
+
+const EXPLORE_MAX_SECONDS = 60 * 60 * 24;
+const NIGHTFALL_ROTATION_SECONDS = 60 * 10;
+const GM_ROTATION_SECONDS = 60 * 30;
+const DAILY_ROTATION_SECONDS = 60 * 60 * 24;
+
+function makeActivityEntry(
+  id: string,
+  activity: ActivityLike,
+): ActivityEntry {
+  return {
+    id,
+    name: activity.name,
+    type: activity.type,
+    ...(activity.destination
+      ? { destination: activity.destination }
+      : {}),
+    ...(activity.weapon_source
+      ? { weapon_source: activity.weapon_source }
+      : {}),
+    ...(activity.reward_table
+      ? { reward_table: activity.reward_table }
+      : {}),
+    ...(activity.unique_material
+      ? { unique_material: activity.unique_material }
+      : {}),
+    ...(activity.encounters
+      ? { encounters: activity.encounters }
+      : {}),
+  };
+}
+
+function getRotatingActivity(
+  pool: Readonly<Record<string, ActivityLike>>,
+  intervalSeconds: number,
+  nowSeconds: number,
+): ActivityEntry | null {
+  const entries = Object.entries(pool);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const rotationNumber = Math.floor(
+    nowSeconds / intervalSeconds,
+  );
+
+  const index =
+    rotationNumber % entries.length;
+
+  const [id, activity] = entries[index];
+
+  return makeActivityEntry(
+    id,
+    activity,
+  );
+}
+
+function getRotationRemaining(
+  intervalSeconds: number,
+  nowSeconds: number,
+): number {
+  const elapsed =
+    nowSeconds % intervalSeconds;
+
+  return elapsed === 0
+    ? intervalSeconds
+    : intervalSeconds - elapsed;
+}
+
+function getDestinationActivity(
+  pool: Readonly<Record<string, ActivityLike>>,
+  destination: string,
+  excludedIds: readonly string[] = [],
+): ActivityEntry | null {
+  for (const [id, activity] of Object.entries(pool)) {
+    if (excludedIds.includes(id)) {
+      continue;
+    }
+
+    if (activity.destination === destination) {
+      return makeActivityEntry(
+        id,
+        activity,
+      );
+    }
+  }
+
+  return null;
+}
+
+
+/* =========================================================
+   GAME - ACTIVITIES
+========================================================= */
+
+app.get("/api/game/activities", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const nowSeconds =
+    Math.floor(Date.now() / 1000);
+
+  /* =======================================================
+     PLAYER DESTINATION
+  ======================================================= */
+
+  let profile = await c.env.DB
+    .prepare(
+      `SELECT zone
+       FROM player_profiles
+       WHERE user_id = ?
+       LIMIT 1`,
+    )
+    .bind(session.user_id)
+    .first<{ zone: string }>();
+
+  if (!profile) {
+    await c.env.DB
+      .prepare(
+        `INSERT INTO player_profiles
+          (
+            user_id,
+            level,
+            exp,
+            power,
+            zone
+          )
+         VALUES (?, 0, 0, 0, 'Cosmodrome')`,
+      )
+      .bind(session.user_id)
+      .run();
+
+    profile = {
+      zone: "Cosmodrome",
+    };
+  }
+
+  const destination =
+    profile.zone;
+
+  /* =======================================================
+     EXPLORE / CLAIM TIMER
+
+     The first time this endpoint is loaded, create the
+     Explore timestamp once. After that, elapsed time keeps
+     accumulating until the future Explore claim endpoint
+     resets it.
+
+     Accumulation is capped at 24 hours.
+  ======================================================= */
+
+  let exploreCooldown = await c.env.DB
+    .prepare(
+      `SELECT timestamp
+       FROM player_cooldowns
+       WHERE user_id = ?
+         AND activity = 'explore'
+       LIMIT 1`,
+    )
+    .bind(session.user_id)
+    .first<{ timestamp: number }>();
+
+  if (!exploreCooldown) {
+    await c.env.DB
+      .prepare(
+        `INSERT INTO player_cooldowns
+          (
+            user_id,
+            activity,
+            timestamp
+          )
+         VALUES (?, 'explore', ?)
+         ON CONFLICT(user_id, activity)
+         DO NOTHING`,
+      )
+      .bind(
+        session.user_id,
+        nowSeconds,
+      )
+      .run();
+
+    exploreCooldown = {
+      timestamp: nowSeconds,
+    };
+  }
+
+  let exploreLastClaim =
+    Number(exploreCooldown.timestamp);
+
+  if (
+    !Number.isFinite(exploreLastClaim) ||
+    exploreLastClaim < 0 ||
+    exploreLastClaim > nowSeconds
+  ) {
+    exploreLastClaim =
+      nowSeconds;
+
+    await c.env.DB
+      .prepare(
+        `UPDATE player_cooldowns
+         SET timestamp = ?
+         WHERE user_id = ?
+           AND activity = 'explore'`,
+      )
+      .bind(
+        nowSeconds,
+        session.user_id,
+      )
+      .run();
+  }
+
+  const rawExploreElapsed =
+    Math.max(
+      0,
+      nowSeconds - exploreLastClaim,
+    );
+
+  const exploreElapsed =
+    Math.min(
+      rawExploreElapsed,
+      EXPLORE_MAX_SECONDS,
+    );
+
+  const explorePercentage =
+    Math.min(
+      100,
+      Math.max(
+        0,
+        (exploreElapsed /
+          EXPLORE_MAX_SECONDS) *
+          100,
+      ),
+    );
+
+  /* =======================================================
+     SERVER ROTATIONS
+  ======================================================= */
+
+  const nightfall =
+    getRotatingActivity(
+      ACTIVITIES.nightfalls,
+      NIGHTFALL_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const grandmaster =
+    getRotatingActivity(
+      ACTIVITIES.gms,
+      GM_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const dailyShowdown =
+    getRotatingActivity(
+      ACTIVITIES.daily.showdowns,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const dailyDungeon =
+    getRotatingActivity(
+      ACTIVITIES.daily.dungeons,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const dailyRaid =
+    getRotatingActivity(
+      ACTIVITIES.daily.raids,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const infiltration =
+    getRotatingActivity(
+      ACTIVITIES.infiltrations,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const showdown =
+    getRotatingActivity(
+      ACTIVITIES.showdowns,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const crawl =
+    getRotatingActivity(
+      ACTIVITIES.crawls,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  /* =======================================================
+     STRIKE
+
+     Strike follows the current destination. If the current
+     destination has no strike, use the first strike as a
+     fallback so the button remains available.
+  ======================================================= */
+
+  let strike =
+    getDestinationActivity(
+      ACTIVITIES.strikes,
+      destination,
+    );
+
+  if (!strike) {
+    const firstStrike =
+      Object.entries(
+        ACTIVITIES.strikes,
+      )[0];
+
+    if (firstStrike) {
+      strike =
+        makeActivityEntry(
+          firstStrike[0],
+          firstStrike[1],
+        );
+    }
+  }
+
+  /* =======================================================
+     CURRENT DESTINATION DUNGEON / RAID
+
+     Grasp of Avarice remains in ACTIVITIES, but is excluded
+     here because Discordiny treats Cosmodrome as having no
+     destination Dungeon.
+
+     Plaguelands naturally returns null for both because no
+     regular Dungeon or Raid is assigned to it.
+  ======================================================= */
+
+  const destinationDungeon =
+    getDestinationActivity(
+      ACTIVITIES.dungeons,
+      destination,
+      ["grasp"],
+    );
+
+  const destinationRaid =
+    getDestinationActivity(
+      ACTIVITIES.raids,
+      destination,
+    );
+
+  /* =======================================================
+     RESPONSE
+  ======================================================= */
+
   return c.json({
+    authenticated: true,
+
+    serverTime: nowSeconds,
+
     activities: ACTIVITIES,
+
+    player: {
+      destination,
+
+      explore: {
+        lastClaim:
+          exploreLastClaim,
+
+        elapsedSeconds:
+          exploreElapsed,
+
+        maxSeconds:
+          EXPLORE_MAX_SECONDS,
+
+        percentage:
+          explorePercentage,
+
+        capped:
+          exploreElapsed >=
+          EXPLORE_MAX_SECONDS,
+      },
+    },
+
+    rotation: {
+      dailyShowdown: {
+        activity:
+          dailyShowdown,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      dailyDungeon: {
+        activity:
+          dailyDungeon,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      dailyRaid: {
+        activity:
+          dailyRaid,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      nightfall: {
+        activity:
+          nightfall,
+
+        intervalSeconds:
+          NIGHTFALL_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            NIGHTFALL_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      grandmaster: {
+        activity:
+          grandmaster,
+
+        intervalSeconds:
+          GM_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            GM_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      infiltration: {
+        activity:
+          infiltration,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      showdown: {
+        activity:
+          showdown,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+
+      crawl: {
+        activity:
+          crawl,
+
+        intervalSeconds:
+          DAILY_ROTATION_SECONDS,
+
+        remainingSeconds:
+          getRotationRemaining(
+            DAILY_ROTATION_SECONDS,
+            nowSeconds,
+          ),
+      },
+    },
+
+    current: {
+      strike,
+
+      dungeon:
+        destinationDungeon,
+
+      raid:
+        destinationRaid,
+    },
   });
 });
 
