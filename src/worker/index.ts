@@ -990,8 +990,7 @@ app.get("/api/game/profile", async (c) => {
 
   const session = await c.env.DB
     .prepare(
-      `SELECT
-        user_id
+      `SELECT user_id
        FROM sessions
        WHERE id = ?
        LIMIT 1`
@@ -1010,24 +1009,43 @@ app.get("/api/game/profile", async (c) => {
     );
   }
 
-  let profile = await c.env.DB
-    .prepare(
-      `SELECT
-        level,
-        exp,
-        power,
-        zone
-       FROM player_profiles
-       WHERE user_id = ?
-       LIMIT 1`
-    )
-    .bind(session.user_id)
-    .first<{
-      level: number;
-      exp: number;
-      power: number;
-      zone: string;
-    }>();
+  /* =======================================================
+     IMPORT GAME CALCULATIONS
+  ======================================================= */
+
+  const { getLevelProgress } =
+    await import("./game/level");
+
+  const {
+    calculateWeaponPower,
+    calculateArmorPower,
+    calculateArtifactPower,
+    calculateLevelPower,
+  } = await import("./game/power");
+
+  /* =======================================================
+     PLAYER PROFILE
+  ======================================================= */
+
+  let profile =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          level,
+          exp,
+          power,
+          zone
+         FROM player_profiles
+         WHERE user_id = ?
+         LIMIT 1`
+      )
+      .bind(session.user_id)
+      .first<{
+        level: number;
+        exp: number;
+        power: number;
+        zone: string;
+      }>();
 
   if (!profile) {
     await c.env.DB
@@ -1053,9 +1071,266 @@ app.get("/api/game/profile", async (c) => {
     };
   }
 
+  /* =======================================================
+     DISCORD USER
+  ======================================================= */
+
+  const user =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          id,
+          discord_id,
+          username,
+          global_name,
+          avatar
+         FROM users
+         WHERE id = ?
+         LIMIT 1`
+      )
+      .bind(session.user_id)
+      .first<{
+        id: number;
+        discord_id: string;
+        username: string;
+        global_name: string | null;
+        avatar: string | null;
+      }>();
+
+  /* =======================================================
+     LEVEL INFORMATION
+  ======================================================= */
+
+  const levelProgress =
+    getLevelProgress(
+      Number(profile.exp) || 0
+    );
+
+  /* =======================================================
+     WEAPONS
+  ======================================================= */
+
+  const weapons =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          player_weapons.weapon_name,
+          player_weapons.masterwork,
+          weapons.rarity
+         FROM player_weapons
+         LEFT JOIN weapons
+           ON weapons.name =
+              player_weapons.weapon_name
+         WHERE player_weapons.user_id = ?`
+      )
+      .bind(session.user_id)
+      .all<WeaponRow>();
+
+  const weaponRows =
+    weapons.results ?? [];
+
+  const weaponPower =
+    calculateWeaponPower(
+      weaponRows
+    );
+
+  const totalWeapons =
+    await c.env.DB
+      .prepare(
+        `SELECT COUNT(*) AS count
+         FROM weapons`
+      )
+      .first<{
+        count: number;
+      }>();
+
+  /* =======================================================
+     ARMOR
+  ======================================================= */
+
+  const armor =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          helmet,
+          arms,
+          chest,
+          legs
+         FROM player_armor
+         WHERE user_id = ?
+         LIMIT 1`
+      )
+      .bind(session.user_id)
+      .first<ArmorRow>();
+
+  const armorPower =
+    calculateArmorPower(
+      armor ?? null
+    );
+
+  /* =======================================================
+     ARTIFACTS
+  ======================================================= */
+
+  const artifacts =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          artifact_name,
+          level
+         FROM player_artifacts
+         WHERE user_id = ?`
+      )
+      .bind(session.user_id)
+      .all<ArtifactRow>();
+
+  const artifactRows =
+    artifacts.results ?? [];
+
+  const artifactPower =
+    calculateArtifactPower(
+      artifactRows
+    );
+
+  /* =======================================================
+     LEVEL POWER
+  ======================================================= */
+
+  const levelPower =
+    calculateLevelPower(
+      levelProgress.level
+    );
+
+  /* =======================================================
+     POWER BREAKDOWN
+  ======================================================= */
+
+  const calculatedPower =
+    weaponPower +
+    armorPower +
+    artifactPower +
+    levelPower;
+
+  /* =======================================================
+     CURRENCIES
+  ======================================================= */
+
+  const currencies =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          currency_name,
+          amount
+         FROM player_currencies
+         WHERE user_id = ?
+         ORDER BY currency_name`
+      )
+      .bind(session.user_id)
+      .all<{
+        currency_name: string;
+        amount: number;
+      }>();
+
+  const currencyMap: Record<
+    string,
+    number
+  > = {};
+
+  for (const row of currencies.results ?? []) {
+    currencyMap[row.currency_name] =
+      row.amount;
+  }
+
+  /* =======================================================
+     UPGRADE MATERIALS
+  ======================================================= */
+
+  const upgradeMaterials =
+    await c.env.DB
+      .prepare(
+        `SELECT
+          material_name,
+          amount
+         FROM player_upgrade_materials
+         WHERE user_id = ?
+         ORDER BY material_name`
+      )
+      .bind(session.user_id)
+      .all<{
+        material_name: string;
+        amount: number;
+      }>();
+
+  const upgradeMaterialMap: Record<
+    string,
+    number
+  > = {};
+
+  for (
+    const row of
+      upgradeMaterials.results ?? []
+  ) {
+    upgradeMaterialMap[
+      row.material_name
+    ] = row.amount;
+  }
+
+  /* =======================================================
+     RESPONSE
+  ======================================================= */
+
   return c.json({
     authenticated: true,
-    profile,
+
+    user,
+
+    profile: {
+      level: levelProgress.level,
+      exp: levelProgress.totalXp,
+      power: calculatedPower,
+      zone: profile.zone,
+    },
+
+    level: {
+      current: levelProgress.level,
+      max: 100,
+      totalXp: levelProgress.totalXp,
+      currentXp: levelProgress.currentXp,
+      nextXp: levelProgress.nextXp,
+      percentage: levelProgress.percentage,
+    },
+
+    power: {
+      total: calculatedPower,
+
+      breakdown: {
+        weapons: weaponPower,
+        armor: armorPower,
+        artifacts: artifactPower,
+        level: levelPower,
+      },
+    },
+
+    weapons: {
+      owned: weaponRows.length,
+      total: Number(
+        totalWeapons?.count ?? 0
+      ),
+    },
+
+    armor: armor ?? {
+      helmet: "placeholder",
+      arms: "placeholder",
+      chest: "placeholder",
+      legs: "placeholder",
+    },
+
+    artifacts: artifactRows,
+
+    currencies: currencyMap,
+
+    upgradeMaterials:
+      upgradeMaterialMap,
   });
 });
 
