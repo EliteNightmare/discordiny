@@ -1,0 +1,257 @@
+.site-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  padding: 32px;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(100, 120, 180, 0.12),
+      transparent 42%
+    ),
+    #05070b;
+
+  color: #ffffff;
+}
+
+.site-gate-background {
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.015),
+      transparent 40%
+    );
+
+  opacity: 0.8;
+}
+
+.site-gate-content {
+  position: relative;
+  z-index: 1;
+
+  width: 100%;
+  max-width: 1000px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  text-align: center;
+}
+
+.site-gate-logo {
+  display: block;
+
+  width: 110px;
+  height: 110px;
+
+  margin-bottom: 20px;
+
+  object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 0 24px
+      rgba(255, 255, 255, 0.12)
+    );
+}
+
+.site-gate-title {
+  margin: 0;
+
+  font-size: clamp(
+    2.4rem,
+    7vw,
+    5rem
+  );
+
+  font-weight: 700;
+
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.site-gate-divider {
+  width: 70px;
+  height: 1px;
+
+  margin: 26px 0;
+
+  background:
+    rgba(255, 255, 255, 0.35);
+}
+
+.site-gate-message {
+  max-width: 700px;
+
+  margin: 0;
+
+  color:
+    rgba(255, 255, 255, 0.75);
+
+  font-size: clamp(
+    1rem,
+    2.5vw,
+    1.3rem
+  );
+
+  line-height: 1.7;
+
+  letter-spacing: 0.04em;
+}
+
+.site-gate-countdown-heading {
+  margin:
+    0
+    0
+    34px;
+
+  color:
+    rgba(255, 255, 255, 0.7);
+
+  font-size: 0.95rem;
+
+  font-weight: 600;
+
+  letter-spacing: 0.22em;
+
+  text-transform: uppercase;
+}
+
+.site-countdown {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+
+  width: 100%;
+
+  gap: clamp(
+    8px,
+    2vw,
+    24px
+  );
+}
+
+.site-countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-width: clamp(
+    55px,
+    14vw,
+    130px
+  );
+}
+
+.site-countdown-number {
+  font-size: clamp(
+    2.1rem,
+    8vw,
+    5.5rem
+  );
+
+  font-weight: 300;
+
+  line-height: 1;
+
+  letter-spacing: 0.03em;
+
+  font-variant-numeric:
+    tabular-nums;
+}
+
+.site-countdown-label {
+  margin-top: 14px;
+
+  color:
+    rgba(255, 255, 255, 0.45);
+
+  font-size: clamp(
+    0.55rem,
+    1.5vw,
+    0.75rem
+  );
+
+  font-weight: 600;
+
+  letter-spacing: 0.16em;
+
+  text-transform: uppercase;
+}
+
+.site-countdown-separator {
+  color:
+    rgba(255, 255, 255, 0.25);
+
+  font-size: clamp(
+    2rem,
+    7vw,
+    5rem
+  );
+
+  font-weight: 200;
+
+  line-height: 0.9;
+}
+
+.site-gate-date {
+  margin:
+    38px
+    0
+    0;
+
+  color:
+    rgba(255, 255, 255, 0.45);
+
+  font-size: 0.8rem;
+
+  font-weight: 500;
+
+  letter-spacing: 0.12em;
+
+  text-transform: uppercase;
+}
+
+@media (
+  max-width: 600px
+) {
+  .site-gate {
+    padding: 22px 12px;
+  }
+
+  .site-gate-logo {
+    width: 82px;
+    height: 82px;
+  }
+
+  .site-countdown {
+    gap: 4px;
+  }
+
+  .site-countdown-separator {
+    margin-top: 2px;
+  }
+
+  .site-countdown-label {
+    margin-top: 10px;
+
+    letter-spacing: 0.08em;
+  }
+}
