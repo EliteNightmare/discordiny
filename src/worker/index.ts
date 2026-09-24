@@ -3079,4 +3079,115 @@ app.get("/api/game/activities", (c) => {
   });
 });
 
+app.get("/api/game/weapons", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `
+        SELECT user_id
+        FROM sessions
+        WHERE id = ?
+        LIMIT 1
+      `,
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const source = c.req.query("source");
+
+  if (!source) {
+    return c.json(
+      { error: "Missing weapon source" },
+      400,
+    );
+  }
+
+  const catalog = await c.env.DB
+    .prepare(
+      `
+        SELECT
+          name,
+          emoji_id,
+          rarity,
+          source,
+          activity_type
+        FROM weapons
+        WHERE source = ?
+        ORDER BY name ASC
+      `,
+    )
+    .bind(source)
+    .all<{
+      name: string;
+      emoji_id: string | null;
+      rarity: string | null;
+      source: string | null;
+      activity_type: string | null;
+    }>();
+
+  const owned = await c.env.DB
+    .prepare(
+      `
+        SELECT
+          weapon_name,
+          masterwork
+        FROM player_weapons
+        WHERE user_id = ?
+      `,
+    )
+    .bind(session.user_id)
+    .all<{
+      weapon_name: string;
+      masterwork: number;
+    }>();
+
+  return c.json({
+    authenticated: true,
+    source,
+
+    weapons: catalog.results.map(
+      (weapon) => {
+        const playerWeapon =
+          owned.results.find(
+            (ownedWeapon) =>
+              ownedWeapon.weapon_name ===
+              weapon.name,
+          );
+
+        return {
+          name: weapon.name,
+          rarity: weapon.rarity,
+          source: weapon.source,
+          activityType:
+            weapon.activity_type,
+
+          owned: Boolean(playerWeapon),
+
+          masterwork:
+            playerWeapon?.masterwork ?? 0,
+        };
+      },
+    ),
+  });
+});
+
 export default app;
