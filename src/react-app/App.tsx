@@ -1,3 +1,8 @@
+import {
+  useCallback,
+  useState,
+} from "react";
+
 import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Account from "./pages/Account";
@@ -11,16 +16,39 @@ import SiteGate, {
   shouldGateSite,
 } from "./components/SiteGate";
 
+import SivaBoot from "./components/SivaBoot";
+
 function App() {
   const hostname =
     window.location.hostname;
 
+  const path =
+    window.location.pathname;
+
+  /*
+   * Only the homepage gets the
+   * five-second SIVA boot.
+   */
+  const isHomepage =
+    path === "/" ||
+    path === "";
+
+  const [
+    homepageBootComplete,
+    setHomepageBootComplete,
+  ] = useState(
+    !isHomepage,
+  );
+
+  const completeHomepageBoot =
+    useCallback(() => {
+      setHomepageBootComplete(
+        true,
+      );
+    }, []);
+
   /*
    * TERMINAL SUBDOMAIN
-   *
-   * This check deliberately happens
-   * before Discordiny's normal site gate
-   * and page routing.
    */
   if (
     hostname ===
@@ -30,14 +58,31 @@ function App() {
   }
 
   /*
-   * GLOBAL DISCORDINY SITE OVERRIDE
+   * MAINTENANCE / COUNTDOWN
+   *
+   * This stays ABOVE the homepage boot.
+   * So maintenance/countdown doesn't
+   * show the SIVA animation.
    */
   if (shouldGateSite()) {
     return <SiteGate />;
   }
 
-  const path =
-    window.location.pathname;
+  /*
+   * HOMEPAGE SIVA BOOT
+   */
+  if (
+    isHomepage &&
+    !homepageBootComplete
+  ) {
+    return (
+      <SivaBoot
+        onComplete={
+          completeHomepageBoot
+        }
+      />
+    );
+  }
 
   if (path === "/profile") {
     return <Profile />;
