@@ -111,11 +111,42 @@ function CountdownPage() {
   );
 
   useEffect(() => {
+    /*
+     * If the countdown has already
+     * finished by the time this page
+     * mounts, immediately reload.
+     */
+    const initial =
+      getTimeRemaining();
+
+    if (initial.finished) {
+      window.location.reload();
+      return;
+    }
+
+    /*
+     * Update the countdown every second.
+     *
+     * Once the target time is reached,
+     * reload the page. App.tsx will then
+     * call shouldGateSite() again.
+     *
+     * Because the countdown target has
+     * passed, shouldGateSite() returns
+     * false and normal Discordiny loads.
+     */
     const timer =
       window.setInterval(() => {
-        setRemaining(
-          getTimeRemaining(),
-        );
+        const next =
+          getTimeRemaining();
+
+        setRemaining(next);
+
+        if (next.finished) {
+          window.clearInterval(timer);
+
+          window.location.reload();
+        }
       }, 1000);
 
     return () => {
@@ -212,19 +243,77 @@ function CountdownPage() {
   );
 }
 
+/*
+ * Determines whether App.tsx should
+ * replace Discordiny with SiteGate.
+ */
 export function shouldGateSite() {
-  return SITE_MODE !== "live";
+  /*
+   * Normal site.
+   */
+  if (SITE_MODE === "live") {
+    return false;
+  }
+
+  /*
+   * Maintenance remains active until
+   * SITE_MODE is manually changed.
+   */
+  if (
+    SITE_MODE ===
+    "maintenance"
+  ) {
+    return true;
+  }
+
+  /*
+   * Countdown only blocks Discordiny
+   * while the target is still in the
+   * future.
+   *
+   * Once the target passes, the site
+   * automatically becomes accessible.
+   */
+  if (
+    SITE_MODE ===
+    "countdown"
+  ) {
+    const target =
+      new Date(
+        COUNTDOWN_TARGET,
+      ).getTime();
+
+    /*
+     * Invalid target:
+     * keep the site gated rather than
+     * accidentally opening Discordiny.
+     */
+    if (
+      !Number.isFinite(target)
+    ) {
+      return true;
+    }
+
+    return Date.now() < target;
+  }
+
+  /*
+   * Safety fallback.
+   */
+  return false;
 }
 
 export default function SiteGate() {
   if (
-    SITE_MODE === "maintenance"
+    SITE_MODE ===
+    "maintenance"
   ) {
     return <MaintenancePage />;
   }
 
   if (
-    SITE_MODE === "countdown"
+    SITE_MODE ===
+    "countdown"
   ) {
     return <CountdownPage />;
   }
