@@ -18,11 +18,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .top-bar-left {
   display: flex;
   align-items: center;
+
   min-width: 0;
   height: 100%;
 }
@@ -36,6 +38,7 @@
   padding: 0 24px 0 4px;
 
   border: 0;
+
   background: transparent;
 
   cursor: pointer;
@@ -92,6 +95,7 @@
 .main-navigation > button:hover,
 .topbar-dropdown > button:hover {
   color: white;
+
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -120,6 +124,7 @@
   display: inline-block;
 
   font-size: 0.55rem;
+
   opacity: 0.55;
 
   transition:
@@ -160,6 +165,7 @@
     0 10px 30px rgba(0, 0, 0, 0.35);
 
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 
   z-index: 300;
 }
@@ -245,6 +251,7 @@
 
 .account-button:hover {
   background: rgba(255, 255, 255, 0.1);
+
   border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -296,7 +303,13 @@
 
     display: flex;
     justify-content: center;
+
+    z-index: 250;
   }
+
+  /* =======================================================
+     MOBILE MENU BUTTON
+  ======================================================= */
 
   .mobile-navigation-button {
     display: flex;
@@ -321,17 +334,39 @@
     font-weight: 600;
 
     cursor: pointer;
+
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .mobile-navigation-button:hover {
+    background: rgba(255, 255, 255, 0.12);
+
+    border-color: rgba(255, 255, 255, 0.22);
   }
 
   .mobile-navigation-arrow {
+    display: inline-block;
+
     font-size: 0.65rem;
 
-    transition: transform 0.15s ease;
+    opacity: 0.65;
+
+    transition:
+      transform 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .mobile-navigation-arrow.open {
     transform: rotate(180deg);
+
+    opacity: 1;
   }
+
+  /* =======================================================
+     MOBILE MENU PANEL
+  ======================================================= */
 
   .mobile-navigation-menu {
     position: absolute;
@@ -345,6 +380,7 @@
     max-height: calc(100vh - 90px);
 
     overflow-y: auto;
+    overscroll-behavior: contain;
 
     display: flex;
     flex-direction: column;
@@ -354,17 +390,30 @@
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px;
 
-    background: rgba(15, 15, 20, 0.96);
+    background: rgba(15, 15, 20, 0.97);
 
     box-shadow:
       0 10px 30px rgba(0, 0, 0, 0.35);
 
     backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 
-    z-index: 200;
+    z-index: 300;
   }
 
-  .mobile-navigation-menu > button {
+  /* =======================================================
+     NORMAL MOBILE BUTTONS + LINKS
+
+     Both are intentionally styled identically so switching
+     navigational items to real <a href=""> links does not
+     change the appearance of the menu.
+  ======================================================= */
+
+  .mobile-navigation-menu > button,
+  .mobile-navigation-menu
+    > .mobile-navigation-link {
+    display: block;
+
     width: 100%;
 
     padding: 11px 14px;
@@ -372,55 +421,100 @@
     border: 0;
     border-radius: 7px;
 
+    box-sizing: border-box;
+
     color: white;
     background: transparent;
 
     font: inherit;
     font-size: 0.9rem;
+    font-weight: 400;
+
+    line-height: normal;
 
     text-align: left;
+    text-decoration: none;
 
     cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
-  .mobile-navigation-menu > button:hover {
+  .mobile-navigation-menu > button:hover,
+  .mobile-navigation-menu
+    > .mobile-navigation-link:hover {
+    color: white;
+
     background: rgba(255, 255, 255, 0.1);
   }
 
-  /* Mobile Arsenal / NEWS triggers */
+  .mobile-navigation-menu > button:active,
+  .mobile-navigation-menu
+    > .mobile-navigation-link:active {
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* =======================================================
+     MOBILE ARSENAL / NEWS TRIGGERS
+  ======================================================= */
 
   .mobile-navigation-menu
     .mobile-submenu-trigger {
     display: flex;
     align-items: center;
     justify-content: space-between;
+
+    gap: 16px;
   }
 
   .mobile-submenu-arrow {
     display: inline-block;
 
+    flex-shrink: 0;
+
     font-size: 0.55rem;
+
     opacity: 0.55;
 
-    transition: transform 0.15s ease;
+    transition:
+      transform 0.15s ease,
+      opacity 0.15s ease;
   }
 
   .mobile-submenu-arrow.open {
     transform: rotate(180deg);
+
+    opacity: 1;
   }
+
+  /* =======================================================
+     MOBILE SUBMENUS
+  ======================================================= */
 
   .mobile-submenu {
     display: flex;
     flex-direction: column;
 
     margin: 0 4px 4px;
+
     padding: 3px 0 3px 8px;
 
     border-left:
       1px solid rgba(255, 255, 255, 0.1);
   }
 
-  .mobile-submenu button {
+  /*
+   * Support both the previous <button> submenu items
+   * and the new real <a> navigation links.
+   */
+  .mobile-submenu button,
+  .mobile-submenu a {
+    display: block;
+
     width: 100%;
 
     padding: 9px 12px;
@@ -428,22 +522,46 @@
     border: 0;
     border-radius: 6px;
 
+    box-sizing: border-box;
+
     color: rgba(255, 255, 255, 0.65);
     background: transparent;
 
     font: inherit;
     font-size: 0.84rem;
+    font-weight: 400;
+
+    line-height: normal;
 
     text-align: left;
+    text-decoration: none;
 
     cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+
+    transition:
+      background 0.15s ease,
+      color 0.15s ease;
   }
 
-  .mobile-submenu button:hover {
+  .mobile-submenu button:hover,
+  .mobile-submenu a:hover {
     color: white;
 
     background: rgba(255, 255, 255, 0.08);
   }
+
+  .mobile-submenu button:active,
+  .mobile-submenu a:active {
+    color: white;
+
+    background: rgba(255, 255, 255, 0.13);
+  }
+
+  /* =======================================================
+     MOBILE ACCOUNT BUTTON
+  ======================================================= */
 
   .account-button span {
     display: none;
@@ -485,6 +603,7 @@
     0 10px 30px rgba(0, 0, 0, 0.35);
 
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 
   z-index: 300;
 }
