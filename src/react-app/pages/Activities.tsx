@@ -68,7 +68,6 @@ type ActivityCardProps = {
 };
 
 const DESTINATIONS = [
-  "Plaguelands",
   "Cosmodrome",
   "EDZ",
   "Nessus",
@@ -78,6 +77,7 @@ const DESTINATIONS = [
   "Throne World",
   "Neomuna",
   "Pale Heart",
+  "Plaguelands",
 ] as const;
 
 const generalImages = import.meta.glob(
@@ -328,6 +328,15 @@ function ActivityCard({
     >
       <div className="activity-dashboard-card-top">
         <span className="activity-dashboard-label">
+          {icon && (
+            <img
+              className="activity-dashboard-label-icon"
+              src={icon}
+              alt=""
+              aria-hidden="true"
+            />
+          )}
+
           {daily && (
             <span
               className="daily-rotation-icon"
@@ -349,19 +358,9 @@ function ActivityCard({
       </div>
 
       <div className="activity-dashboard-card-content">
-        <h3 className="activity-dashboard-name">
-          {icon && (
-            <img
-              className="activity-dashboard-name-icon"
-              src={icon}
-              alt=""
-              aria-hidden="true"
-            />
-          )}
-          <span>
-            {activity?.name ??
-              unavailableText}
-          </span>
+        <h3>
+          {activity?.name ??
+            unavailableText}
         </h3>
 
         {activity?.destination && (
@@ -826,6 +825,9 @@ export default function Activities() {
               destinationBanner
                 ? "exploration-rewards-banner"
                 : "",
+              travelOpen
+                ? "travel-menu-open"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -928,11 +930,18 @@ export default function Activities() {
                                   destination
                                 }
                                 type="button"
-                                className={
+                                className={[
+                                  "activity-travel-option",
                                   active
-                                    ? "activity-travel-option active"
-                                    : "activity-travel-option"
-                                }
+                                    ? "active"
+                                    : "",
+                                  destination ===
+                                  "Plaguelands"
+                                    ? "plaguelands"
+                                    : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
                                 onClick={() =>
                                   void travel(
                                     destination,
