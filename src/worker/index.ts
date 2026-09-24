@@ -1351,6 +1351,92 @@ app.get("/api/game/profile", async (c) => {
   });
 });
 
+app.post("/api/game/travel", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  let body: {
+    destination?: string;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      { error: "Invalid JSON body" },
+      400,
+    );
+  }
+
+  const destinations = [
+    "Plaguelands",
+    "Cosmodrome",
+    "EDZ",
+    "Nessus",
+    "Dreaming City",
+    "Moon",
+    "Europa",
+    "Throne World",
+    "Neomuna",
+    "Pale Heart",
+  ];
+
+  if (
+    typeof body.destination !== "string" ||
+    !destinations.includes(body.destination)
+  ) {
+    return c.json(
+      { error: "Invalid destination" },
+      400,
+    );
+  }
+
+  await c.env.DB
+    .prepare(
+      `UPDATE player_profiles
+       SET zone = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ?`,
+    )
+    .bind(
+      body.destination,
+      session.user_id,
+    )
+    .run();
+
+  return c.json({
+    success: true,
+    zone: body.destination,
+  });
+});
+
 app.get("/api/game/stats", async (c) => {
   const sessionId = getCookie(
     c,
