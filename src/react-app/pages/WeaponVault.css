@@ -409,18 +409,31 @@
     border-color 150ms ease,
     background 150ms ease,
     transform 150ms ease,
-    opacity 150ms ease;
+    opacity 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.weapon-vault-item-owned {
+  border-color:
+    rgba(255, 255, 255, 0.1);
+
+  background:
+    rgba(9, 12, 18, 0.76);
 }
 
 .weapon-vault-item-owned:hover {
   border-color:
-    rgba(255, 255, 255, 0.18);
+    rgba(255, 255, 255, 0.2);
 
   background:
-    rgba(15, 18, 26, 0.82);
+    rgba(15, 18, 26, 0.84);
 
   transform:
     translateY(-2px);
+
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, 0.22);
 }
 
 /* =========================================================
@@ -448,8 +461,8 @@
   background:
     radial-gradient(
       circle at center,
-      rgba(255, 255, 255, 0.065),
-      rgba(0, 0, 0, 0.16)
+      rgba(255, 255, 255, 0.075),
+      rgba(0, 0, 0, 0.12)
     );
 
   overflow: hidden;
@@ -467,37 +480,53 @@
     transform 180ms ease;
 }
 
+/* OWNED WEAPONS */
+
 .weapon-vault-item-owned
   .weapon-vault-image {
   opacity: 1;
 
   filter:
-    brightness(1)
-    saturate(1);
+    brightness(1.06)
+    saturate(1.04);
 }
 
 .weapon-vault-item-owned:hover
   .weapon-vault-image {
   transform:
     scale(1.035);
+
+  filter:
+    brightness(1.1)
+    saturate(1.08);
 }
 
 /* =========================================================
    LOCKED / UNOWNED
 ========================================================= */
 
+/*
+ * Locked weapons remain visibly different from owned weapons,
+ * but are no longer heavily faded.
+ */
 .weapon-vault-item-locked {
-  opacity: 0.58;
+  opacity: 0.78;
+
+  border-color:
+    rgba(255, 255, 255, 0.065);
+
+  background:
+    rgba(5, 7, 11, 0.64);
 }
 
 .weapon-vault-item-locked
   .weapon-vault-image {
-  opacity: 0.38;
+  opacity: 0.68;
 
   filter:
-    grayscale(0.85)
-    brightness(0.38)
-    saturate(0.4);
+    grayscale(0.55)
+    brightness(0.72)
+    saturate(0.7);
 }
 
 .weapon-vault-lock-overlay {
@@ -510,8 +539,8 @@
   background:
     linear-gradient(
       180deg,
-      rgba(0, 0, 0, 0.08),
-      rgba(0, 0, 0, 0.38)
+      rgba(0, 0, 0, 0.03),
+      rgba(0, 0, 0, 0.18)
     );
 }
 
@@ -532,13 +561,13 @@
   height: 100%;
 
   color:
-    rgba(255, 255, 255, 0.2);
+    rgba(255, 255, 255, 0.28);
 
   font-size: 28px;
   font-weight: 800;
 
   background:
-    rgba(255, 255, 255, 0.02);
+    rgba(255, 255, 255, 0.025);
 }
 
 /* =========================================================
@@ -563,7 +592,7 @@
   min-width: 0;
 
   color:
-    rgba(255, 255, 255, 0.9);
+    rgba(255, 255, 255, 0.92);
 
   font-size: 11px;
   font-weight: 700;
@@ -585,7 +614,7 @@
 
 .weapon-vault-item-info span {
   color:
-    rgba(255, 255, 255, 0.4);
+    rgba(255, 255, 255, 0.44);
 
   font-size: 8px;
   font-weight: 750;
@@ -599,7 +628,7 @@
 
 .weapon-vault-item-locked
   .weapon-vault-item-info {
-  opacity: 0.5;
+  opacity: 0.72;
 }
 
 /* =========================================================
