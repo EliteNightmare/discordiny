@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./Activities.css";
 
 type Activity = {
   name: string;
@@ -43,18 +44,15 @@ const CATEGORY_ORDER = [
   "daily",
 ];
 
-function formatActivityName(name: string) {
-  return name
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
 export default function Activities() {
   const [activities, setActivities] =
     useState<ActivitiesData | null>(null);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     async function loadActivities() {
@@ -92,38 +90,43 @@ export default function Activities() {
 
   if (loading) {
     return (
-      <main>
-        <h1>Activities</h1>
-        <p>Loading activities...</p>
+      <main className="activities-page">
+        <div className="activities-loading">
+          Loading activities...
+        </div>
       </main>
     );
   }
 
   if (error) {
     return (
-      <main>
-        <h1>Activities</h1>
-        <p>{error}</p>
+      <main className="activities-page">
+        <div className="activities-error">
+          {error}
+        </div>
       </main>
     );
   }
 
   if (!activities) {
     return (
-      <main>
-        <h1>Activities</h1>
-        <p>No activities found.</p>
+      <main className="activities-page">
+        <div className="activities-empty">
+          No activities found.
+        </div>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Activities</h1>
+    <main className="activities-page">
+      <header className="activities-header">
+        <h1>Activities</h1>
 
-      <p>
-        Choose an activity to begin.
-      </p>
+        <p>
+          Choose an activity to begin.
+        </p>
+      </header>
 
       {CATEGORY_ORDER.map((category) => {
         const categoryActivities =
@@ -134,25 +137,27 @@ export default function Activities() {
         }
 
         return (
-          <section key={category}>
+          <section
+            className="activities-category"
+            key={category}
+          >
             <h2>
               {CATEGORY_LABELS[category] ??
-                formatActivityName(category)}
+                category}
             </h2>
 
-            <div>
+            <div className="activities-grid">
               {Object.entries(
                 categoryActivities
               ).map(
                 ([activityId, activity]) => (
                   <article
+                    className="activity-card"
                     key={activityId}
                   >
                     <h3>
                       {activity.name ||
-                        formatActivityName(
-                          activityId
-                        )}
+                        activityId}
                     </h3>
 
                     <p>
