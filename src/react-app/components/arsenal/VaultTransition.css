@@ -1,0 +1,27 @@
+@keyframes vaultZoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+.vault-transition {
+  width: 100%;
+
+  transform-origin: center center;
+
+  animation: vaultZoomIn 260ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vault-transition {
+    animation: none;
+  }
+}
