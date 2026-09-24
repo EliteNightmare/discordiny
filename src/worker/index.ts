@@ -989,6 +989,191 @@ app.post("/api/bungie/unlink", async (c) => {
   });
 });
 
+/* =========================================================
+   GAME - WEAPON VAULT
+========================================================= */
+
+app.get("/api/game/weapons", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host"
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+        weapons: [],
+      },
+      401
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+        weapons: [],
+      },
+      401
+    );
+  }
+
+  const source = c.req.query("source");
+
+  if (!source) {
+    return c.json(
+      {
+        authenticated: true,
+        error: "Missing weapon source",
+        weapons: [],
+      },
+      400
+    );
+  }
+
+  /*
+   * Load every weapon belonging to this
+   * activity/source from the master catalog.
+   */
+  const catalog = await c.env.DB
+    .prepare(
+      `SELECT
+         name,
+         emoji_id,
+         rarity,
+         source,
+         activity_type
+       FROM weapons
+       WHERE source = ?
+       ORDER BY name ASC`
+    )
+    .bind(source)
+    .all<{
+      name: string;
+      emoji_id: string | null;
+      rarity: string | null;
+      source: string | null;
+      activity_type: string | null;
+    }>();
+
+  /*
+   * Load the current player's owned weapons.
+   */
+  const owned = await c.env.DB
+    .prepare(
+      `SELECT
+         weapon_name,
+         masterwork
+       FROM player_weapons
+       WHERE user_id = ?`
+    )
+    .bind(session.user_id)
+    .all<{
+      weapon_name: string;
+      masterwork: number;
+    }>();
+
+  /*
+   * Map owned weapon names for fast lookup.
+   */
+  const ownedMap = new Map<
+    string,
+    number
+  >();
+
+  for (const weapon of owned.results) {
+    ownedMap.set(
+      weapon.weapon_name,
+      weapon.masterwork
+    );
+  }
+
+  /*
+   * IMPORTANT:
+   *
+   * weapons is deliberately returned as an ARRAY.
+   *
+   * Even when no weapons exist for a source,
+   * the response will be:
+   *
+   * weapons: []
+   *
+   * Never weapons: {}
+   */
+  const weapons = catalog.results.map(
+    (weapon) => {
+      const ownedNormal =
+        ownedMap.has(weapon.name);
+
+      const adeptName =
+        `${weapon.name} (Adept)`;
+
+      const ownedAdept =
+        ownedMap.has(adeptName);
+
+      return {
+        name: weapon.name,
+
+        emojiId:
+          weapon.emoji_id,
+
+        rarity:
+          weapon.rarity,
+
+        source:
+          weapon.source,
+
+        activityType:
+          weapon.activity_type,
+
+        normal: {
+          owned: ownedNormal,
+
+          masterwork:
+            ownedMap.get(
+              weapon.name
+            ) ?? 0,
+        },
+
+        adept: {
+          owned: ownedAdept,
+
+          masterwork:
+            ownedMap.get(
+              adeptName
+            ) ?? 0,
+        },
+      };
+    }
+  );
+
+  return c.json({
+    authenticated: true,
+    source,
+    weapons,
+  });
+});
+
+
+/* =========================================================
+   GAME - PROFILE
+========================================================= */
+
+
 app.get("/api/game/profile", async (c) => {
   const sessionId = getCookie(
     c,
@@ -1025,6 +1210,7 @@ app.get("/api/game/profile", async (c) => {
       401
     );
   }
+
 
   /* =======================================================
      IMPORT GAME CALCULATIONS
@@ -3186,123 +3372,6 @@ app.get("/api/game/weapons", async (c) => {
             playerWeapon?.masterwork ?? 0,
         };
       },
-    ),
-  });
-});
-
-/* =========================================================
-   GAME - WEAPON VAULT
-========================================================= */
-
-app.get("/api/game/weapons", async (c) => {
-  const sessionId = getCookie(
-    c,
-    SESSION_COOKIE,
-    "host",
-  );
-
-  if (!sessionId) {
-    return c.json(
-      {
-        authenticated: false,
-      },
-      401,
-    );
-  }
-
-  const session = await c.env.DB
-    .prepare(
-      `SELECT user_id
-       FROM sessions
-       WHERE id = ?
-       LIMIT 1`,
-    )
-    .bind(sessionId)
-    .first<{
-      user_id: number;
-    }>();
-
-  if (!session) {
-    return c.json(
-      {
-        authenticated: false,
-      },
-      401,
-    );
-  }
-
-  const source = c.req.query("source");
-
-  if (!source) {
-    return c.json(
-      {
-        error: "Missing weapon source",
-      },
-      400,
-    );
-  }
-
-  const catalog = await c.env.DB
-    .prepare(
-      `SELECT
-         name,
-         emoji_id,
-         rarity,
-         source,
-         activity_type
-       FROM weapons
-       WHERE source = ?
-       ORDER BY name ASC`,
-    )
-    .bind(source)
-    .all<{
-      name: string;
-      emoji_id: string | null;
-      rarity: string | null;
-      source: string | null;
-      activity_type: string | null;
-    }>();
-
-  const owned = await c.env.DB
-    .prepare(
-      `SELECT
-         weapon_name,
-         masterwork
-       FROM player_weapons
-       WHERE user_id = ?`,
-    )
-    .bind(session.user_id)
-    .all<{
-      weapon_name: string;
-      masterwork: number;
-    }>();
-
-  const ownedMap = new Map(
-    owned.results.map((weapon) => [
-      weapon.weapon_name,
-      weapon.masterwork,
-    ]),
-  );
-
-  return c.json({
-    authenticated: true,
-    source,
-
-    weapons: catalog.results.map(
-      (weapon) => ({
-        name: weapon.name,
-        rarity: weapon.rarity,
-        source: weapon.source,
-        activityType:
-          weapon.activity_type,
-
-        owned: ownedMap.has(
-          weapon.name,
-        ),
-
-        masterwork:
-          ownedMap.get(weapon.name) ?? 0,
-      }),
     ),
   });
 });
