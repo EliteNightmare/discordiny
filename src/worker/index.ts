@@ -68,6 +68,89 @@ app.get("/api/", (c) => {
   });
 });
 
+/* =========================================================
+   TERMINAL - CREATE INSTANCE
+========================================================= */
+
+const TERMINAL_INSTANCE_LIFETIME_SECONDS =
+  30;
+
+app.post(
+  "/api/terminal/create",
+  async (c) => {
+    /*
+     * Generate the instance key on the
+     * server. The browser never chooses it.
+     *
+     * Two UUIDs are combined so the key is
+     * long and impractical to guess.
+     */
+    const instanceKey =
+      `${crypto.randomUUID()}${crypto.randomUUID()}`
+        .replaceAll("-", "");
+
+    /*
+     * The generated URL only has a short
+     * window in which it may establish a
+     * terminal connection.
+     */
+    const expiresAt =
+      new Date(
+        Date.now() +
+          TERMINAL_INSTANCE_LIFETIME_SECONDS *
+            1000,
+      ).toISOString();
+
+    /*
+     * Clean up old terminal instances.
+     *
+     * These are temporary records, so there
+     * is no reason to keep expired ones.
+     */
+    await c.env.DB
+      .prepare(
+        `DELETE FROM terminal_instances
+         WHERE expires_at <= ?`,
+      )
+      .bind(
+        new Date().toISOString(),
+      )
+      .run();
+
+    /*
+     * Store the new instance.
+     */
+    await c.env.DB
+      .prepare(
+        `INSERT INTO terminal_instances
+         (
+           instance_key,
+           expires_at,
+           consumed
+         )
+         VALUES (?, ?, 0)`,
+      )
+      .bind(
+        instanceKey,
+        expiresAt,
+      )
+      .run();
+
+    /*
+     * Return only the generated key.
+     *
+     * React will eventually use this to
+     * redirect to:
+     *
+     * terminal.discordiny.com/INSTANCEKEY
+     */
+    return c.json({
+      success: true,
+      instanceKey,
+      expiresAt,
+    });
+  },
+);
 
 /* =========================================================
    DISCORD LOGIN
