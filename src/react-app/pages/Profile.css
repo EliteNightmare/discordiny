@@ -1,8 +1,398 @@
 .profile-page {
-  min-height: calc(100vh - 72px);
+  min-height: 100vh;
+  padding: 32px 20px 60px;
+}
+
+.profile-container {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+}
+
+/* =========================
+   Loading / Error
+   ========================= */
+
+.profile-loading,
+.profile-error {
+  width: min(700px, 100%);
+  margin: 80px auto;
+  padding: 32px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.profile-error {
+  color: #ff7676;
+}
+
+/* =========================
+   Shared
+   ========================= */
+
+.profile-block {
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.18);
+}
+
+.profile-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 22px;
+}
+
+.profile-block-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.profile-block-header p {
+  margin: 6px 0 0;
+  opacity: 0.55;
+  font-size: 13px;
+}
+
+.profile-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+/* =========================
+   Header
+   ========================= */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.045);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.2);
+}
+
+.profile-identity {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.profile-avatar {
+  width: 86px;
+  height: 86px;
+  flex: 0 0 86px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.profile-name-section {
+  min-width: 0;
+}
+
+.profile-name-section h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.profile-title {
+  margin-top: 8px;
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+.profile-title span {
+  opacity: 0.5;
+}
+
+.profile-destination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.profile-destination .profile-label {
+  margin: 0;
+}
+
+.profile-destination strong {
+  font-size: 14px;
+}
+
+.profile-weapons {
+  min-width: 120px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  text-align: right;
+}
+
+.profile-weapons strong {
+  display: block;
+  font-size: 20px;
+}
+
+/* =========================
+   Currencies
+   ========================= */
+
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.currency-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.currency-name {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.currency-card strong {
+  font-size: 18px;
+}
+
+/* =========================
+   Level Progress
+   ========================= */
+
+.level-number {
+  text-align: right;
+}
+
+.level-number span {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+}
+
+.level-number strong {
+  font-size: 26px;
+}
+
+.level-number small {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.45;
+}
+
+.xp-section {
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.xp-header,
+.xp-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.xp-header {
+  margin-bottom: 10px;
+}
+
+.xp-header span:first-child {
+  font-weight: 600;
+}
+
+.xp-header span:last-child,
+.xp-footer {
+  opacity: 0.55;
+}
+
+.xp-bar {
   width: 100%;
-  box-sizing: border-box;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.xp-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 400ms ease;
+}
+
+.xp-footer {
+  margin-top: 8px;
+}
+
+.level-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.level-stat {
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.level-stat span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.level-stat strong {
+  font-size: 18px;
+}
+
+/* =========================
+   Power Breakdown
+   ========================= */
+
+.total-power {
+  text-align: right;
+}
+
+.total-power span {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.5;
+}
+
+.total-power strong {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.power-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.power-card {
+  min-height: 90px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.power-card span {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.3;
+  opacity: 0.55;
+}
+
+.power-card strong {
+  font-size: 23px;
+}
+
+/* =========================
+   Responsive
+   ========================= */
+
+@media (max-width: 800px) {
+  .profile-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .profile-weapons {
+    width: 100%;
+    text-align: left;
+  }
+
+  .power-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-page {
+    padding: 20px 14px 40px;
+  }
+
+  .profile-header,
+  .profile-block {
+    padding: 18px;
+  }
+
+  .profile-identity {
+    align-items: flex-start;
+  }
+
+  .profile-avatar {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+  }
+
+  .profile-name-section h1 {
+    font-size: 24px;
+  }
+
+  .profile-destination {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .currency-grid,
+  .level-stats,
+  .power-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-block-header {
+    align-items: flex-start;
+  }
+
+  .total-power strong {
+    font-size: 24px;
+  }
 }
