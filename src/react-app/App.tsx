@@ -5,24 +5,39 @@ import Activities from "./pages/Activities";
 import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
 import WeaponVault from "./pages/WeaponVault";
+import Terminal from "./pages/Terminal";
 
 import SiteGate, {
   shouldGateSite,
 } from "./components/SiteGate";
 
 function App() {
+  const hostname =
+    window.location.hostname;
+
   /*
-   * GLOBAL SITE OVERRIDE
+   * TERMINAL SUBDOMAIN
    *
-   * If Discordiny is in maintenance
-   * or countdown mode, nothing below
-   * this point gets rendered.
+   * This check deliberately happens
+   * before Discordiny's normal site gate
+   * and page routing.
+   */
+  if (
+    hostname ===
+    "terminal.discordiny.com"
+  ) {
+    return <Terminal />;
+  }
+
+  /*
+   * GLOBAL DISCORDINY SITE OVERRIDE
    */
   if (shouldGateSite()) {
     return <SiteGate />;
   }
 
-  const path = window.location.pathname;
+  const path =
+    window.location.pathname;
 
   if (path === "/profile") {
     return <Profile />;
