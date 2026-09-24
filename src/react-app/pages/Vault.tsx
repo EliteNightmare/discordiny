@@ -1,7 +1,18 @@
+import { useEffect, useState } from "react";
+
 import TopBar from "../components/TopBar";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
+import VaultMaterials from "../components/arsenal/VaultMaterials";
 
 import "./Vault.css";
+
+type VaultProfileResponse = {
+  authenticated: boolean;
+
+  currencies: Record<string, number>;
+
+  upgradeMaterials: Record<string, number>;
+};
 
 const VAULT_CATEGORIES = [
   {
@@ -62,8 +73,82 @@ const VAULT_CATEGORIES = [
 ];
 
 function Vault() {
+  const [profile, setProfile] =
+    useState<VaultProfileResponse | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  useEffect(() => {
+    async function loadVault() {
+      try {
+        const response = await fetch(
+          "/api/game/profile",
+          {
+            credentials: "include",
+          },
+        );
+
+        const result =
+          (await response.json()) as VaultProfileResponse;
+
+        if (
+          !response.ok ||
+          !result.authenticated
+        ) {
+          throw new Error(
+            "You must be logged in to view your Vault.",
+          );
+        }
+
+        setProfile(result);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load Vault.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadVault();
+  }, []);
+
   function navigate(path: string) {
     window.location.href = path;
+  }
+
+  if (loading) {
+    return (
+      <div className="vault-screen">
+        <TopBar />
+
+        <div className="vault-page">
+          <div className="vault-status">
+            Loading Vault...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="vault-screen">
+        <TopBar />
+
+        <div className="vault-page">
+          <div className="vault-status vault-status-error">
+            {error || "Failed to load Vault."}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -73,20 +158,12 @@ function Vault() {
       <div className="vault-page">
         <ArsenalLayout
           left={
-            <section className="vault-sidebar-placeholder">
-              <div className="vault-sidebar-heading">
-                <span className="vault-eyebrow">
-                  INVENTORY
-                </span>
-
-                <h2>Materials</h2>
-              </div>
-
-              <p>
-                Currencies and Upgrade Materials
-                will appear here.
-              </p>
-            </section>
+            <VaultMaterials
+              currencies={profile.currencies}
+              upgradeMaterials={
+                profile.upgradeMaterials
+              }
+            />
           }
         >
           <div className="vault-content">
@@ -99,7 +176,9 @@ function Vault() {
                     ARSENAL
                   </span>
 
-                  <h1>Legendary Vault</h1>
+                  <h1>
+                    Legendary Vault
+                  </h1>
 
                   <p>
                     Browse your Legendary weapon
@@ -109,28 +188,34 @@ function Vault() {
               </div>
 
               <div className="vault-category-grid">
-                {VAULT_CATEGORIES.map((category) => (
-                  <button
-                    key={category.path}
-                    type="button"
-                    className="vault-category"
-                    onClick={() => {
-                      navigate(category.path);
-                    }}
-                  >
-                    <span className="vault-category-name">
-                      {category.name}
-                    </span>
+                {VAULT_CATEGORIES.map(
+                  (category) => (
+                    <button
+                      key={category.path}
+                      type="button"
+                      className="vault-category"
+                      onClick={() => {
+                        navigate(
+                          category.path,
+                        );
+                      }}
+                    >
+                      <span className="vault-category-name">
+                        {category.name}
+                      </span>
 
-                    <span className="vault-category-description">
-                      {category.description}
-                    </span>
+                      <span className="vault-category-description">
+                        {
+                          category.description
+                        }
+                      </span>
 
-                    <span className="vault-category-arrow">
-                      ›
-                    </span>
-                  </button>
-                ))}
+                      <span className="vault-category-arrow">
+                        ›
+                      </span>
+                    </button>
+                  ),
+                )}
               </div>
             </section>
 
@@ -143,7 +228,9 @@ function Vault() {
                     ARSENAL
                   </span>
 
-                  <h2>Exotic Vault</h2>
+                  <h2>
+                    Exotic Vault
+                  </h2>
 
                   <p>
                     Exotic weapon collection.
@@ -152,9 +239,13 @@ function Vault() {
               </div>
 
               <div className="vault-coming-soon">
-                <span>EXOTIC VAULT</span>
+                <span>
+                  EXOTIC VAULT
+                </span>
 
-                <strong>COMING SOON</strong>
+                <strong>
+                  COMING SOON
+                </strong>
               </div>
             </section>
           </div>
