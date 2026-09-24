@@ -1,110 +1,33 @@
-.profile-page {
+.profile-screen {
   min-height: 100vh;
-  padding: 0 20px 60px;
+}
+
+.profile-page {
+  min-height: calc(100vh - 72px);
+  padding: 32px 20px 60px;
+
   background-position: center top;
   background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
-  transition: background-image 500ms ease;
+
+  transition: background-image 350ms ease;
 }
 
-/* =========================
-   TOP BAR
-   ========================= */
-
-.top-bar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-
-  width: 100%;
-  min-height: 64px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 28px;
-
-  background: rgba(5, 8, 15, 0.78);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-
-  box-sizing: border-box;
+.profile-page-static {
+  background: #070a10;
 }
 
-.top-bar-brand {
-  display: flex;
-  align-items: center;
+.profile-page-siva {
+  background-blend-mode: normal;
 }
-
-.top-bar-logo {
-  padding: 0;
-  border: 0;
-  background: none;
-
-  color: inherit;
-
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-
-  cursor: pointer;
-}
-
-.top-bar-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.top-bar-nav button {
-  padding: 9px 13px;
-
-  border: 1px solid transparent;
-  border-radius: 8px;
-
-  background: transparent;
-  color: inherit;
-
-  font-size: 13px;
-  font-weight: 600;
-
-  opacity: 0.65;
-  cursor: pointer;
-
-  transition:
-    background 150ms ease,
-    opacity 150ms ease,
-    border-color 150ms ease;
-}
-
-.top-bar-nav button:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.top-bar-nav button.active {
-  opacity: 1;
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-/* =========================
-   MAIN
-   ========================= */
 
 .profile-container {
   width: min(1100px, 100%);
   margin: 0 auto;
-  padding-top: 32px;
 }
 
-/* =========================
-   LOADING / ERROR
-   ========================= */
+/* Loading / Error */
 
 .profile-loading,
 .profile-error {
@@ -117,8 +40,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
 
-  background: rgba(5, 8, 15, 0.72);
-
+  background: rgba(5, 8, 15, 0.78);
   backdrop-filter: blur(12px);
 }
 
@@ -130,18 +52,16 @@
   margin-top: 14px;
   padding: 12px 16px;
 
-  border: 1px solid rgba(255, 92, 92, 0.25);
+  border: 1px solid rgba(255, 70, 70, 0.25);
   border-radius: 10px;
 
-  background: rgba(120, 20, 20, 0.35);
+  background: rgba(110, 15, 15, 0.4);
 
-  color: #ff8c8c;
+  color: #ff9999;
   font-size: 13px;
 }
 
-/* =========================
-   SHARED BLOCKS
-   ========================= */
+/* Shared Blocks */
 
 .profile-block {
   margin-top: 20px;
@@ -150,9 +70,9 @@
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 16px;
 
-  background: rgba(5, 8, 15, 0.67);
+  background: rgba(5, 8, 15, 0.72);
 
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22);
 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -195,9 +115,7 @@
   opacity: 0.5;
 }
 
-/* =========================
-   PROFILE HEADER
-   ========================= */
+/* Profile Header */
 
 .profile-header {
   display: flex;
@@ -210,9 +128,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
 
-  background: rgba(5, 8, 15, 0.62);
+  background: rgba(5, 8, 15, 0.68);
 
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.28);
 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -232,11 +150,10 @@
 
   flex: 0 0 86px;
 
+  border: 2px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
 
   object-fit: cover;
-
-  border: 2px solid rgba(255, 255, 255, 0.12);
 }
 
 .profile-avatar-placeholder {
@@ -259,7 +176,6 @@
 
   font-size: 30px;
   line-height: 1.1;
-
   font-weight: 800;
 }
 
@@ -274,11 +190,11 @@
   opacity: 0.5;
 }
 
-/* =========================
-   DESTINATION + TRAVEL
-   ========================= */
+/* Destination */
 
 .profile-destination {
+  position: relative;
+
   display: flex;
   align-items: flex-end;
 
@@ -286,17 +202,27 @@
   margin-top: 14px;
 }
 
-.profile-destination strong {
+.destination-current strong {
   display: block;
   font-size: 15px;
 }
 
-/* TRAVEL BUTTON */
+/* Travel */
+
+.travel-control {
+  position: relative;
+}
 
 .travel-button {
-  padding: 9px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  gap: 8px;
+
+  padding: 9px 14px;
+
+  border: 1px solid rgba(255, 255, 255, 0.17);
   border-radius: 8px;
 
   background: rgba(255, 255, 255, 0.08);
@@ -311,28 +237,150 @@
 
   transition:
     background 150ms ease,
-    border-color 150ms ease,
-    transform 150ms ease;
+    border-color 150ms ease;
 }
 
 .travel-button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-1px);
-}
-
-.travel-button:active:not(:disabled) {
-  transform: translateY(0);
+  border-color: rgba(255, 255, 255, 0.27);
 }
 
 .travel-button:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: wait;
 }
 
-/* =========================
-   WEAPONS
-   ========================= */
+.travel-arrow {
+  font-size: 8px;
+  opacity: 0.6;
+
+  transition: transform 150ms ease;
+}
+
+.travel-arrow.open {
+  transform: rotate(180deg);
+}
+
+/* Travel Dropdown */
+
+.travel-dropdown {
+  position: absolute;
+  z-index: 50;
+
+  top: calc(100% + 8px);
+  left: 0;
+
+  width: 235px;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+
+  background: rgba(8, 10, 15, 0.97);
+
+  box-shadow:
+    0 16px 45px rgba(0, 0, 0, 0.55);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.travel-dropdown-title {
+  padding: 11px 14px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+
+  opacity: 0.45;
+}
+
+.travel-destination {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 11px 14px;
+
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+
+  background: transparent;
+  color: inherit;
+
+  text-align: left;
+
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    padding-left 120ms ease;
+}
+
+.travel-destination:last-child {
+  border-bottom: 0;
+}
+
+.travel-destination:hover {
+  padding-left: 18px;
+
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.travel-destination-active {
+  background: rgba(255, 255, 255, 0.08);
+  font-weight: 700;
+}
+
+.destination-active-label {
+  font-size: 8px;
+  font-weight: 800;
+
+  letter-spacing: 0.1em;
+
+  opacity: 0.45;
+}
+
+/* SIVA / Plaguelands */
+
+.travel-destination-siva {
+  color: #ff7676;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(120, 0, 10, 0.42),
+      rgba(55, 0, 5, 0.2)
+    );
+}
+
+.travel-destination-siva:hover {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(170, 0, 15, 0.55),
+      rgba(70, 0, 8, 0.3)
+    );
+}
+
+.travel-destination-siva.travel-destination-active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(190, 0, 15, 0.6),
+      rgba(75, 0, 8, 0.35)
+    );
+}
+
+/* Weapons */
 
 .profile-weapons {
   min-width: 120px;
@@ -351,9 +399,7 @@
   font-size: 20px;
 }
 
-/* =========================
-   CURRENCIES
-   ========================= */
+/* Currencies */
 
 .currency-grid {
   display: grid;
@@ -386,9 +432,7 @@
   font-size: 18px;
 }
 
-/* =========================
-   LEVEL PROGRESS
-   ========================= */
+/* Level */
 
 .level-number {
   text-align: right;
@@ -506,9 +550,7 @@
   font-size: 18px;
 }
 
-/* =========================
-   POWER
-   ========================= */
+/* Power */
 
 .total-power {
   text-align: right;
@@ -566,24 +608,9 @@
   font-size: 23px;
 }
 
-/* =========================
-   RESPONSIVE
-   ========================= */
+/* Responsive */
 
 @media (max-width: 800px) {
-  .top-bar {
-    padding: 0 16px;
-  }
-
-  .top-bar-nav {
-    gap: 2px;
-  }
-
-  .top-bar-nav button {
-    padding: 8px 9px;
-    font-size: 12px;
-  }
-
   .profile-header {
     align-items: flex-start;
     flex-direction: column;
@@ -591,6 +618,8 @@
 
   .profile-weapons {
     width: 100%;
+    box-sizing: border-box;
+
     text-align: left;
   }
 
@@ -602,24 +631,9 @@
 
 @media (max-width: 560px) {
   .profile-page {
-    padding: 0 14px 40px;
-  }
+    padding: 20px 14px 40px;
 
-  .top-bar {
-    min-height: 58px;
-  }
-
-  .top-bar-logo {
-    font-size: 13px;
-  }
-
-  .top-bar-nav button {
-    padding: 7px;
-    font-size: 11px;
-  }
-
-  .profile-container {
-    padding-top: 20px;
+    background-attachment: scroll;
   }
 
   .profile-header,
@@ -643,6 +657,12 @@
 
   .profile-destination {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .travel-dropdown {
+    left: 0;
+    width: 220px;
   }
 
   .currency-grid,
