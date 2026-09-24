@@ -1,641 +1,393 @@
-/* =========================
-   TOP BAR
-   ========================= */
-
 .top-bar {
   position: fixed;
-
   top: 0;
   left: 0;
+  right: 0;
 
-  z-index: 10000;
+  height: 72px;
 
-  width: 100%;
-  height: 64px;
-
-  display: grid;
-
-  grid-template-columns:
-    minmax(160px, 1fr)
-    auto
-    minmax(160px, 1fr);
-
+  display: flex;
   align-items: center;
+  justify-content: space-between;
 
   padding: 0 24px;
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 100;
 
-  background: rgba(6, 8, 13, 0.88);
+  background: rgba(10, 10, 14, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.2);
-
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-
-  box-sizing: border-box;
+  backdrop-filter: blur(10px);
 }
-
-/* =========================
-   LEFT
-   ========================= */
 
 .top-bar-left {
   display: flex;
   align-items: center;
-
-  justify-self: start;
+  min-width: 0;
+  height: 100%;
 }
 
-.top-bar-logo {
-  padding: 0;
+.logo-button {
+  display: flex;
+  align-items: center;
+
+  height: 100%;
+
+  padding: 0 24px 0 4px;
 
   border: 0;
-
   background: transparent;
-  color: inherit;
-
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 900;
-
-  letter-spacing: 0.13em;
 
   cursor: pointer;
-
-  opacity: 0.95;
-
-  transition:
-    opacity 120ms ease,
-    transform 120ms ease;
 }
 
-.top-bar-logo:hover {
-  opacity: 1;
-  transform: translateY(-1px);
-}
+.discordiny-logo {
+  display: block;
 
-/* =========================
-   MAIN NAVIGATION
-   ========================= */
+  max-width: 180px;
+  max-height: 52px;
+
+  width: auto;
+  height: auto;
+}
 
 .main-navigation {
   display: flex;
   align-items: center;
-  justify-content: center;
 
   gap: 4px;
 
-  justify-self: center;
-
   height: 100%;
 }
 
-.nav-button {
-  position: relative;
+.main-navigation button {
+  height: 40px;
 
-  height: 100%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 0 13px;
+  padding: 0 14px;
 
   border: 0;
+  border-radius: 8px;
 
+  color: rgba(255, 255, 255, 0.75);
   background: transparent;
-  color: inherit;
 
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 500;
 
-  opacity: 0.58;
+  white-space: nowrap;
 
   cursor: pointer;
 
   transition:
-    opacity 120ms ease,
-    background 120ms ease;
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
-.nav-button:hover {
-  opacity: 1;
-
-  background: rgba(255, 255, 255, 0.035);
+.main-navigation button:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
 }
-
-.nav-button-active {
-  opacity: 1;
-}
-
-.nav-button-active::after {
-  content: "";
-
-  position: absolute;
-
-  left: 12px;
-  right: 12px;
-  bottom: 0;
-
-  height: 2px;
-
-  border-radius: 2px 2px 0 0;
-
-  background: currentColor;
-}
-
-/* =========================
-   ARSENAL
-   ========================= */
-
-.arsenal-nav {
-  position: relative;
-
-  display: flex;
-  align-items: center;
-
-  height: 100%;
-}
-
-.arsenal-trigger {
-  gap: 7px;
-}
-
-.arsenal-chevron {
-  display: inline-block;
-
-  margin-top: 1px;
-
-  font-size: 6px;
-
-  opacity: 0.55;
-
-  transition:
-    transform 150ms ease,
-    opacity 150ms ease;
-}
-
-.arsenal-trigger:hover .arsenal-chevron {
-  opacity: 1;
-}
-
-.arsenal-chevron-open {
-  transform: rotate(180deg);
-}
-
-/* =========================
-   ARSENAL DROPDOWN
-   ========================= */
-
-.arsenal-dropdown {
-  position: absolute;
-
-  z-index: 10100;
-
-  top: calc(100% + 8px);
-  left: 50%;
-
-  width: 225px;
-
-  padding: 5px;
-
-  transform: translateX(-50%);
-
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 9px;
-
-  background: rgba(7, 9, 14, 0.98);
-
-  box-shadow:
-    0 20px 55px rgba(0, 0, 0, 0.65);
-
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-
-  box-sizing: border-box;
-}
-
-/*
- * Invisible bridge between Arsenal and the dropdown.
- * Without this, moving the cursor through the 8px gap
- * could trigger onMouseLeave.
- */
-.arsenal-dropdown::before {
-  content: "";
-
-  position: absolute;
-
-  top: -9px;
-  left: 0;
-
-  width: 100%;
-  height: 9px;
-}
-
-.arsenal-dropdown-item {
-  width: 100%;
-
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-
-  gap: 3px;
-
-  padding: 10px 11px;
-
-  border: 0;
-  border-radius: 6px;
-
-  background: transparent;
-  color: inherit;
-
-  font-family: inherit;
-
-  text-align: left;
-
-  cursor: pointer;
-
-  transition:
-    background 100ms ease,
-    padding-left 100ms ease;
-}
-
-.arsenal-dropdown-item:hover {
-  padding-left: 14px;
-
-  background: rgba(255, 255, 255, 0.07);
-}
-
-.arsenal-dropdown-item-active {
-  background: rgba(255, 255, 255, 0.085);
-}
-
-.arsenal-item-title {
-  font-size: 12px;
-  font-weight: 700;
-
-  line-height: 1.2;
-}
-
-.arsenal-item-description {
-  font-size: 9px;
-
-  line-height: 1.25;
-
-  opacity: 0.42;
-}
-
-/* =========================
-   RIGHT
-   ========================= */
-
-.top-bar-right {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-
-  gap: 10px;
-
-  justify-self: end;
-}
-
-/* =========================
-   ACCOUNT
-   ========================= */
 
 .account-button {
   display: flex;
   align-items: center;
 
-  gap: 8px;
+  gap: 10px;
 
-  min-height: 38px;
+  flex-shrink: 0;
 
-  padding: 4px 10px 4px 5px;
+  height: 44px;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  padding: 0 14px 0 8px;
 
-  background: rgba(255, 255, 255, 0.035);
-  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
 
-  font-family: inherit;
+  color: white;
+  background: rgba(255, 255, 255, 0.06);
+
+  font: inherit;
+  font-weight: 500;
 
   cursor: pointer;
 
   transition:
-    background 120ms ease,
-    border-color 120ms ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .account-button:hover {
-  background: rgba(255, 255, 255, 0.07);
-
-  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
-.account-avatar,
-.account-avatar-fallback {
+.account-button img {
   width: 28px;
   height: 28px;
 
-  flex: 0 0 28px;
+  object-fit: contain;
 
   border-radius: 50%;
 }
 
-.account-avatar {
-  object-fit: cover;
-}
-
-.account-avatar-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(255, 255, 255, 0.1);
-
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.account-name {
-  max-width: 130px;
-
+.account-button span {
+  max-width: 140px;
   overflow: hidden;
-
-  font-size: 11px;
-  font-weight: 600;
-
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* =========================
-   LOGIN
-   ========================= */
-
-.login-button {
-  min-height: 36px;
-
-  padding: 0 14px;
-
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 7px;
-
-  background: rgba(255, 255, 255, 0.06);
-  color: inherit;
-
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
-
-  cursor: pointer;
-
-  transition:
-    background 120ms ease,
-    border-color 120ms ease;
-}
-
-.login-button:hover {
-  background: rgba(255, 255, 255, 0.11);
-
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* =========================
-   MOBILE BUTTON
-   ========================= */
-
-.mobile-menu-button {
-  width: 36px;
-  height: 36px;
-
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-
-  gap: 4px;
-
-  padding: 0;
-
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 7px;
-
-  background: rgba(255, 255, 255, 0.035);
-
-  cursor: pointer;
-}
-
-.mobile-menu-button span {
-  width: 15px;
-  height: 1px;
-
-  display: block;
-
-  background: currentColor;
-
-  transition:
-    transform 150ms ease,
-    opacity 150ms ease;
-}
-
-.mobile-menu-button-open span:nth-child(1) {
-  transform: translateY(5px) rotate(45deg);
-}
-
-.mobile-menu-button-open span:nth-child(2) {
-  opacity: 0;
-}
-
-.mobile-menu-button-open span:nth-child(3) {
-  transform: translateY(-5px) rotate(-45deg);
-}
-
-/* =========================
+/* =========================================================
    MOBILE NAVIGATION
-   ========================= */
+========================================================= */
 
 .mobile-navigation {
-  position: absolute;
-
-  top: 64px;
-  left: 0;
-
-  width: 100%;
-
   display: none;
-  flex-direction: column;
-
-  padding: 8px;
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-
-  background: rgba(6, 8, 13, 0.98);
-
-  box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.45);
-
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-
-  box-sizing: border-box;
 }
 
-.mobile-nav-item {
-  width: 100%;
-
-  display: flex;
-  align-items: center;
-
-  padding: 11px 12px;
-
-  border: 0;
-  border-radius: 6px;
-
-  background: transparent;
-  color: inherit;
-
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-
-  text-align: left;
-
-  opacity: 0.65;
-
-  cursor: pointer;
-}
-
-.mobile-nav-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-
-  opacity: 1;
-}
-
-.mobile-nav-item-active {
-  background: rgba(255, 255, 255, 0.06);
-
-  opacity: 1;
-}
-
-/* =========================
-   MOBILE ARSENAL
-   ========================= */
-
-.mobile-arsenal {
-  width: 100%;
-}
-
-.mobile-arsenal-trigger {
-  justify-content: space-between;
-}
-
-.mobile-arsenal-menu {
-  margin: 2px 0 5px;
-  padding: 4px 4px 4px 14px;
-
-  border-left: 1px solid rgba(255, 255, 255, 0.09);
-}
-
-.mobile-arsenal-menu button {
-  width: 100%;
-
-  display: block;
-
-  padding: 9px 11px;
-
-  border: 0;
-  border-radius: 5px;
-
-  background: transparent;
-  color: inherit;
-
-  font-family: inherit;
-  font-size: 11px;
-
-  text-align: left;
-
-  opacity: 0.55;
-
-  cursor: pointer;
-}
-
-.mobile-arsenal-menu button:hover {
-  background: rgba(255, 255, 255, 0.05);
-
-  opacity: 1;
-}
-
-/* =========================
-   RESPONSIVE
-   ========================= */
-
-@media (max-width: 850px) {
+@media (max-width: 767px) {
   .top-bar {
-    grid-template-columns: 1fr auto;
+    padding: 0 14px;
+  }
 
-    height: 60px;
-
-    padding: 0 16px;
+  .top-bar-left {
+    flex: 1;
   }
 
   .main-navigation {
     display: none;
   }
 
-  .top-bar-right {
-    grid-column: 2;
+  .mobile-navigation {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+
+    display: flex;
+    justify-content: center;
   }
 
-  .account-name {
+  .mobile-navigation-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+
+    min-width: 100px;
+    height: 40px;
+
+    padding: 0 14px;
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+
+    color: white;
+    background: rgba(255, 255, 255, 0.08);
+
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    cursor: pointer;
+  }
+
+  .mobile-navigation-arrow {
+    font-size: 0.65rem;
+    transition: transform 0.15s ease;
+  }
+
+  .mobile-navigation-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .mobile-navigation-menu {
+    position: absolute;
+    top: 48px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    min-width: 180px;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 6px;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+
+    background: rgba(15, 15, 20, 0.96);
+
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.35);
+
+    backdrop-filter: blur(12px);
+
+    z-index: 200;
+  }
+
+  .mobile-navigation-menu button {
+    width: 100%;
+
+    padding: 11px 14px;
+
+    border: 0;
+    border-radius: 7px;
+
+    color: white;
+    background: transparent;
+
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+
+    cursor: pointer;
+  }
+
+  .mobile-navigation-menu button:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .account-button span {
     display: none;
   }
 
-  .account-button {
-    padding-right: 5px;
-  }
-
-  .mobile-menu-button {
-    display: flex;
-  }
-
-  .mobile-navigation {
-    display: flex;
-
-    top: 60px;
+  .account-button img {
+    width: 38px;
+    height: 38px;
   }
 }
+/* =========================================================
+   ACCOUNT MENU
+========================================================= */
 
-@media (max-width: 480px) {
-  .top-bar {
-    padding: 0 12px;
-  }
+.account-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
 
-  .top-bar-logo {
-    font-size: 13px;
+.account-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
 
-    letter-spacing: 0.1em;
-  }
+  width: 220px;
 
-  .account-button {
-    min-height: 34px;
-  }
+  padding: 8px;
 
-  .account-avatar,
-  .account-avatar-fallback {
-    width: 25px;
-    height: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
 
-    flex-basis: 25px;
-  }
+  background: rgba(15, 15, 20, 0.97);
 
-  .mobile-menu-button {
-    width: 34px;
-    height: 34px;
-  }
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35);
+
+  backdrop-filter: blur(12px);
+
+  z-index: 300;
+}
+
+.account-menu-user {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 8px;
+}
+
+.account-menu-user img {
+  width: 38px;
+  height: 38px;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+}
+
+.account-menu-user div {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 2px;
+}
+
+.account-menu-user strong {
+  color: white;
+
+  font-size: 0.9rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-user span {
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 0.75rem;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu-divider {
+  height: 1px;
+
+  margin: 6px 0;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-menu-logout {
+  width: 100%;
+
+  padding: 10px;
+
+  border: 0;
+  border-radius: 7px;
+
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+
+  font: inherit;
+  font-size: 0.85rem;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.account-menu-profile {
+  width: 100%;
+
+  padding: 10px;
+
+  border: 0;
+  border-radius: 7px;
+
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+
+  font: inherit;
+  font-size: 0.85rem;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.account-menu-profile:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.account-menu-logout:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
