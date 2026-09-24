@@ -68,7 +68,7 @@ export default function Activities() {
         }
 
         const data =
-          await response.json<ActivitiesResponse>();
+          (await response.json()) as ActivitiesResponse;
 
         setActivities(data.activities);
       } catch (err) {
