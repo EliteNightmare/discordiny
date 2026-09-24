@@ -4,7 +4,7 @@ export type SiteMode =
   | "countdown";
 
 export const SITE_MODE: SiteMode =
-  "countdown";
+  "live";
 
 /*
  * Only used when SITE_MODE is "countdown".
