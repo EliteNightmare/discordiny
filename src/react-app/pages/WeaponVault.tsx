@@ -123,8 +123,7 @@ function findWeaponImage(
     `/weapons/${source.toLowerCase()}/`;
 
   for (
-    const [path, imageUrl]
-    of Object.entries(weaponImages)
+    const [path, imageUrl] of Object.entries(weaponImages)
   ) {
     const normalizedPath =
       path.replace(/\\/g, "/");
@@ -267,13 +266,9 @@ function WeaponVault({
           ),
         ]);
 
-        const weaponResult =
-          (await weaponResponse.json())
-            as WeaponResponse;
+        const weaponResult = (await weaponResponse.json()) as WeaponResponse;
 
-        const profileResult =
-          (await profileResponse.json())
-            as ProfileResponse;
+        const profileResult = (await profileResponse.json()) as ProfileResponse;
 
         if (
           !weaponResponse.ok ||
