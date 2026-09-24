@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import "./TopBar.css";
 
@@ -17,6 +17,12 @@ export default function TopBar() {
   const [user, setUser] = useState<User | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+
+  const [arsenalMenuOpen, setArsenalMenuOpen] = useState(false);
+  const [newsMenuOpen, setNewsMenuOpen] = useState(false);
+
+  const arsenalRef = useRef<HTMLDivElement | null>(null);
+  const newsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -50,8 +56,48 @@ export default function TopBar() {
     loadUser();
   }, []);
 
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+
+      if (
+        arsenalRef.current &&
+        !arsenalRef.current.contains(target)
+      ) {
+        setArsenalMenuOpen(false);
+      }
+
+      if (
+        newsRef.current &&
+        !newsRef.current.contains(target)
+      ) {
+        setNewsMenuOpen(false);
+      }
+    }
+
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick
+    );
+
+    return () => {
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+    };
+  }, []);
+
+  function goTo(path: string) {
+    setArsenalMenuOpen(false);
+    setNewsMenuOpen(false);
+    setMobileMenuOpen(false);
+
+    window.location.href = path;
+  }
+
   function goToProfile() {
-    window.location.href = "/profile";
+    goTo("/profile");
   }
 
   function handleAccountClick() {
@@ -62,6 +108,8 @@ export default function TopBar() {
 
     setAccountMenuOpen(!accountMenuOpen);
     setMobileMenuOpen(false);
+    setArsenalMenuOpen(false);
+    setNewsMenuOpen(false);
   }
 
   function handleLogout() {
@@ -78,6 +126,8 @@ export default function TopBar() {
 
   function closeMobileMenu() {
     setMobileMenuOpen(false);
+    setArsenalMenuOpen(false);
+    setNewsMenuOpen(false);
   }
 
   const displayName =
@@ -91,6 +141,8 @@ export default function TopBar() {
         <button
           className="logo-button"
           type="button"
+          aria-label="Go to homepage"
+          onClick={() => goTo("/")}
         >
           <img
             src={logo}
@@ -108,11 +160,79 @@ export default function TopBar() {
             Profile
           </button>
 
-          <button type="button">
-            Inventories
-          </button>
+          {/* Arsenal */}
+          <div
+            ref={arsenalRef}
+            className="topbar-dropdown"
+            onMouseEnter={() => {
+              setArsenalMenuOpen(true);
+              setNewsMenuOpen(false);
+            }}
+            onMouseLeave={() => {
+              setArsenalMenuOpen(false);
+            }}
+          >
+            <button
+              type="button"
+              className="topbar-dropdown-trigger"
+              aria-haspopup="menu"
+              aria-expanded={arsenalMenuOpen}
+              onClick={() => {
+                setArsenalMenuOpen(
+                  !arsenalMenuOpen
+                );
+                setNewsMenuOpen(false);
+              }}
+            >
+              <span>Arsenal</span>
 
-          <button type="button">
+              <span
+                className={`topbar-dropdown-arrow ${
+                  arsenalMenuOpen ? "open" : ""
+                }`}
+              >
+                ▼
+              </span>
+            </button>
+
+            {arsenalMenuOpen && (
+              <div
+                className="topbar-dropdown-menu"
+                role="menu"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => goTo("/vault")}
+                >
+                  Vault
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => goTo("/armory")}
+                >
+                  Armory
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() =>
+                    goTo("/artifacts")
+                  }
+                >
+                  Artifacts
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => goTo("/activities")}
+          >
             Activities
           </button>
 
@@ -124,9 +244,76 @@ export default function TopBar() {
             Events
           </button>
 
-          <button type="button">
-            About
-          </button>
+          {/* NEWS */}
+          <div
+            ref={newsRef}
+            className="topbar-dropdown"
+            onMouseEnter={() => {
+              setNewsMenuOpen(true);
+              setArsenalMenuOpen(false);
+            }}
+            onMouseLeave={() => {
+              setNewsMenuOpen(false);
+            }}
+          >
+            <button
+              type="button"
+              className="topbar-dropdown-trigger"
+              aria-haspopup="menu"
+              aria-expanded={newsMenuOpen}
+              onClick={() => {
+                setNewsMenuOpen(
+                  !newsMenuOpen
+                );
+                setArsenalMenuOpen(false);
+              }}
+            >
+              <span>NEWS</span>
+
+              <span
+                className={`topbar-dropdown-arrow ${
+                  newsMenuOpen ? "open" : ""
+                }`}
+              >
+                ▼
+              </span>
+            </button>
+
+            {newsMenuOpen && (
+              <div
+                className="topbar-dropdown-menu"
+                role="menu"
+              >
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() =>
+                    goTo("/updates")
+                  }
+                >
+                  Updates
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() =>
+                    goTo("/patchnotes")
+                  }
+                >
+                  Patchnotes
+                </button>
+
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => goTo("/about")}
+                >
+                  About
+                </button>
+              </div>
+            )}
+          </div>
         </nav>
       </div>
 
@@ -138,8 +325,12 @@ export default function TopBar() {
           aria-label="Open navigation menu"
           aria-expanded={mobileMenuOpen}
           onClick={() => {
-            setMobileMenuOpen(!mobileMenuOpen);
+            setMobileMenuOpen(
+              !mobileMenuOpen
+            );
             setAccountMenuOpen(false);
+            setArsenalMenuOpen(false);
+            setNewsMenuOpen(false);
           }}
         >
           <span>Menu</span>
@@ -165,16 +356,58 @@ export default function TopBar() {
               Profile
             </button>
 
+            {/* Mobile Arsenal */}
             <button
               type="button"
-              onClick={closeMobileMenu}
+              className="mobile-submenu-trigger"
+              onClick={() => {
+                setArsenalMenuOpen(
+                  !arsenalMenuOpen
+                );
+                setNewsMenuOpen(false);
+              }}
             >
-              Inventories
+              <span>Arsenal</span>
+
+              <span
+                className={`mobile-submenu-arrow ${
+                  arsenalMenuOpen ? "open" : ""
+                }`}
+              >
+                ▼
+              </span>
             </button>
+
+            {arsenalMenuOpen && (
+              <div className="mobile-submenu">
+                <button
+                  type="button"
+                  onClick={() => goTo("/vault")}
+                >
+                  Vault
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goTo("/armory")}
+                >
+                  Armory
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    goTo("/artifacts")
+                  }
+                >
+                  Artifacts
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
-              onClick={closeMobileMenu}
+              onClick={() => goTo("/activities")}
             >
               Activities
             </button>
@@ -193,12 +426,56 @@ export default function TopBar() {
               Events
             </button>
 
+            {/* Mobile NEWS */}
             <button
               type="button"
-              onClick={closeMobileMenu}
+              className="mobile-submenu-trigger"
+              onClick={() => {
+                setNewsMenuOpen(
+                  !newsMenuOpen
+                );
+                setArsenalMenuOpen(false);
+              }}
             >
-              About
+              <span>NEWS</span>
+
+              <span
+                className={`mobile-submenu-arrow ${
+                  newsMenuOpen ? "open" : ""
+                }`}
+              >
+                ▼
+              </span>
             </button>
+
+            {newsMenuOpen && (
+              <div className="mobile-submenu">
+                <button
+                  type="button"
+                  onClick={() =>
+                    goTo("/updates")
+                  }
+                >
+                  Updates
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    goTo("/patchnotes")
+                  }
+                >
+                  Patchnotes
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => goTo("/about")}
+                >
+                  About
+                </button>
+              </div>
+            )}
           </nav>
         )}
       </div>
