@@ -28,10 +28,8 @@ type Rotation = {
 type ActivitiesResponse = {
   authenticated: boolean;
   serverTime: number;
-
   player: {
     destination: string;
-
     explore: {
       lastClaim: number;
       elapsedSeconds: number;
@@ -40,20 +38,16 @@ type ActivitiesResponse = {
       capped: boolean;
     };
   };
-
   rotation: {
     dailyShowdown: Rotation;
     dailyDungeon: Rotation;
     dailyRaid: Rotation;
-
     nightfall: Rotation;
     grandmaster: Rotation;
-
     infiltration: Rotation;
     showdown: Rotation;
     crawl: Rotation;
   };
-
   current: {
     strike: Activity | null;
     dungeon: Activity | null;
@@ -66,30 +60,182 @@ type ActivityCardProps = {
   activity: Activity | null;
   timer?: string;
   unavailableText?: string;
-  className?: string;
+  backgroundImage?: string;
+  daily?: boolean;
 };
 
-const EXPLORE_MAX_SECONDS =
-  24 * 60 * 60;
+const DESTINATIONS = [
+  "Plaguelands",
+  "Cosmodrome",
+  "EDZ",
+  "Nessus",
+  "Dreaming City",
+  "Moon",
+  "Europa",
+  "Throne World",
+  "Neomuna",
+  "Pale Heart",
+] as const;
 
+const destinationImages = import.meta.glob(
+  "../assets/activitybanners/destinations/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
 
-/* =========================================================
-   TIME HELPERS
-========================================================= */
+const generalImages = import.meta.glob(
+  "../assets/general/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const activityBanners = import.meta.glob(
+  "../assets/activitybanners/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+function normalizeAssetName(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function findDestinationImage(
+  destination: string,
+): string | undefined {
+  const filename =
+    `${normalizeAssetName(destination)}.png`;
+
+  return Object.entries(
+    destinationImages,
+  ).find(([path]) =>
+    path.toLowerCase().endsWith(
+      `/destinations/${filename}`,
+    ),
+  )?.[1];
+}
+
+function findGeneralImage(
+  filename: string,
+): string | undefined {
+  return Object.entries(
+    generalImages,
+  ).find(([path]) =>
+    path.toLowerCase().endsWith(
+      `/general/${filename.toLowerCase()}`,
+    ),
+  )?.[1];
+}
+
+function getGeneralActivityBanner(
+  activity: Activity | null,
+): string | undefined {
+  if (!activity) {
+    return undefined;
+  }
+
+  const source =
+    activity.weapon_source
+      ?.toLowerCase();
+
+  const name =
+    activity.name
+      .trim()
+      .toLowerCase();
+
+  const bannerBySource: Record<
+    string,
+    string
+  > = {
+    strike: "strike.png",
+    nf: "nightfall.png",
+    gm: "grandmaster.png",
+
+    bgs: "battlegrounds.png",
+    emph: "empirehunt.png",
+    nigh: "nightmarehunt.png",
+
+    nether: "nether.png",
+    contest: "contest.png",
+    coil: "coil.png",
+  };
+
+  const bannerByName: Record<
+    string,
+    string
+  > = {
+    "the great hunt":
+      "greathunt.png",
+
+    "great hunt":
+      "greathunt.png",
+
+    "lucent fireteam":
+      "lucentfireteam.png",
+
+    "exo challenge":
+      "exochallenge.png",
+  };
+
+  const filename =
+    bannerByName[name] ??
+    (
+      source
+        ? bannerBySource[source]
+        : undefined
+    );
+
+  if (!filename) {
+    return undefined;
+  }
+
+  return findGeneralImage(
+    filename,
+  );
+}
+
+function getActivityBanner(
+  activity: Activity | null,
+): string | undefined {
+  if (
+    !activity?.weapon_source
+  ) {
+    return undefined;
+  }
+
+  const filename =
+    `${activity.weapon_source.toLowerCase()}.png`;
+
+  return Object.entries(
+    activityBanners,
+  ).find(([path]) =>
+    path
+      .toLowerCase()
+      .endsWith(
+        `/activitybanners/${filename}`,
+      ),
+  )?.[1];
+}
 
 function formatRotationTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(
-      0,
-      Math.floor(seconds),
-    );
+    Math.max(0, Math.floor(seconds));
 
   const hours =
-    Math.floor(
-      safeSeconds / 3600,
-    );
+    Math.floor(safeSeconds / 3600);
 
   const minutes =
     Math.floor(
@@ -112,23 +258,14 @@ function formatRotationTime(
     .padStart(2, "0")}`;
 }
 
-
 function formatExploreTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(
-      0,
-      Math.min(
-        EXPLORE_MAX_SECONDS,
-        Math.floor(seconds),
-      ),
-    );
+    Math.max(0, Math.floor(seconds));
 
   const hours =
-    Math.floor(
-      safeSeconds / 3600,
-    );
+    Math.floor(safeSeconds / 3600);
 
   const minutes =
     Math.floor(
@@ -140,24 +277,38 @@ function formatExploreTime(
     .padStart(2, "0")}m`;
 }
 
-
-/* =========================================================
-   ACTIVITY CARD
-========================================================= */
+function AnimatedClock() {
+  return (
+    <span
+      className="activity-clock"
+      aria-hidden="true"
+    >
+      <span className="activity-clock-center" />
+      <span className="activity-clock-hour" />
+      <span className="activity-clock-minute" />
+    </span>
+  );
+}
 
 function ActivityCard({
   label,
   activity,
   timer,
   unavailableText = "Unavailable",
-  className = "",
+  backgroundImage,
+  daily = false,
 }: ActivityCardProps) {
-  const classes = [
+  const className = [
     "activity-dashboard-card",
     activity
       ? "activity-dashboard-card-active"
       : "activity-dashboard-card-disabled",
-    className,
+    backgroundImage
+      ? "activity-dashboard-card-image"
+      : "",
+    daily
+      ? "activity-dashboard-card-daily"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -165,16 +316,41 @@ function ActivityCard({
   return (
     <button
       type="button"
-      className={classes}
+      className={className}
       disabled={!activity}
+      style={
+        backgroundImage
+          ? {
+              backgroundImage: `
+                linear-gradient(
+                  90deg,
+                  rgba(5, 7, 12, 0.9) 0%,
+                  rgba(5, 7, 12, 0.7) 54%,
+                  rgba(5, 7, 12, 0.42) 100%
+                ),
+                url("${backgroundImage}")
+              `,
+            }
+          : undefined
+      }
     >
       <div className="activity-dashboard-card-top">
         <span className="activity-dashboard-label">
+          {daily && (
+            <span
+              className="daily-rotation-icon"
+              aria-hidden="true"
+            >
+              <span className="daily-rotation-core" />
+            </span>
+          )}
+
           {label}
         </span>
 
         {timer && (
           <span className="activity-dashboard-timer">
+            <AnimatedClock />
             {timer}
           </span>
         )}
@@ -196,11 +372,6 @@ function ActivityCard({
   );
 }
 
-
-/* =========================================================
-   PAGE
-========================================================= */
-
 export default function Activities() {
   const [data, setData] =
     useState<ActivitiesResponse | null>(
@@ -213,23 +384,23 @@ export default function Activities() {
   const [error, setError] =
     useState("");
 
-  /*
-   * Local clock used to animate timers.
-   *
-   * Global rotations still come from the server.
-   * This clock only visually counts them down between
-   * server refreshes.
-   */
   const [clock, setClock] =
     useState(0);
 
-  /*
-   * Exploration Rewards is a player/client timer.
-   * We start with the elapsed value returned by the
-   * backend and increment it locally.
-   */
-  const [exploreElapsed, setExploreElapsed] =
-    useState(0);
+  const [
+    exploreElapsed,
+    setExploreElapsed,
+  ] = useState(0);
+
+  const [
+    travelOpen,
+    setTravelOpen,
+  ] = useState(false);
+
+  const [
+    traveling,
+    setTraveling,
+  ] = useState(false);
 
   const loadedAtRef =
     useRef(Date.now());
@@ -237,19 +408,17 @@ export default function Activities() {
   const refreshingRef =
     useRef(false);
 
-
-  /* =======================================================
-     LOAD ACTIVITIES
-  ======================================================= */
+  const travelRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
   const loadActivities =
     useCallback(
       async (
         showLoading = false,
       ) => {
-        if (
-          refreshingRef.current
-        ) {
+        if (refreshingRef.current) {
           return;
         }
 
@@ -298,7 +467,6 @@ export default function Activities() {
           );
 
           setClock(0);
-
           setError("");
         } catch (err) {
           setError(
@@ -318,82 +486,70 @@ export default function Activities() {
       [],
     );
 
-
   useEffect(() => {
     void loadActivities(true);
   }, [loadActivities]);
 
-
-  /* =======================================================
-     LOCAL DISPLAY CLOCK
-
-     This DOES NOT choose global rotations.
-
-     It only lets the UI count down from the server-provided
-     remainingSeconds values.
-  ======================================================= */
-
   useEffect(() => {
-    const interval =
-      window.setInterval(
-        () => {
-          setClock(
-            Math.floor(
-              (
-                Date.now() -
-                loadedAtRef.current
-              ) / 1000,
-            ),
-          );
-        },
-        1000,
-      );
+    function handleOutsideClick(
+      event: MouseEvent,
+    ) {
+      if (
+        travelRef.current &&
+        !travelRef.current.contains(
+          event.target as Node,
+        )
+      ) {
+        setTravelOpen(false);
+      }
+    }
+
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick,
+    );
 
     return () => {
-      window.clearInterval(
-        interval,
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick,
       );
     };
   }, []);
 
+  useEffect(() => {
+    const interval =
+      window.setInterval(() => {
+        setClock(
+          Math.floor(
+            (
+              Date.now() -
+              loadedAtRef.current
+            ) / 1000,
+          ),
+        );
+      }, 1000);
 
-  /* =======================================================
-     EXPLORATION REWARDS TIMER
-  ======================================================= */
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!data) {
       return;
     }
 
-    const baseElapsed =
-      data.player.explore
-        .elapsedSeconds;
-
-    const maxElapsed =
-      data.player.explore
-        .maxSeconds;
-
     setExploreElapsed(
       Math.min(
-        baseElapsed + clock,
-        maxElapsed,
+        data.player.explore
+          .elapsedSeconds +
+          clock,
+        data.player.explore
+          .maxSeconds,
       ),
     );
-  }, [
-    clock,
-    data,
-  ]);
-
-
-  /* =======================================================
-     GLOBAL ROTATION EXPIRATION
-
-     When NF / GM / Daily reaches zero, reload the server
-     state so the browser receives the NEW global activity.
-
-     The browser never decides which activity comes next.
-  ======================================================= */
+  }, [clock, data]);
 
   useEffect(() => {
     if (!data) {
@@ -401,24 +557,21 @@ export default function Activities() {
     }
 
     const globalTimers = [
-      data.rotation
-        .dailyShowdown
+      data.rotation.dailyShowdown
         .remainingSeconds,
-
-      data.rotation
-        .dailyDungeon
+      data.rotation.dailyDungeon
         .remainingSeconds,
-
-      data.rotation
-        .dailyRaid
+      data.rotation.dailyRaid
         .remainingSeconds,
-
-      data.rotation
-        .nightfall
+      data.rotation.nightfall
         .remainingSeconds,
-
-      data.rotation
-        .grandmaster
+      data.rotation.grandmaster
+        .remainingSeconds,
+      data.rotation.infiltration
+        .remainingSeconds,
+      data.rotation.showdown
+        .remainingSeconds,
+      data.rotation.crawl
         .remainingSeconds,
     ];
 
@@ -437,10 +590,68 @@ export default function Activities() {
     loadActivities,
   ]);
 
+  async function travel(
+    destination: string,
+  ) {
+    if (
+      !data ||
+      traveling ||
+      destination ===
+        data.player.destination
+    ) {
+      setTravelOpen(false);
+      return;
+    }
 
-  /* =======================================================
-     ROTATION TIMER
-  ======================================================= */
+    setTraveling(true);
+    setTravelOpen(false);
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/game/travel",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              destination,
+            }),
+          },
+        );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          zone?: string;
+          error?: string;
+        };
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.error ||
+            "Failed to travel.",
+        );
+      }
+
+      await loadActivities();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to travel.",
+      );
+    } finally {
+      setTraveling(false);
+    }
+  }
 
   function rotationTimer(
     rotation: Rotation,
@@ -454,31 +665,14 @@ export default function Activities() {
     );
   }
 
-
-  /* =======================================================
-     CLAIM
-
-     Reward execution comes next.
-
-     For now the button exists in the correct UI but we do
-     not fake rewards or reset the player's timer from the
-     browser.
-  ======================================================= */
-
   function claimExplorationRewards() {
     /*
-     * The actual /claim replacement will be a server POST.
-     *
-     * We deliberately do not reset the timer here yet,
-     * because rewards and the cooldown reset need to happen
-     * atomically on the server.
+     * The Claim button is intentionally visual for now.
+     * The next backend step should grant the old /claim
+     * rewards and reset the exploration timestamp in one
+     * server-side action.
      */
   }
-
-
-  /* =======================================================
-     LOADING
-  ======================================================= */
 
   if (loading) {
     return (
@@ -494,11 +688,6 @@ export default function Activities() {
     );
   }
 
-
-  /* =======================================================
-     ERROR
-  ======================================================= */
-
   if (error && !data) {
     return (
       <div className="activities-screen">
@@ -513,20 +702,18 @@ export default function Activities() {
     );
   }
 
-
   if (!data) {
     return null;
   }
 
-
-  /* =======================================================
-     EXPLORATION DISPLAY
-  ======================================================= */
+  const destinationBanner =
+    findDestinationImage(
+      data.player.destination,
+    );
 
   const exploreMax =
     data.player.explore
-      .maxSeconds ||
-    EXPLORE_MAX_SECONDS;
+      .maxSeconds;
 
   const explorePercentage =
     Math.min(
@@ -544,11 +731,6 @@ export default function Activities() {
     exploreElapsed >=
     exploreMax;
 
-
-  /* =======================================================
-     PAGE
-  ======================================================= */
-
   return (
     <div className="activities-screen">
       <TopBar />
@@ -556,40 +738,20 @@ export default function Activities() {
       <main className="activities-page">
         <div className="activities-container">
 
-          {/* HEADER */}
-
           <header className="activities-header">
-            <div>
-              <span className="activities-eyebrow">
-                DIRECTOR
-              </span>
+            <span className="activities-eyebrow">
+              DIRECTOR
+            </span>
 
-              <h1>Activities</h1>
+            <h1>Activities</h1>
 
-              <p>
-                Choose an activity to
-                begin.
-              </p>
-            </div>
-
-            <div className="activities-current-destination">
-              <span>
-                Current Destination
-              </span>
-
-              <strong>
-                {
-                  data.player
-                    .destination
-                }
-              </strong>
-            </div>
+            <p>
+              Choose an activity to begin.
+            </p>
           </header>
 
 
-          {/* ===============================
-              DAILY ROTATION
-          =============================== */}
+          {/* DAILY ROTATION */}
 
           <section className="activities-section">
             <div className="activities-section-heading">
@@ -621,7 +783,7 @@ export default function Activities() {
                   data.rotation
                     .dailyShowdown,
                 )}
-                className="activity-card-daily"
+                daily
               />
 
               <ActivityCard
@@ -635,7 +797,7 @@ export default function Activities() {
                   data.rotation
                     .dailyDungeon,
                 )}
-                className="activity-card-daily"
+                daily
               />
 
               <ActivityCard
@@ -649,29 +811,159 @@ export default function Activities() {
                   data.rotation
                     .dailyRaid,
                 )}
-                className="activity-card-daily"
+                backgroundImage={
+                  getActivityBanner(
+                    data.rotation
+                      .dailyRaid
+                      .activity,
+                  )
+                }
+                daily
               />
             </div>
           </section>
 
 
-          {/* ===============================
-              EXPLORATION REWARDS
-          =============================== */}
+          {/* EXPLORATION REWARDS */}
 
-          <section className="exploration-rewards">
+          <section
+            className={[
+              "exploration-rewards",
+              destinationBanner
+                ? "exploration-rewards-banner"
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={
+              destinationBanner
+                ? {
+                    backgroundImage: `
+                      linear-gradient(
+                        90deg,
+                        rgba(5, 8, 14, 0.92) 0%,
+                        rgba(5, 8, 14, 0.7) 52%,
+                        rgba(5, 8, 14, 0.48) 100%
+                      ),
+                      url("${destinationBanner}")
+                    `,
+                  }
+                : undefined
+            }
+          >
+            <div
+              className="exploration-scan"
+              aria-hidden="true"
+            />
+
+            <div
+              className="exploration-particles"
+              aria-hidden="true"
+            >
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+              <i />
+            </div>
+
             <div className="exploration-rewards-main">
               <div className="exploration-rewards-heading">
                 <span className="exploration-rewards-eyebrow">
                   EXPLORATION REWARDS
                 </span>
 
-                <h2>
-                  {
-                    data.player
-                      .destination
-                  }
-                </h2>
+                <div className="exploration-title-row">
+                  <h2>
+                    {
+                      data.player
+                        .destination
+                    }
+                  </h2>
+
+                  <div
+                    className="activity-travel"
+                    ref={travelRef}
+                  >
+                    <button
+                      type="button"
+                      className="activity-travel-button"
+                      disabled={traveling}
+                      aria-expanded={
+                        travelOpen
+                      }
+                      onClick={() =>
+                        setTravelOpen(
+                          (open) =>
+                            !open,
+                        )
+                      }
+                    >
+                      {traveling
+                        ? "TRAVELING..."
+                        : "TRAVEL"}
+
+                      {!traveling && (
+                        <span
+                          className={`activity-travel-arrow ${
+                            travelOpen
+                              ? "open"
+                              : ""
+                          }`}
+                        >
+                          ▼
+                        </span>
+                      )}
+                    </button>
+
+                    {travelOpen && (
+                      <div className="activity-travel-menu">
+                        {DESTINATIONS.map(
+                          (
+                            destination,
+                          ) => {
+                            const active =
+                              destination ===
+                              data.player
+                                .destination;
+
+                            return (
+                              <button
+                                key={
+                                  destination
+                                }
+                                type="button"
+                                className={
+                                  active
+                                    ? "activity-travel-option active"
+                                    : "activity-travel-option"
+                                }
+                                onClick={() =>
+                                  void travel(
+                                    destination,
+                                  )
+                                }
+                              >
+                                <span>
+                                  {
+                                    destination
+                                  }
+                                </span>
+
+                                {active && (
+                                  <small>
+                                    CURRENT
+                                  </small>
+                                )}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <p>
                   Rewards accumulate while
@@ -682,6 +974,8 @@ export default function Activities() {
               </div>
 
               <div className="exploration-rewards-time">
+                <AnimatedClock />
+
                 <strong>
                   {formatExploreTime(
                     exploreElapsed,
@@ -701,16 +995,31 @@ export default function Activities() {
                   width:
                     `${explorePercentage}%`,
                 }}
-              />
+              >
+                <span />
+              </div>
             </div>
 
             <div className="exploration-rewards-footer">
               <div className="exploration-rewards-status">
-                <span>
-                  {exploreCapped
-                    ? "MAXIMUM REWARDS READY"
-                    : "REWARDS ACCUMULATING"}
-                </span>
+                <div>
+                  <span>
+                    {exploreCapped
+                      ? "MAXIMUM REWARDS READY"
+                      : "EXPLORING"}
+                  </span>
+
+                  {!exploreCapped && (
+                    <span
+                      className="exploring-dots"
+                      aria-hidden="true"
+                    >
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                  )}
+                </div>
 
                 <strong>
                   {Math.floor(
@@ -733,9 +1042,7 @@ export default function Activities() {
           </section>
 
 
-          {/* ===============================
-              CORE PLAYLIST
-          =============================== */}
+          {/* VANGUARD */}
 
           <section className="activities-section">
             <div className="activities-section-heading">
@@ -756,7 +1063,11 @@ export default function Activities() {
                 activity={
                   data.current.strike
                 }
-                className="activity-card-strike"
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.current.strike,
+                  )
+                }
               />
 
               <ActivityCard
@@ -770,7 +1081,13 @@ export default function Activities() {
                   data.rotation
                     .nightfall,
                 )}
-                className="activity-card-nightfall"
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.rotation
+                      .nightfall
+                      .activity,
+                  )
+                }
               />
 
               <ActivityCard
@@ -784,27 +1101,36 @@ export default function Activities() {
                   data.rotation
                     .grandmaster,
                 )}
-                className="activity-card-grandmaster"
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.rotation
+                      .grandmaster
+                      .activity,
+                  )
+                }
               />
             </div>
           </section>
 
 
-          {/* ===============================
-              SPECIAL OPERATIONS
-          =============================== */}
+          {/* SPECIAL ACTIVITIES */}
 
           <section className="activities-section">
             <div className="activities-section-heading">
               <div>
                 <span>
-                  OPERATIONS
+                  5 MINUTE ROTATION
                 </span>
 
                 <h2>
                   Special Activities
                 </h2>
               </div>
+
+              <p>
+                Rotates globally every
+                5 minutes
+              </p>
             </div>
 
             <div className="activities-grid activities-grid-three">
@@ -815,7 +1141,17 @@ export default function Activities() {
                     .infiltration
                     .activity
                 }
-                className="activity-card-infiltrate"
+                timer={rotationTimer(
+                  data.rotation
+                    .infiltration,
+                )}
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.rotation
+                      .infiltration
+                      .activity,
+                  )
+                }
               />
 
               <ActivityCard
@@ -825,7 +1161,17 @@ export default function Activities() {
                     .showdown
                     .activity
                 }
-                className="activity-card-showdown"
+                timer={rotationTimer(
+                  data.rotation
+                    .showdown,
+                )}
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.rotation
+                      .showdown
+                      .activity,
+                  )
+                }
               />
 
               <ActivityCard
@@ -835,21 +1181,29 @@ export default function Activities() {
                     .crawl
                     .activity
                 }
-                className="activity-card-crawl"
+                timer={rotationTimer(
+                  data.rotation
+                    .crawl,
+                )}
+                backgroundImage={
+                  getGeneralActivityBanner(
+                    data.rotation
+                      .crawl
+                      .activity,
+                  )
+                }
               />
             </div>
           </section>
 
 
-          {/* ===============================
-              DESTINATION
-          =============================== */}
+          {/* DESTINATION DUNGEON / RAID */}
 
           <section className="activities-section activities-destination-section">
             <div className="activities-section-heading">
               <div>
                 <span>
-                  CURRENT DESTINATION
+                  DESTINATION ACTIVITIES
                 </span>
 
                 <h2>
@@ -859,11 +1213,6 @@ export default function Activities() {
                   }
                 </h2>
               </div>
-
-              <p>
-                Activities available at
-                your current destination
-              </p>
             </div>
 
             <div className="activities-grid activities-grid-two">
@@ -875,7 +1224,6 @@ export default function Activities() {
                 unavailableText={
                   `No Dungeon on ${data.player.destination}`
                 }
-                className="activity-card-dungeon"
               />
 
               <ActivityCard
@@ -886,11 +1234,14 @@ export default function Activities() {
                 unavailableText={
                   `No Raid on ${data.player.destination}`
                 }
-                className="activity-card-raid"
+                backgroundImage={
+                  getActivityBanner(
+                    data.current.raid,
+                  )
+                }
               />
             </div>
           </section>
-
 
           {error && (
             <div className="activities-inline-error">
