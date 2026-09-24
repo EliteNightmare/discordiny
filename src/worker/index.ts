@@ -75,6 +75,9 @@ app.get("/api/", (c) => {
 const TERMINAL_INSTANCE_LIFETIME_SECONDS =
   30;
 
+const TERMINAL_SESSION_LIFETIME_SECONDS =
+  60 * 60;
+
 app.post(
   "/api/terminal/create",
   async (c) => {
@@ -190,13 +193,7 @@ app.post("/api/terminal/connect", async (c) => {
     new Date().toISOString();
 
   /*
-   * Atomically consume the instance.
-   *
-   * The UPDATE only succeeds if:
-   *
-   * - the key exists
-   * - it has not already been consumed
-   * - it has not expired
+   * Consume the one-time instance key.
    */
   const result =
     await c.env.DB
@@ -217,8 +214,8 @@ app.post("/api/terminal/connect", async (c) => {
       .run();
 
   /*
-   * No row changed means the key was
-   * invalid, expired, or already used.
+   * Nothing changed:
+   * invalid, expired, or already consumed.
    */
   if (
     !result.meta.changes ||
@@ -234,8 +231,77 @@ app.post("/api/terminal/connect", async (c) => {
     );
   }
 
+  /*
+   * The instance was successfully consumed.
+   *
+   * Now create a separate terminal session.
+   */
+  const sessionId =
+    `${crypto.randomUUID()}${crypto.randomUUID()}`
+      .replaceAll("-", "");
+
+  const sessionExpiresAt =
+    new Date(
+      Date.now() +
+        TERMINAL_SESSION_LIFETIME_SECONDS *
+          1000,
+    ).toISOString();
+
+  /*
+   * Clean expired terminal sessions.
+   */
+  await c.env.DB
+    .prepare(
+      `DELETE FROM terminal_sessions
+       WHERE expires_at <= ?`,
+    )
+    .bind(now)
+    .run();
+
+  /*
+   * Store the new terminal session.
+   */
+  await c.env.DB
+    .prepare(
+      `INSERT INTO terminal_sessions
+       (
+         session_id,
+         expires_at
+       )
+       VALUES (?, ?)`,
+    )
+    .bind(
+      sessionId,
+      sessionExpiresAt,
+    )
+    .run();
+
+  /*
+   * Give the browser an HttpOnly terminal
+   * session cookie.
+   *
+   * IMPORTANT:
+   * Domain=.discordiny.com allows the
+   * cookie created by the API to also be
+   * available on terminal.discordiny.com.
+   */
+  c.header(
+    "Set-Cookie",
+    [
+      `discordiny_terminal_session=${sessionId}`,
+      "Path=/",
+      "Domain=.discordiny.com",
+      "HttpOnly",
+      "Secure",
+      "SameSite=Lax",
+      `Max-Age=${TERMINAL_SESSION_LIFETIME_SECONDS}`,
+    ].join("; "),
+  );
+
   return c.json({
     success: true,
+    expiresAt:
+      sessionExpiresAt,
   });
 });
 
