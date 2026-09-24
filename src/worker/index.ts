@@ -306,6 +306,113 @@ app.post("/api/terminal/connect", async (c) => {
 });
 
 /* =========================================================
+   TERMINAL - CHECK SESSION
+========================================================= */
+
+app.get("/api/terminal/session", async (c) => {
+  /*
+   * Read the terminal session cookie.
+   */
+  const cookieHeader =
+    c.req.header("Cookie") ?? "";
+
+  const cookies =
+    cookieHeader
+      .split(";")
+      .map((cookie) =>
+        cookie.trim(),
+      );
+
+  const sessionCookie =
+    cookies.find((cookie) =>
+      cookie.startsWith(
+        "discordiny_terminal_session=",
+      ),
+    );
+
+  if (!sessionCookie) {
+    return c.json({
+      authenticated: false,
+    });
+  }
+
+  const sessionId =
+    sessionCookie
+      .slice(
+        "discordiny_terminal_session="
+          .length,
+      )
+      .trim();
+
+  if (!sessionId) {
+    return c.json({
+      authenticated: false,
+    });
+  }
+
+  const now =
+    new Date().toISOString();
+
+  /*
+   * Find an active terminal session.
+   */
+  const session =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           session_id,
+           expires_at
+         FROM terminal_sessions
+         WHERE session_id = ?
+           AND expires_at > ?
+         LIMIT 1`,
+      )
+      .bind(
+        sessionId,
+        now,
+      )
+      .first<{
+        session_id: string;
+        expires_at: string;
+      }>();
+
+  /*
+   * Cookie exists, but its session doesn't.
+   *
+   * It may have expired or otherwise be
+   * invalid.
+   */
+  if (!session) {
+    /*
+     * Remove the invalid cookie from the
+     * browser as well.
+     */
+    c.header(
+      "Set-Cookie",
+      [
+        "discordiny_terminal_session=",
+        "Path=/",
+        "Domain=.discordiny.com",
+        "HttpOnly",
+        "Secure",
+        "SameSite=Lax",
+        "Max-Age=0",
+      ].join("; "),
+    );
+
+    return c.json({
+      authenticated: false,
+    });
+  }
+
+  return c.json({
+    authenticated: true,
+    expiresAt:
+      session.expires_at,
+  });
+});
+
+/* =========================================================
    DISCORD LOGIN
 ========================================================= */
 
