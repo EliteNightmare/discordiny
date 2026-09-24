@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
+
 import TopBar from "../components/TopBar";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
+import VaultMaterials from "../components/arsenal/VaultMaterials";
 import VaultTransition from "../components/arsenal/VaultTransition";
 
 import {
@@ -12,10 +15,62 @@ type VaultCategoryProps = {
   categorySlug: string;
 };
 
+type VaultProfileResponse = {
+  authenticated: boolean;
+  currencies: Record<string, number>;
+  upgradeMaterials: Record<string, number>;
+};
+
 function VaultCategory({
   categorySlug,
 }: VaultCategoryProps) {
   const category = getVaultCategory(categorySlug);
+
+  const [profile, setProfile] =
+    useState<VaultProfileResponse | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  useEffect(() => {
+    async function loadVaultData() {
+      try {
+        const response = await fetch(
+          "/api/game/profile",
+          {
+            credentials: "include",
+          },
+        );
+
+        const result =
+          (await response.json()) as VaultProfileResponse;
+
+        if (
+          !response.ok ||
+          !result.authenticated
+        ) {
+          throw new Error(
+            "You must be logged in to view your Vault.",
+          );
+        }
+
+        setProfile(result);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load Vault.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadVaultData();
+  }, []);
 
   function navigate(path: string) {
     window.location.href = path;
@@ -35,12 +90,49 @@ function VaultCategory({
     );
   }
 
+  if (loading) {
+    return (
+      <div className="vault-category-screen">
+        <TopBar />
+
+        <div className="vault-category-page">
+          <div className="vault-category-error">
+            Loading Vault...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="vault-category-screen">
+        <TopBar />
+
+        <div className="vault-category-page">
+          <div className="vault-category-error">
+            {error || "Failed to load Vault."}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="vault-category-screen">
       <TopBar />
 
       <div className="vault-category-page">
-        <ArsenalLayout left={<div />}>
+        <ArsenalLayout
+          left={
+            <VaultMaterials
+              currencies={profile.currencies}
+              upgradeMaterials={
+                profile.upgradeMaterials
+              }
+            />
+          }
+        >
           <VaultTransition>
             <section className="vault-category-block">
               <button
@@ -63,7 +155,9 @@ function VaultCategory({
                 <div className="vault-category-direct">
                   <span>WEAPON SOURCE</span>
 
-                  <strong>{category.name}</strong>
+                  <strong>
+                    {category.name}
+                  </strong>
 
                   <small>
                     Weapon vault coming next.
