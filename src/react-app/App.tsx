@@ -4,6 +4,7 @@ import Account from "./pages/Account";
 import Activities from "./pages/Activities";
 import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
+import WeaponVault from "./pages/WeaponVault";
 
 function App() {
   const path = window.location.pathname;
@@ -22,6 +23,24 @@ function App() {
 
   if (path === "/vault") {
     return <Vault />;
+  }
+
+  const weaponVaultMatch =
+    path.match(
+      /^\/vault\/([^/]+)\/([^/]+)\/?$/,
+    );
+  
+  if (weaponVaultMatch) {
+    return (
+      <WeaponVault
+        categorySlug={
+          weaponVaultMatch[1]
+        }
+        activitySlug={
+          weaponVaultMatch[2]
+        }
+      />
+    );
   }
 
   const vaultCategoryMatch =
