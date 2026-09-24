@@ -120,7 +120,7 @@ function findWeaponImage(
     normalizeName(weaponName);
 
   const sourceSegment =
-    `/weapons/${source.toLowerCase()}/`;
+    `/icons/weapons/${source.toLowerCase()}/`;
 
   for (
     const [path, imageUrl] of Object.entries(weaponImages)
