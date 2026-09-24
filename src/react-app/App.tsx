@@ -3,6 +3,7 @@ import Profile from "./pages/Profile";
 import Account from "./pages/Account";
 import Activities from "./pages/Activities";
 import Vault from "./pages/Vault";
+import VaultCategory from "./pages/VaultCategory";
 
 function App() {
   const path = window.location.pathname;
@@ -21,6 +22,17 @@ function App() {
 
   if (path === "/vault") {
     return <Vault />;
+  }
+
+  const vaultCategoryMatch =
+    path.match(/^\/vault\/([^/]+)\/?$/);
+  
+  if (vaultCategoryMatch) {
+    return (
+      <VaultCategory
+        categorySlug={vaultCategoryMatch[1]}
+      />
+    );
   }
 
   return <Home />;
