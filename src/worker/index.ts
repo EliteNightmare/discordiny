@@ -3288,6 +3288,7 @@ const EXPLORE_MAX_SECONDS = 60 * 60 * 24;
 const NIGHTFALL_ROTATION_SECONDS = 60 * 10;
 const GM_ROTATION_SECONDS = 60 * 30;
 const DAILY_ROTATION_SECONDS = 60 * 60 * 24;
+const SPECIAL_ACTIVITY_ROTATION_SECONDS = 60 * 5;
 
 function makeActivityEntry(
   id: string,
@@ -3587,21 +3588,21 @@ app.get("/api/game/activities", async (c) => {
   const infiltration =
     getRotatingActivity(
       ACTIVITIES.infiltrations,
-      DAILY_ROTATION_SECONDS,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
       nowSeconds,
     );
 
   const showdown =
     getRotatingActivity(
       ACTIVITIES.showdowns,
-      DAILY_ROTATION_SECONDS,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
       nowSeconds,
     );
 
   const crawl =
     getRotatingActivity(
       ACTIVITIES.crawls,
-      DAILY_ROTATION_SECONDS,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
       nowSeconds,
     );
 
@@ -3767,11 +3768,11 @@ app.get("/api/game/activities", async (c) => {
           infiltration,
 
         intervalSeconds:
-          DAILY_ROTATION_SECONDS,
+          SPECIAL_ACTIVITY_ROTATION_SECONDS,
 
         remainingSeconds:
           getRotationRemaining(
-            DAILY_ROTATION_SECONDS,
+            SPECIAL_ACTIVITY_ROTATION_SECONDS,
             nowSeconds,
           ),
       },
@@ -3781,11 +3782,11 @@ app.get("/api/game/activities", async (c) => {
           showdown,
 
         intervalSeconds:
-          DAILY_ROTATION_SECONDS,
+          SPECIAL_ACTIVITY_ROTATION_SECONDS,
 
         remainingSeconds:
           getRotationRemaining(
-            DAILY_ROTATION_SECONDS,
+            SPECIAL_ACTIVITY_ROTATION_SECONDS,
             nowSeconds,
           ),
       },
@@ -3795,11 +3796,11 @@ app.get("/api/game/activities", async (c) => {
           crawl,
 
         intervalSeconds:
-          DAILY_ROTATION_SECONDS,
+          SPECIAL_ACTIVITY_ROTATION_SECONDS,
 
         remainingSeconds:
           getRotationRemaining(
-            DAILY_ROTATION_SECONDS,
+            SPECIAL_ACTIVITY_ROTATION_SECONDS,
             nowSeconds,
           ),
       },
