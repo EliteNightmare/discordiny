@@ -61,6 +61,9 @@ type ActivityCardProps = {
   timer?: string;
   unavailableText?: string;
   backgroundImage?: string;
+  icon?: string;
+  backgroundPosition?: string;
+  backgroundSize?: string;
   daily?: boolean;
 };
 
@@ -76,15 +79,6 @@ const DESTINATIONS = [
   "Neomuna",
   "Pale Heart",
 ] as const;
-
-const destinationImages = import.meta.glob(
-  "../assets/activitybanners/destinations/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
 
 const generalImages = import.meta.glob(
   "../assets/general/*.png",
@@ -113,17 +107,8 @@ function normalizeAssetName(value: string) {
 
 function findDestinationImage(
   destination: string,
-): string | undefined {
-  const filename =
-    `${normalizeAssetName(destination)}.png`;
-
-  return Object.entries(
-    destinationImages,
-  ).find(([path]) =>
-    path.toLowerCase().endsWith(
-      `/destinations/${filename}`,
-    ),
-  )?.[1];
+): string {
+  return `/destinations/${normalizeAssetName(destination)}.png`;
 }
 
 function findGeneralImage(
@@ -296,6 +281,9 @@ function ActivityCard({
   timer,
   unavailableText = "Unavailable",
   backgroundImage,
+  icon,
+  backgroundPosition,
+  backgroundSize,
   daily = false,
 }: ActivityCardProps) {
   const className = [
@@ -330,6 +318,10 @@ function ActivityCard({
                 ),
                 url("${backgroundImage}")
               `,
+              backgroundPosition:
+                backgroundPosition ?? "center",
+              backgroundSize:
+                backgroundSize ?? "cover",
             }
           : undefined
       }
@@ -357,9 +349,19 @@ function ActivityCard({
       </div>
 
       <div className="activity-dashboard-card-content">
-        <h3>
-          {activity?.name ??
-            unavailableText}
+        <h3 className="activity-dashboard-name">
+          {icon && (
+            <img
+              className="activity-dashboard-name-icon"
+              src={icon}
+              alt=""
+              aria-hidden="true"
+            />
+          )}
+          <span>
+            {activity?.name ??
+              unavailableText}
+          </span>
         </h3>
 
         {activity?.destination && (
@@ -765,9 +767,11 @@ export default function Activities() {
                 </h2>
               </div>
 
-              <p>
-                Rotates globally every
-                24 hours
+              <p className="activities-heading-timer">
+                <AnimatedClock />
+                {rotationTimer(
+                  data.rotation.dailyRaid,
+                )}
               </p>
             </div>
 
@@ -779,10 +783,6 @@ export default function Activities() {
                     .dailyShowdown
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .dailyShowdown,
-                )}
                 daily
               />
 
@@ -793,10 +793,6 @@ export default function Activities() {
                     .dailyDungeon
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .dailyDungeon,
-                )}
                 daily
               />
 
@@ -807,10 +803,6 @@ export default function Activities() {
                     .dailyRaid
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .dailyRaid,
-                )}
                 backgroundImage={
                   getActivityBanner(
                     data.rotation
@@ -818,6 +810,8 @@ export default function Activities() {
                       .activity,
                   )
                 }
+                backgroundPosition="center"
+                backgroundSize="85% auto"
                 daily
               />
             </div>
@@ -1063,9 +1057,9 @@ export default function Activities() {
                 activity={
                   data.current.strike
                 }
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.current.strike,
+                icon={
+                  findGeneralImage(
+                    "strike.png",
                   )
                 }
               />
@@ -1081,11 +1075,9 @@ export default function Activities() {
                   data.rotation
                     .nightfall,
                 )}
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.rotation
-                      .nightfall
-                      .activity,
+                icon={
+                  findGeneralImage(
+                    "nightfall.png",
                   )
                 }
               />
@@ -1101,11 +1093,9 @@ export default function Activities() {
                   data.rotation
                     .grandmaster,
                 )}
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.rotation
-                      .grandmaster
-                      .activity,
+                icon={
+                  findGeneralImage(
+                    "grandmaster.png",
                   )
                 }
               />
@@ -1127,9 +1117,11 @@ export default function Activities() {
                 </h2>
               </div>
 
-              <p>
-                Rotates globally every
-                5 minutes
+              <p className="activities-heading-timer">
+                <AnimatedClock />
+                {rotationTimer(
+                  data.rotation.infiltration,
+                )}
               </p>
             </div>
 
@@ -1141,10 +1133,6 @@ export default function Activities() {
                     .infiltration
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .infiltration,
-                )}
                 backgroundImage={
                   getGeneralActivityBanner(
                     data.rotation
@@ -1161,10 +1149,6 @@ export default function Activities() {
                     .showdown
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .showdown,
-                )}
                 backgroundImage={
                   getGeneralActivityBanner(
                     data.rotation
@@ -1181,10 +1165,6 @@ export default function Activities() {
                     .crawl
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .crawl,
-                )}
                 backgroundImage={
                   getGeneralActivityBanner(
                     data.rotation
