@@ -1008,3 +1008,59 @@
     font-size: 8px;
   }
 }
+/* =========================================================
+   PROFILE ICONS
+========================================================= */
+
+.profile-stat-label {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+.profile-stat-icon {
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
+  object-fit: contain;
+}
+
+.currency-card-label {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.currency-icon {
+  width: 26px;
+  height: 26px;
+
+  flex-shrink: 0;
+
+  object-fit: contain;
+}
+
+/* Slightly larger on desktop */
+@media (min-width: 801px) {
+  .profile-stat-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .currency-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .profile-stat-label {
+    gap: 8px;
+  }
+
+  .currency-card-label {
+    gap: 10px;
+  }
+}
