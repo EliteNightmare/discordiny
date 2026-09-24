@@ -41,7 +41,6 @@ type ProfileResponse = {
 
   power: {
     total: number;
-
     breakdown: {
       weapons: number;
       armor: number;
@@ -131,43 +130,24 @@ function formatNumber(value: number): string {
 }
 
 function Profile() {
-  const [data, setData] =
-    useState<ProfileResponse | null>(null);
-
+  const [data, setData] = useState<ProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const [traveling, setTraveling] =
-    useState(false);
-
-  const [travelOpen, setTravelOpen] =
-    useState(false);
-
+  const [traveling, setTraveling] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
   const [error, setError] = useState("");
 
-  const travelMenuRef =
-    useRef<HTMLDivElement | null>(null);
-
-  /* =======================================================
-     LOAD PROFILE
-  ======================================================= */
+  const travelMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadProfile() {
       try {
-        const response = await fetch(
-          "/api/game/profile",
-          {
-            credentials: "include",
-          },
-        );
+        const response = await fetch("/api/game/profile", {
+          credentials: "include",
+        });
 
-        const result =
-          (await response.json()) as ProfileResponse;
+        const result = (await response.json()) as ProfileResponse;
 
-        if (
-          !response.ok ||
-          !result.authenticated
-        ) {
+        if (!response.ok || !result.authenticated) {
           throw new Error(
             "You must be logged in to view your profile.",
           );
@@ -188,28 +168,17 @@ function Profile() {
     void loadProfile();
   }, []);
 
-  /* =======================================================
-     CLOSE TRAVEL MENU WHEN CLICKING OUTSIDE
-  ======================================================= */
-
   useEffect(() => {
-    function handleOutsideClick(
-      event: MouseEvent,
-    ) {
+    function handleOutsideClick(event: MouseEvent) {
       if (
         travelMenuRef.current &&
-        !travelMenuRef.current.contains(
-          event.target as Node,
-        )
+        !travelMenuRef.current.contains(event.target as Node)
       ) {
         setTravelOpen(false);
       }
     }
 
-    document.addEventListener(
-      "mousedown",
-      handleOutsideClick,
-    );
+    document.addEventListener("mousedown", handleOutsideClick);
 
     return () => {
       document.removeEventListener(
@@ -219,10 +188,6 @@ function Profile() {
     };
   }, []);
 
-  /* =======================================================
-     CURRENT DESTINATION
-  ======================================================= */
-
   const currentDestination = useMemo(() => {
     if (!data) {
       return DESTINATIONS[0];
@@ -231,19 +196,12 @@ function Profile() {
     return (
       DESTINATIONS.find(
         (destination) =>
-          destination.name ===
-          data.profile.zone,
+          destination.name === data.profile.zone,
       ) ?? DESTINATIONS[0]
     );
   }, [data]);
 
-  /* =======================================================
-     TRAVEL
-  ======================================================= */
-
-  async function travel(
-    destination: string,
-  ) {
+  async function travel(destination: string) {
     if (
       !data ||
       traveling ||
@@ -258,37 +216,26 @@ function Profile() {
     setError("");
 
     try {
-      const response = await fetch(
-        "/api/game/travel",
-        {
-          method: "POST",
-          credentials: "include",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            destination,
-          }),
+      const response = await fetch("/api/game/travel", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          destination,
+        }),
+      });
 
-      const result =
-        (await response.json()) as {
-          success?: boolean;
-          zone?: string;
-          error?: string;
-        };
+      const result = (await response.json()) as {
+        success?: boolean;
+        zone?: string;
+        error?: string;
+      };
 
-      if (
-        !response.ok ||
-        !result.success
-      ) {
+      if (!response.ok || !result.success) {
         throw new Error(
-          result.error ||
-            "Failed to travel.",
+          result.error || "Failed to travel.",
         );
       }
 
@@ -299,12 +246,9 @@ function Profile() {
 
         return {
           ...previous,
-
           profile: {
             ...previous.profile,
-            zone:
-              result.zone ??
-              destination,
+            zone: result.zone ?? destination,
           },
         };
       });
@@ -319,10 +263,6 @@ function Profile() {
     }
   }
 
-  /* =======================================================
-     LOADING
-  ======================================================= */
-
   if (loading) {
     return (
       <>
@@ -336,10 +276,6 @@ function Profile() {
       </>
     );
   }
-
-  /* =======================================================
-     ERROR
-  ======================================================= */
 
   if (error && !data) {
     return (
@@ -359,22 +295,13 @@ function Profile() {
     return null;
   }
 
-  /* =======================================================
-     PLAYER
-  ======================================================= */
-
   const displayName =
-    data.user.global_name ||
-    data.user.username;
+    data.user.global_name || data.user.username;
 
   const avatarUrl = getAvatarUrl(
     data.user.discord_id,
     data.user.avatar,
   );
-
-  /* =======================================================
-     PROFILE
-  ======================================================= */
 
   return (
     <div className="profile-screen">
@@ -382,8 +309,7 @@ function Profile() {
 
       <main
         className={`profile-page ${
-          currentDestination.name ===
-          "Plaguelands"
+          currentDestination.name === "Plaguelands"
             ? "profile-page-siva"
             : ""
         }`}
@@ -400,9 +326,7 @@ function Profile() {
         }}
       >
         <div className="profile-container">
-          {/* =================================================
-              PROFILE HEADER
-          ================================================= */}
+          {/* PROFILE HEADER */}
 
           <section className="profile-header">
             <div className="profile-identity">
@@ -414,9 +338,7 @@ function Profile() {
                 />
               ) : (
                 <div className="profile-avatar profile-avatar-placeholder">
-                  {displayName
-                    .charAt(0)
-                    .toUpperCase()}
+                  {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
 
@@ -424,15 +346,8 @@ function Profile() {
                 <h1>{displayName}</h1>
 
                 <div className="profile-title">
-                  Title:{" "}
-                  <span>
-                    Coming Soon
-                  </span>
+                  Title: <span>Coming Soon</span>
                 </div>
-
-                {/* =============================================
-                    DESTINATION
-                ============================================= */}
 
                 <div className="profile-destination">
                   <div className="destination-current">
@@ -453,13 +368,9 @@ function Profile() {
                       className="travel-button"
                       type="button"
                       disabled={traveling}
-                      aria-expanded={
-                        travelOpen
-                      }
+                      aria-expanded={travelOpen}
                       onClick={() => {
-                        setTravelOpen(
-                          (open) => !open,
-                        );
+                        setTravelOpen((open) => !open);
                       }}
                     >
                       {traveling
@@ -469,9 +380,7 @@ function Profile() {
                       {!traveling && (
                         <span
                           className={`travel-arrow ${
-                            travelOpen
-                              ? "open"
-                              : ""
+                            travelOpen ? "open" : ""
                           }`}
                         >
                           ▼
@@ -485,56 +394,43 @@ function Profile() {
                           SELECT DESTINATION
                         </div>
 
-                        {DESTINATIONS.map(
-                          (destination) => {
-                            const active =
-                              destination.name ===
-                              data.profile.zone;
+                        {DESTINATIONS.map((destination) => {
+                          const active =
+                            destination.name ===
+                            data.profile.zone;
 
-                            return (
-                              <button
-                                key={
-                                  destination.name
-                                }
-                                type="button"
-                                className={[
-                                  "travel-destination",
+                          return (
+                            <button
+                              key={destination.name}
+                              type="button"
+                              className={[
+                                "travel-destination",
+                                active
+                                  ? "travel-destination-active"
+                                  : "",
+                                "siva" in destination &&
+                                destination.siva
+                                  ? "travel-destination-siva"
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              onClick={() => {
+                                void travel(destination.name);
+                              }}
+                            >
+                              <span>
+                                {destination.name}
+                              </span>
 
-                                  active
-                                    ? "travel-destination-active"
-                                    : "",
-
-                                  "siva" in
-                                    destination &&
-                                  destination.siva
-                                    ? "travel-destination-siva"
-                                    : "",
-                                ]
-                                  .filter(
-                                    Boolean,
-                                  )
-                                  .join(" ")}
-                                onClick={() => {
-                                  void travel(
-                                    destination.name,
-                                  );
-                                }}
-                              >
-                                <span>
-                                  {
-                                    destination.name
-                                  }
+                              {active && (
+                                <span className="destination-active-label">
+                                  CURRENT
                                 </span>
-
-                                {active && (
-                                  <span className="destination-active-label">
-                                    CURRENT
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          },
-                        )}
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -542,17 +438,17 @@ function Profile() {
               </div>
             </div>
 
-            {/* =============================================
-                WEAPONS
-            ============================================= */}
+            {/* WEAPONS */}
 
             <div className="profile-weapons">
-              <div className="profile-stat-label">
-                <img
-                  src={weaponIcon}
-                  alt=""
-                  className="profile-stat-icon"
-                />
+              <div className="profile-stat-label profile-weapons-label">
+                <span className="weapon-icon-frame">
+                  <img
+                    src={weaponIcon}
+                    alt=""
+                    className="weapon-profile-icon"
+                  />
+                </span>
 
                 <span className="profile-label">
                   Weapons
@@ -560,8 +456,7 @@ function Profile() {
               </div>
 
               <strong>
-                {data.weapons.owned} /{" "}
-                {data.weapons.total}
+                {data.weapons.owned} / {data.weapons.total}
               </strong>
             </div>
           </section>
@@ -572,9 +467,7 @@ function Profile() {
             </div>
           )}
 
-          {/* =================================================
-              CURRENCIES
-          ================================================= */}
+          {/* CURRENCIES */}
 
           <section className="profile-block">
             <div className="profile-block-header">
@@ -582,8 +475,6 @@ function Profile() {
             </div>
 
             <div className="currency-grid">
-              {/* GLIMMER */}
-
               <div className="currency-card">
                 <div className="currency-card-label">
                   <img
@@ -599,14 +490,10 @@ function Profile() {
 
                 <strong>
                   {formatNumber(
-                    data.currencies[
-                      "Glimmer"
-                    ] ?? 0,
+                    data.currencies["Glimmer"] ?? 0,
                   )}
                 </strong>
               </div>
-
-              {/* LUMIA LEAVES */}
 
               <div className="currency-card">
                 <div className="currency-card-label">
@@ -623,48 +510,39 @@ function Profile() {
 
                 <strong>
                   {formatNumber(
-                    data.currencies[
-                      "Lumia Leaves"
-                    ] ?? 0,
+                    data.currencies["Lumia Leaves"] ?? 0,
                   )}
                 </strong>
               </div>
             </div>
           </section>
 
-          {/* =================================================
-              LEVEL PROGRESS
-          ================================================= */}
+          {/* LEVEL PROGRESS */}
 
           <section className="profile-block level-block">
             <div className="profile-block-header">
-              <div>
-                <h2>
-                  Level Progress
-                </h2>
-
-                <p>
-                  Fireteam Level{" "}
-                  {data.level.current}
-                </p>
-              </div>
-
-              <div className="level-number">
-                <div className="profile-stat-label">
+              <div className="profile-block-title-with-icon">
+                <div className="profile-feature-icon">
                   <img
                     src={levelIcon}
                     alt=""
-                    className="profile-stat-icon"
                   />
-
-                  <span>
-                    Level
-                  </span>
                 </div>
+
+                <div>
+                  <h2>Level Progress</h2>
+
+                  <p>
+                    Fireteam Level {data.level.current}
+                  </p>
+                </div>
+              </div>
+
+              <div className="level-number">
+                <span>Level</span>
 
                 <strong>
                   {data.level.current}
-
                   <small>
                     {" "}
                     / {data.level.max}
@@ -673,9 +551,7 @@ function Profile() {
               </div>
             </div>
 
-            {/* =============================================
-                XP PROGRESS
-            ============================================= */}
+            {/* XP */}
 
             <div className="xp-section">
               <div className="xp-header">
@@ -692,14 +568,8 @@ function Profile() {
                 </div>
 
                 <span>
-                  {formatNumber(
-                    data.level.currentXp,
-                  )}{" "}
-                  /{" "}
-                  {formatNumber(
-                    data.level.nextXp,
-                  )}{" "}
-                  XP
+                  {formatNumber(data.level.currentXp)} /{" "}
+                  {formatNumber(data.level.nextXp)} XP
                 </span>
               </div>
 
@@ -714,140 +584,103 @@ function Profile() {
 
               <div className="xp-footer">
                 <span>
-                  {formatNumber(
-                    data.level.currentXp,
-                  )}{" "}
-                  XP
+                  {formatNumber(data.level.currentXp)} XP
                 </span>
 
                 <span>
-                  {
-                    data.level
-                      .percentage
-                  }
-                  %
+                  {data.level.percentage}%
                 </span>
               </div>
             </div>
 
             <div className="level-stats">
               <div className="level-stat">
-                <span>
-                  Total XP
-                </span>
+                <span>Total XP</span>
 
                 <strong>
-                  {formatNumber(
-                    data.level.totalXp,
-                  )}
+                  {formatNumber(data.level.totalXp)}
                 </strong>
               </div>
 
               <div className="level-stat">
-                <span>
-                  Next Level
-                </span>
+                <span>Next Level</span>
 
                 <strong>
-                  {data.level.current >=
-                  data.level.max
+                  {data.level.current >= data.level.max
                     ? "MAX"
-                    : formatNumber(
-                        data.level
-                          .nextXp,
-                      )}
+                    : formatNumber(data.level.nextXp)}
                 </strong>
               </div>
             </div>
           </section>
 
-          {/* =================================================
-              POWER BREAKDOWN
-          ================================================= */}
+          {/* POWER BREAKDOWN */}
 
           <section className="profile-block power-block">
             <div className="profile-block-header">
-              <div>
-                <h2>
-                  Power Breakdown
-                </h2>
-
-                <p>
-                  Your total character
-                  Power
-                </p>
-              </div>
-
-              <div className="total-power">
-                <div className="profile-stat-label">
+              <div className="profile-block-title-with-icon">
+                <div className="profile-feature-icon">
                   <img
                     src={powerIcon}
                     alt=""
-                    className="profile-stat-icon"
                   />
-
-                  <span>
-                    Total Power
-                  </span>
                 </div>
 
+                <div>
+                  <h2>Power Breakdown</h2>
+
+                  <p>
+                    Your total character Power
+                  </p>
+                </div>
+              </div>
+
+              <div className="total-power">
+                <span>Total Power</span>
+
                 <strong>
-                  {formatNumber(
-                    data.power.total,
-                  )}
+                  {formatNumber(data.power.total)}
                 </strong>
               </div>
             </div>
 
             <div className="power-grid">
               <div className="power-card">
-                <span>
-                  Weapons Power
-                </span>
+                <span>Weapons Power</span>
 
                 <strong>
                   {formatNumber(
-                    data.power.breakdown
-                      .weapons,
+                    data.power.breakdown.weapons,
                   )}
                 </strong>
               </div>
 
               <div className="power-card">
-                <span>
-                  Armor Power
-                </span>
+                <span>Armor Power</span>
 
                 <strong>
                   {formatNumber(
-                    data.power.breakdown
-                      .armor,
+                    data.power.breakdown.armor,
                   )}
                 </strong>
               </div>
 
               <div className="power-card">
-                <span>
-                  Artifact Power
-                </span>
+                <span>Artifact Power</span>
 
                 <strong>
                   {formatNumber(
-                    data.power.breakdown
-                      .artifacts,
+                    data.power.breakdown.artifacts,
                   )}
                 </strong>
               </div>
 
               <div className="power-card">
-                <span>
-                  Level Power
-                </span>
+                <span>Level Power</span>
 
                 <strong>
                   {formatNumber(
-                    data.power.breakdown
-                      .level,
+                    data.power.breakdown.level,
                   )}
                 </strong>
               </div>
