@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import "./TopBar.css";
 
@@ -14,29 +18,81 @@ type User = {
 };
 
 export default function TopBar() {
-  const [user, setUser] = useState<User | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [user, setUser] =
+    useState<User | null>(null);
 
-  const [arsenalMenuOpen, setArsenalMenuOpen] = useState(false);
-  const [newsMenuOpen, setNewsMenuOpen] = useState(false);
+  const [
+    mobileMenuOpen,
+    setMobileMenuOpen,
+  ] = useState(false);
 
-  const arsenalRef = useRef<HTMLDivElement | null>(null);
-  const newsRef = useRef<HTMLDivElement | null>(null);
+  const [
+    accountMenuOpen,
+    setAccountMenuOpen,
+  ] = useState(false);
 
+  /*
+   * Desktop dropdown state.
+   */
+  const [
+    arsenalMenuOpen,
+    setArsenalMenuOpen,
+  ] = useState(false);
+
+  const [
+    newsMenuOpen,
+    setNewsMenuOpen,
+  ] = useState(false);
+
+  /*
+   * Mobile dropdown state.
+   *
+   * Keep this separate from the desktop
+   * dropdowns so touch interactions cannot
+   * interfere with the desktop menu state.
+   */
+  const [
+    mobileArsenalOpen,
+    setMobileArsenalOpen,
+  ] = useState(false);
+
+  const [
+    mobileNewsOpen,
+    setMobileNewsOpen,
+  ] = useState(false);
+
+  const arsenalRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  const newsRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  /*
+   * Load authenticated Discord user.
+   */
   useEffect(() => {
     async function loadUser() {
       try {
-        const response = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
+        const response =
+          await fetch(
+            "/api/auth/me",
+            {
+              credentials:
+                "include",
+            },
+          );
 
         if (!response.ok) {
           setUser(null);
           return;
         }
 
-        const data = await response.json();
+        const data =
+          await response.json();
 
         if (data.authenticated) {
           setUser(data.user);
@@ -46,74 +102,111 @@ export default function TopBar() {
       } catch (error) {
         console.error(
           "Failed to load authenticated user:",
-          error
+          error,
         );
 
         setUser(null);
       }
     }
 
-    loadUser();
+    void loadUser();
   }, []);
 
+  /*
+   * Desktop dropdown outside-click handling.
+   */
   useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      const target = event.target as Node;
+    function handleOutsideClick(
+      event: MouseEvent,
+    ) {
+      const target =
+        event.target as Node;
 
       if (
         arsenalRef.current &&
-        !arsenalRef.current.contains(target)
+        !arsenalRef.current.contains(
+          target,
+        )
       ) {
-        setArsenalMenuOpen(false);
+        setArsenalMenuOpen(
+          false,
+        );
       }
 
       if (
         newsRef.current &&
-        !newsRef.current.contains(target)
+        !newsRef.current.contains(
+          target,
+        )
       ) {
-        setNewsMenuOpen(false);
+        setNewsMenuOpen(
+          false,
+        );
       }
     }
 
     document.addEventListener(
       "mousedown",
-      handleOutsideClick
+      handleOutsideClick,
     );
 
     return () => {
       document.removeEventListener(
         "mousedown",
-        handleOutsideClick
+        handleOutsideClick,
       );
     };
   }, []);
 
-  function goTo(path: string) {
+  function goTo(
+    path: string,
+  ) {
     setArsenalMenuOpen(false);
     setNewsMenuOpen(false);
+
+    setMobileArsenalOpen(false);
+    setMobileNewsOpen(false);
     setMobileMenuOpen(false);
 
-    window.location.href = path;
+    window.location.href =
+      path;
   }
 
   function goToProfile() {
-    goTo("/profile");
+    goTo(
+      "/profile",
+    );
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+    setMobileArsenalOpen(false);
+    setMobileNewsOpen(false);
   }
 
   function handleAccountClick() {
     if (!user) {
-      window.location.href = "/api/auth/login";
+      window.location.href =
+        "/api/auth/login";
+
       return;
     }
 
-    setAccountMenuOpen(!accountMenuOpen);
+    setAccountMenuOpen(
+      !accountMenuOpen,
+    );
+
     setMobileMenuOpen(false);
+    setMobileArsenalOpen(false);
+    setMobileNewsOpen(false);
+
     setArsenalMenuOpen(false);
     setNewsMenuOpen(false);
   }
 
   function handleLogout() {
-    window.location.href = "/api/auth/logout";
+    window.location.href =
+      "/api/auth/logout";
   }
 
   function getAvatarUrl() {
@@ -122,12 +215,6 @@ export default function TopBar() {
     }
 
     return `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.avatar}.png?size=128`;
-  }
-
-  function closeMobileMenu() {
-    setMobileMenuOpen(false);
-    setArsenalMenuOpen(false);
-    setNewsMenuOpen(false);
   }
 
   const displayName =
@@ -142,7 +229,9 @@ export default function TopBar() {
           className="logo-button"
           type="button"
           aria-label="Go to homepage"
-          onClick={() => goTo("/")}
+          onClick={() =>
+            goTo("/")
+          }
         >
           <img
             src={logo}
@@ -151,44 +240,68 @@ export default function TopBar() {
           />
         </button>
 
-        {/* Desktop navigation */}
+        {/* =========================
+            DESKTOP NAVIGATION
+        ========================== */}
+
         <nav className="main-navigation">
           <button
             type="button"
-            onClick={goToProfile}
+            onClick={
+              goToProfile
+            }
           >
             Profile
           </button>
 
           {/* Arsenal */}
+
           <div
-            ref={arsenalRef}
+            ref={
+              arsenalRef
+            }
             className="topbar-dropdown"
             onMouseEnter={() => {
-              setArsenalMenuOpen(true);
-              setNewsMenuOpen(false);
+              setArsenalMenuOpen(
+                true,
+              );
+
+              setNewsMenuOpen(
+                false,
+              );
             }}
             onMouseLeave={() => {
-              setArsenalMenuOpen(false);
+              setArsenalMenuOpen(
+                false,
+              );
             }}
           >
             <button
               type="button"
               className="topbar-dropdown-trigger"
               aria-haspopup="menu"
-              aria-expanded={arsenalMenuOpen}
+              aria-expanded={
+                arsenalMenuOpen
+              }
               onClick={() => {
                 setArsenalMenuOpen(
-                  !arsenalMenuOpen
+                  !arsenalMenuOpen,
                 );
-                setNewsMenuOpen(false);
+
+                setNewsMenuOpen(
+                  false,
+                );
               }}
             >
-              <span>Arsenal</span>
+              <span>
+                Arsenal
+              </span>
 
               <span
                 className={`topbar-dropdown-arrow ${
-                  arsenalMenuOpen ? "open" : ""
+                  arsenalMenuOpen
+                    ? "open"
+                    : ""
                 }`}
               >
                 ▼
@@ -203,7 +316,11 @@ export default function TopBar() {
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => goTo("/vault")}
+                  onClick={() =>
+                    goTo(
+                      "/vault",
+                    )
+                  }
                 >
                   Vault
                 </button>
@@ -211,7 +328,11 @@ export default function TopBar() {
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => goTo("/armory")}
+                  onClick={() =>
+                    goTo(
+                      "/armory",
+                    )
+                  }
                 >
                   Armory
                 </button>
@@ -220,7 +341,9 @@ export default function TopBar() {
                   type="button"
                   role="menuitem"
                   onClick={() =>
-                    goTo("/artifacts")
+                    goTo(
+                      "/artifacts",
+                    )
                   }
                 >
                   Artifacts
@@ -231,48 +354,75 @@ export default function TopBar() {
 
           <button
             type="button"
-            onClick={() => goTo("/activities")}
+            onClick={() =>
+              goTo(
+                "/activities",
+              )
+            }
           >
             Activities
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Triumphs
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Events
           </button>
 
           {/* NEWS */}
+
           <div
-            ref={newsRef}
+            ref={
+              newsRef
+            }
             className="topbar-dropdown"
             onMouseEnter={() => {
-              setNewsMenuOpen(true);
-              setArsenalMenuOpen(false);
+              setNewsMenuOpen(
+                true,
+              );
+
+              setArsenalMenuOpen(
+                false,
+              );
             }}
             onMouseLeave={() => {
-              setNewsMenuOpen(false);
+              setNewsMenuOpen(
+                false,
+              );
             }}
           >
             <button
               type="button"
               className="topbar-dropdown-trigger"
               aria-haspopup="menu"
-              aria-expanded={newsMenuOpen}
+              aria-expanded={
+                newsMenuOpen
+              }
               onClick={() => {
                 setNewsMenuOpen(
-                  !newsMenuOpen
+                  !newsMenuOpen,
                 );
-                setArsenalMenuOpen(false);
+
+                setArsenalMenuOpen(
+                  false,
+                );
               }}
             >
-              <span>NEWS</span>
+              <span>
+                NEWS
+              </span>
 
               <span
                 className={`topbar-dropdown-arrow ${
-                  newsMenuOpen ? "open" : ""
+                  newsMenuOpen
+                    ? "open"
+                    : ""
                 }`}
               >
                 ▼
@@ -288,7 +438,9 @@ export default function TopBar() {
                   type="button"
                   role="menuitem"
                   onClick={() =>
-                    goTo("/updates")
+                    goTo(
+                      "/updates",
+                    )
                   }
                 >
                   Updates
@@ -298,7 +450,9 @@ export default function TopBar() {
                   type="button"
                   role="menuitem"
                   onClick={() =>
-                    goTo("/patchnotes")
+                    goTo(
+                      "/patchnotes",
+                    )
                   }
                 >
                   Patchnotes
@@ -307,7 +461,11 @@ export default function TopBar() {
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => goTo("/about")}
+                  onClick={() =>
+                    goTo(
+                      "/about",
+                    )
+                  }
                 >
                   About
                 </button>
@@ -317,27 +475,54 @@ export default function TopBar() {
         </nav>
       </div>
 
-      {/* Mobile navigation */}
+      {/* =========================
+          MOBILE NAVIGATION
+      ========================== */}
+
       <div className="mobile-navigation">
         <button
           className="mobile-navigation-button"
           type="button"
           aria-label="Open navigation menu"
-          aria-expanded={mobileMenuOpen}
+          aria-expanded={
+            mobileMenuOpen
+          }
           onClick={() => {
+            const nextOpen =
+              !mobileMenuOpen;
+
             setMobileMenuOpen(
-              !mobileMenuOpen
+              nextOpen,
             );
-            setAccountMenuOpen(false);
-            setArsenalMenuOpen(false);
-            setNewsMenuOpen(false);
+
+            setAccountMenuOpen(
+              false,
+            );
+
+            /*
+             * Reset submenus whenever the
+             * entire mobile menu closes.
+             */
+            if (!nextOpen) {
+              setMobileArsenalOpen(
+                false,
+              );
+
+              setMobileNewsOpen(
+                false,
+              );
+            }
           }}
         >
-          <span>Menu</span>
+          <span>
+            Menu
+          </span>
 
           <span
             className={`mobile-navigation-arrow ${
-              mobileMenuOpen ? "open" : ""
+              mobileMenuOpen
+                ? "open"
+                : ""
             }`}
           >
             ▼
@@ -346,149 +531,191 @@ export default function TopBar() {
 
         {mobileMenuOpen && (
           <nav className="mobile-navigation-menu">
-            <button
-              type="button"
-              onClick={() => {
-                closeMobileMenu();
-                goToProfile();
-              }}
+            <a
+              href="/profile"
+              className="mobile-navigation-link"
+              onClick={
+                closeMobileMenu
+              }
             >
               Profile
-            </button>
+            </a>
 
             {/* Mobile Arsenal */}
+
             <button
               type="button"
               className="mobile-submenu-trigger"
+              aria-expanded={
+                mobileArsenalOpen
+              }
               onClick={() => {
-                setArsenalMenuOpen(
-                  !arsenalMenuOpen
+                setMobileArsenalOpen(
+                  !mobileArsenalOpen,
                 );
-                setNewsMenuOpen(false);
+
+                setMobileNewsOpen(
+                  false,
+                );
               }}
             >
-              <span>Arsenal</span>
+              <span>
+                Arsenal
+              </span>
 
               <span
                 className={`mobile-submenu-arrow ${
-                  arsenalMenuOpen ? "open" : ""
+                  mobileArsenalOpen
+                    ? "open"
+                    : ""
                 }`}
               >
                 ▼
               </span>
             </button>
 
-            {arsenalMenuOpen && (
+            {mobileArsenalOpen && (
               <div className="mobile-submenu">
-                <button
-                  type="button"
-                  onClick={() => goTo("/vault")}
+                <a
+                  href="/vault"
+                  onClick={
+                    closeMobileMenu
+                  }
                 >
                   Vault
-                </button>
+                </a>
 
-                <button
-                  type="button"
-                  onClick={() => goTo("/armory")}
+                <a
+                  href="/armory"
+                  onClick={
+                    closeMobileMenu
+                  }
                 >
                   Armory
-                </button>
+                </a>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    goTo("/artifacts")
+                <a
+                  href="/artifacts"
+                  onClick={
+                    closeMobileMenu
                   }
                 >
                   Artifacts
-                </button>
+                </a>
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => goTo("/activities")}
+            <a
+              href="/activities"
+              className="mobile-navigation-link"
+              onClick={
+                closeMobileMenu
+              }
             >
               Activities
-            </button>
+            </a>
 
             <button
               type="button"
-              onClick={closeMobileMenu}
+              onClick={
+                closeMobileMenu
+              }
             >
               Triumphs
             </button>
 
             <button
               type="button"
-              onClick={closeMobileMenu}
+              onClick={
+                closeMobileMenu
+              }
             >
               Events
             </button>
 
             {/* Mobile NEWS */}
+
             <button
               type="button"
               className="mobile-submenu-trigger"
+              aria-expanded={
+                mobileNewsOpen
+              }
               onClick={() => {
-                setNewsMenuOpen(
-                  !newsMenuOpen
+                setMobileNewsOpen(
+                  !mobileNewsOpen,
                 );
-                setArsenalMenuOpen(false);
+
+                setMobileArsenalOpen(
+                  false,
+                );
               }}
             >
-              <span>NEWS</span>
+              <span>
+                NEWS
+              </span>
 
               <span
                 className={`mobile-submenu-arrow ${
-                  newsMenuOpen ? "open" : ""
+                  mobileNewsOpen
+                    ? "open"
+                    : ""
                 }`}
               >
                 ▼
               </span>
             </button>
 
-            {newsMenuOpen && (
+            {mobileNewsOpen && (
               <div className="mobile-submenu">
-                <button
-                  type="button"
-                  onClick={() =>
-                    goTo("/updates")
+                <a
+                  href="/updates"
+                  onClick={
+                    closeMobileMenu
                   }
                 >
                   Updates
-                </button>
+                </a>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    goTo("/patchnotes")
+                <a
+                  href="/patchnotes"
+                  onClick={
+                    closeMobileMenu
                   }
                 >
                   Patchnotes
-                </button>
+                </a>
 
-                <button
-                  type="button"
-                  onClick={() => goTo("/about")}
+                <a
+                  href="/about"
+                  onClick={
+                    closeMobileMenu
+                  }
                 >
                   About
-                </button>
+                </a>
               </div>
             )}
           </nav>
         )}
       </div>
 
-      {/* Account */}
+      {/* =========================
+          ACCOUNT
+      ========================== */}
+
       <div className="account-container">
         <button
           className="account-button"
           type="button"
-          onClick={handleAccountClick}
+          onClick={
+            handleAccountClick
+          }
         >
           <img
-            src={getAvatarUrl()}
+            src={
+              getAvatarUrl()
+            }
             alt={
               user
                 ? `${displayName}'s Discord avatar`
@@ -497,51 +724,63 @@ export default function TopBar() {
           />
 
           <span>
-            {user ? displayName : "Account"}
+            {user
+              ? displayName
+              : "Account"}
           </span>
         </button>
 
-        {user && accountMenuOpen && (
-          <div className="account-menu">
-            <div className="account-menu-user">
-              <img
-                src={getAvatarUrl()}
-                alt=""
-              />
+        {user &&
+          accountMenuOpen && (
+            <div className="account-menu">
+              <div className="account-menu-user">
+                <img
+                  src={
+                    getAvatarUrl()
+                  }
+                  alt=""
+                />
 
-              <div>
-                <strong>
-                  {displayName}
-                </strong>
+                <div>
+                  <strong>
+                    {
+                      displayName
+                    }
+                  </strong>
 
-                <span>
-                  @{user.username}
-                </span>
+                  <span>
+                    @{user.username}
+                  </span>
+                </div>
               </div>
+
+              <div className="account-menu-divider" />
+
+              <button
+                type="button"
+                className="account-menu-profile"
+                onClick={() => {
+                  setAccountMenuOpen(
+                    false,
+                  );
+
+                  goToProfile();
+                }}
+              >
+                Profile
+              </button>
+
+              <button
+                type="button"
+                className="account-menu-logout"
+                onClick={
+                  handleLogout
+                }
+              >
+                Log Out
+              </button>
             </div>
-
-            <div className="account-menu-divider" />
-
-            <button
-              type="button"
-              className="account-menu-profile"
-              onClick={() => {
-                setAccountMenuOpen(false);
-                goToProfile();
-              }}
-            >
-              Profile
-            </button>
-
-            <button
-              type="button"
-              className="account-menu-logout"
-              onClick={handleLogout}
-            >
-              Log Out
-            </button>
-          </div>
-        )}
+          )}
       </div>
     </header>
   );
