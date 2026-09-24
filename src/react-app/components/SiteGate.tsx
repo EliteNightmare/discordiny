@@ -207,18 +207,6 @@ function CountdownPage() {
             </span>
           </div>
         </div>
-
-        <p className="site-gate-date">
-          {new Date(
-            COUNTDOWN_TARGET,
-          ).toLocaleString(
-            undefined,
-            {
-              dateStyle: "long",
-              timeStyle: "short",
-            },
-          )}
-        </p>
       </section>
     </main>
   );
