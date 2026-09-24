@@ -802,3 +802,209 @@
       repeat(2, minmax(0, 1fr));
   }
 }
+/* =========================================================
+   DESKTOP PROFILE READABILITY
+   Slightly larger cards/text on PC only
+========================================================= */
+
+@media (min-width: 801px) {
+  .profile-container {
+    width: min(1120px, 100%);
+  }
+
+  /* Main player header */
+
+  .profile-header {
+    padding: 21px 24px;
+    gap: 22px;
+  }
+
+  .profile-avatar {
+    width: 72px;
+    height: 72px;
+
+    flex-basis: 72px;
+  }
+
+  .profile-identity {
+    gap: 17px;
+  }
+
+  .profile-name-section h1 {
+    font-size: 26px;
+  }
+
+  .profile-title {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .profile-destination {
+    margin-top: 11px;
+  }
+
+  .destination-current strong {
+    font-size: 14px;
+  }
+
+  .profile-label {
+    font-size: 10px;
+  }
+
+  .travel-button {
+    min-height: 32px;
+
+    padding: 7px 12px;
+
+    font-size: 10px;
+  }
+
+  .profile-weapons {
+    min-width: 120px;
+
+    padding: 12px 15px;
+  }
+
+  .profile-weapons strong {
+    font-size: 19px;
+  }
+
+  /* Main blocks */
+
+  .profile-block {
+    margin-top: 14px;
+
+    padding: 19px 21px;
+  }
+
+  .profile-block-header {
+    margin-bottom: 14px;
+  }
+
+  .profile-block-header h2 {
+    font-size: 18px;
+  }
+
+  .profile-block-header p {
+    font-size: 12px;
+  }
+
+  /* Currencies */
+
+  .currency-grid {
+    gap: 11px;
+  }
+
+  .currency-card {
+    padding: 13px 15px;
+  }
+
+  .currency-name {
+    font-size: 12px;
+  }
+
+  .currency-card strong {
+    font-size: 16px;
+  }
+
+  /* Level */
+
+  .level-number span {
+    font-size: 9px;
+  }
+
+  .level-number strong {
+    font-size: 23px;
+  }
+
+  .level-number small {
+    font-size: 11px;
+  }
+
+  .xp-section {
+    padding: 14px 16px;
+  }
+
+  .xp-header,
+  .xp-footer {
+    font-size: 11px;
+  }
+
+  .xp-bar {
+    height: 8px;
+  }
+
+  .level-stats {
+    gap: 11px;
+
+    margin-top: 11px;
+  }
+
+  .level-stat {
+    padding: 12px 14px;
+  }
+
+  .level-stat span {
+    font-size: 10px;
+  }
+
+  .level-stat strong {
+    font-size: 16px;
+  }
+
+  /* Power */
+
+  .total-power span {
+    font-size: 9px;
+  }
+
+  .total-power strong {
+    font-size: 25px;
+  }
+
+  .power-grid {
+    gap: 11px;
+  }
+
+  .power-card {
+    min-height: 68px;
+
+    padding: 13px 14px;
+  }
+
+  .power-card span {
+    margin-bottom: 8px;
+
+    font-size: 10px;
+  }
+
+  .power-card strong {
+    font-size: 19px;
+  }
+
+  /* Travel dropdown */
+
+  .travel-dropdown {
+    width: 235px;
+  }
+
+  .travel-dropdown-title {
+    padding: 8px 10px 9px;
+
+    font-size: 9px;
+  }
+
+  .travel-destination {
+    padding: 9px 10px;
+
+    font-size: 12px;
+  }
+
+  .travel-destination:hover {
+    padding-left: 13px;
+  }
+
+  .destination-active-label {
+    font-size: 8px;
+  }
+}
