@@ -153,6 +153,93 @@ app.post(
 );
 
 /* =========================================================
+   TERMINAL - CONNECT TO INSTANCE
+========================================================= */
+
+app.post("/api/terminal/connect", async (c) => {
+  let body: {
+    instanceKey?: string;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        success: false,
+        error: "Invalid request.",
+      },
+      400,
+    );
+  }
+
+  const instanceKey =
+    body.instanceKey?.trim();
+
+  if (!instanceKey) {
+    return c.json(
+      {
+        success: false,
+        error: "Missing instance key.",
+      },
+      400,
+    );
+  }
+
+  const now =
+    new Date().toISOString();
+
+  /*
+   * Atomically consume the instance.
+   *
+   * The UPDATE only succeeds if:
+   *
+   * - the key exists
+   * - it has not already been consumed
+   * - it has not expired
+   */
+  const result =
+    await c.env.DB
+      .prepare(
+        `UPDATE terminal_instances
+         SET
+           consumed = 1,
+           consumed_at = ?
+         WHERE instance_key = ?
+           AND consumed = 0
+           AND expires_at > ?`,
+      )
+      .bind(
+        now,
+        instanceKey,
+        now,
+      )
+      .run();
+
+  /*
+   * No row changed means the key was
+   * invalid, expired, or already used.
+   */
+  if (
+    !result.meta.changes ||
+    result.meta.changes !== 1
+  ) {
+    return c.json(
+      {
+        success: false,
+        error:
+          "Terminal instance invalid or expired.",
+      },
+      403,
+    );
+  }
+
+  return c.json({
+    success: true,
+  });
+});
+
+/* =========================================================
    DISCORD LOGIN
 ========================================================= */
 
