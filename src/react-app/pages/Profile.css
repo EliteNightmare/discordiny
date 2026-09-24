@@ -1,47 +1,65 @@
 .profile-screen {
   min-height: 100vh;
+  background: #070a10;
 }
 
-.profile-page {
-  min-height: calc(100vh - 72px);
-  padding: 32px 20px 60px;
+/* =========================
+   PAGE
+   ========================= */
 
-  background-position: center top;
+.profile-page {
+  min-height: 100vh;
+
+  /*
+   * Space for the shared fixed TopBar.
+   * This prevents the profile header from sitting behind it.
+   */
+  padding: 92px 18px 32px;
+
+  background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
   background-attachment: fixed;
 
   transition: background-image 350ms ease;
+
+  box-sizing: border-box;
 }
 
 .profile-page-static {
   background: #070a10;
 }
 
-.profile-page-siva {
-  background-blend-mode: normal;
-}
-
 .profile-container {
-  width: min(1100px, 100%);
+  width: min(1050px, 100%);
   margin: 0 auto;
+
+  /*
+   * IMPORTANT:
+   * Don't clip the Travel dropdown.
+   */
+  overflow: visible;
 }
 
-/* Loading / Error */
+/* =========================
+   LOADING / ERROR
+   ========================= */
 
 .profile-loading,
 .profile-error {
-  width: min(700px, 100%);
-  margin: 80px auto;
-  padding: 32px;
+  width: min(650px, 100%);
+  margin: 30px auto;
+  padding: 22px;
 
   text-align: center;
 
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+  border-radius: 12px;
 
-  background: rgba(5, 8, 15, 0.78);
+  background: rgba(5, 8, 15, 0.8);
+
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .profile-error {
@@ -49,33 +67,39 @@
 }
 
 .travel-error {
-  margin-top: 14px;
-  padding: 12px 16px;
+  margin-top: 10px;
+  padding: 9px 12px;
 
   border: 1px solid rgba(255, 70, 70, 0.25);
-  border-radius: 10px;
+  border-radius: 8px;
 
   background: rgba(110, 15, 15, 0.4);
 
   color: #ff9999;
-  font-size: 13px;
+  font-size: 12px;
 }
 
-/* Shared Blocks */
+/* =========================
+   SHARED BLOCKS
+   ========================= */
 
 .profile-block {
-  margin-top: 20px;
-  padding: 24px;
+  position: relative;
+
+  margin-top: 12px;
+  padding: 16px 18px;
 
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 16px;
+  border-radius: 12px;
 
   background: rgba(5, 8, 15, 0.72);
 
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  box-sizing: border-box;
 }
 
 .profile-block-header {
@@ -83,72 +107,84 @@
   align-items: center;
   justify-content: space-between;
 
-  gap: 20px;
-  margin-bottom: 22px;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .profile-block-header h2 {
   margin: 0;
 
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .profile-block-header p {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
 
-  font-size: 13px;
-  opacity: 0.55;
+  font-size: 11px;
+  opacity: 0.5;
 }
 
 .profile-label {
   display: block;
 
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
 
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 
   opacity: 0.5;
 }
 
-/* Profile Header */
+/* =========================
+   PROFILE HEADER
+   ========================= */
 
 .profile-header {
+  /*
+   * Do NOT use overflow:hidden here.
+   * Travel dropdown needs to escape this block.
+   */
+  position: relative;
+  z-index: 20;
+  overflow: visible;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  gap: 24px;
-  padding: 28px;
+  gap: 18px;
+  padding: 18px 20px;
 
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
+  border-radius: 13px;
 
-  background: rgba(5, 8, 15, 0.68);
+  background: rgba(5, 8, 15, 0.7);
 
-  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  box-sizing: border-box;
 }
 
 .profile-identity {
   display: flex;
   align-items: center;
 
-  gap: 20px;
+  gap: 14px;
   min-width: 0;
 }
 
 .profile-avatar {
-  width: 86px;
-  height: 86px;
+  width: 64px;
+  height: 64px;
 
-  flex: 0 0 86px;
+  flex: 0 0 64px;
 
   border: 2px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
@@ -163,7 +199,7 @@
 
   background: rgba(255, 255, 255, 0.08);
 
-  font-size: 32px;
+  font-size: 24px;
   font-weight: 700;
 }
 
@@ -174,23 +210,26 @@
 .profile-name-section h1 {
   margin: 0;
 
-  font-size: 30px;
-  line-height: 1.1;
+  font-size: 23px;
+  line-height: 1.05;
+
   font-weight: 800;
 }
 
 .profile-title {
-  margin-top: 8px;
+  margin-top: 5px;
 
-  font-size: 14px;
-  opacity: 0.75;
+  font-size: 11px;
+  opacity: 0.7;
 }
 
 .profile-title span {
   opacity: 0.5;
 }
 
-/* Destination */
+/* =========================
+   DESTINATION
+   ========================= */
 
 .profile-destination {
   position: relative;
@@ -198,19 +237,32 @@
   display: flex;
   align-items: flex-end;
 
-  gap: 12px;
-  margin-top: 14px;
+  gap: 9px;
+  margin-top: 9px;
+
+  overflow: visible;
+}
+
+.destination-current {
+  min-width: 100px;
 }
 
 .destination-current strong {
   display: block;
-  font-size: 15px;
+
+  font-size: 13px;
+  line-height: 1.2;
 }
 
-/* Travel */
+/* =========================
+   TRAVEL BUTTON
+   ========================= */
 
 .travel-control {
   position: relative;
+  z-index: 100;
+
+  overflow: visible;
 }
 
 .travel-button {
@@ -218,41 +270,45 @@
   align-items: center;
   justify-content: center;
 
-  gap: 8px;
+  gap: 6px;
 
-  padding: 9px 14px;
+  min-height: 30px;
+  padding: 6px 10px;
 
-  border: 1px solid rgba(255, 255, 255, 0.17);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
 
   background: rgba(255, 255, 255, 0.08);
   color: inherit;
 
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 9px;
   font-weight: 800;
 
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 
   cursor: pointer;
 
   transition:
-    background 150ms ease,
-    border-color 150ms ease;
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .travel-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.27);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 .travel-button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: wait;
 }
 
 .travel-arrow {
-  font-size: 8px;
-  opacity: 0.6;
+  display: inline-block;
+
+  font-size: 6px;
+  opacity: 0.55;
 
   transition: transform 150ms ease;
 }
@@ -261,43 +317,63 @@
   transform: rotate(180deg);
 }
 
-/* Travel Dropdown */
+/* =========================
+   TRAVEL DROPDOWN
+   ========================= */
 
 .travel-dropdown {
   position: absolute;
-  z-index: 50;
+  z-index: 9999;
 
-  top: calc(100% + 8px);
+  top: calc(100% + 7px);
   left: 0;
 
-  width: 235px;
+  width: 215px;
 
-  overflow: hidden;
+  padding: 5px;
 
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: 10px;
+  /*
+   * The dropdown itself may scroll if a small
+   * viewport cannot display all destinations.
+   */
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
 
-  background: rgba(8, 10, 15, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 9px;
+
+  background: rgba(7, 9, 14, 0.98);
 
   box-shadow:
-    0 16px 45px rgba(0, 0, 0, 0.55);
+    0 18px 50px rgba(0, 0, 0, 0.65);
 
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
+
+  /*
+   * Force the same font as the rest of Discordiny.
+   */
+  font-family: inherit;
+
+  box-sizing: border-box;
 }
 
 .travel-dropdown-title {
-  padding: 11px 14px;
+  padding: 7px 9px 8px;
 
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
-  font-size: 10px;
+  font-family: inherit;
+  font-size: 8px;
   font-weight: 800;
 
-  letter-spacing: 0.12em;
+  letter-spacing: 0.13em;
 
-  opacity: 0.45;
+  opacity: 0.42;
 }
+
+/* Destination rows */
 
 .travel-destination {
   width: 100%;
@@ -306,23 +382,35 @@
   align-items: center;
   justify-content: space-between;
 
-  padding: 11px 14px;
+  gap: 10px;
+
+  padding: 8px 9px;
 
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
 
   background: transparent;
   color: inherit;
 
-  text-align: left;
+  /*
+   * Browser buttons otherwise sometimes use
+   * their own system font.
+   */
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
 
-  font-size: 13px;
+  line-height: 1.2;
+  text-align: left;
 
   cursor: pointer;
 
+  box-sizing: border-box;
+
   transition:
-    background 120ms ease,
-    padding-left 120ms ease;
+    background 100ms ease,
+    padding-left 100ms ease;
 }
 
 .travel-destination:last-child {
@@ -330,44 +418,52 @@
 }
 
 .travel-destination:hover {
-  padding-left: 18px;
+  padding-left: 12px;
 
   background: rgba(255, 255, 255, 0.07);
 }
 
 .travel-destination-active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.09);
+
   font-weight: 700;
 }
 
 .destination-active-label {
-  font-size: 8px;
+  flex-shrink: 0;
+
+  font-family: inherit;
+  font-size: 7px;
   font-weight: 800;
 
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
 
   opacity: 0.45;
 }
 
-/* SIVA / Plaguelands */
+/* =========================
+   SIVA / PLAGUELANDS
+   ========================= */
 
 .travel-destination-siva {
-  color: #ff7676;
+  color: #ff7777;
 
   background:
     linear-gradient(
       90deg,
-      rgba(120, 0, 10, 0.42),
-      rgba(55, 0, 5, 0.2)
+      rgba(135, 0, 12, 0.46),
+      rgba(65, 0, 7, 0.18)
     );
 }
 
 .travel-destination-siva:hover {
+  color: #ff9999;
+
   background:
     linear-gradient(
       90deg,
-      rgba(170, 0, 15, 0.55),
-      rgba(70, 0, 8, 0.3)
+      rgba(180, 0, 16, 0.58),
+      rgba(80, 0, 9, 0.27)
     );
 }
 
@@ -375,19 +471,36 @@
   background:
     linear-gradient(
       90deg,
-      rgba(190, 0, 15, 0.6),
-      rgba(75, 0, 8, 0.35)
+      rgba(195, 0, 18, 0.65),
+      rgba(85, 0, 9, 0.32)
     );
 }
 
-/* Weapons */
+/* Scrollbar */
+
+.travel-dropdown::-webkit-scrollbar {
+  width: 5px;
+}
+
+.travel-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.travel-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+/* =========================
+   WEAPONS
+   ========================= */
 
 .profile-weapons {
-  min-width: 120px;
+  min-width: 105px;
 
-  padding: 14px 18px;
+  padding: 10px 13px;
 
-  border-radius: 12px;
+  border-radius: 9px;
 
   background: rgba(255, 255, 255, 0.045);
 
@@ -396,10 +509,13 @@
 
 .profile-weapons strong {
   display: block;
-  font-size: 20px;
+
+  font-size: 17px;
 }
 
-/* Currencies */
+/* =========================
+   CURRENCIES
+   ========================= */
 
 .currency-grid {
   display: grid;
@@ -407,7 +523,7 @@
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  gap: 14px;
+  gap: 9px;
 }
 
 .currency-card {
@@ -415,24 +531,26 @@
   align-items: center;
   justify-content: space-between;
 
-  gap: 16px;
-  padding: 18px;
+  gap: 12px;
+  padding: 11px 13px;
 
-  border-radius: 12px;
+  border-radius: 8px;
 
   background: rgba(255, 255, 255, 0.035);
 }
 
 .currency-name {
-  font-size: 14px;
-  opacity: 0.7;
+  font-size: 11px;
+  opacity: 0.68;
 }
 
 .currency-card strong {
-  font-size: 18px;
+  font-size: 14px;
 }
 
-/* Level */
+/* =========================
+   LEVEL
+   ========================= */
 
 .level-number {
   text-align: right;
@@ -441,9 +559,9 @@
 .level-number span {
   display: block;
 
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 
-  font-size: 11px;
+  font-size: 8px;
 
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -452,19 +570,20 @@
 }
 
 .level-number strong {
-  font-size: 26px;
+  font-size: 20px;
 }
 
 .level-number small {
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 500;
+
   opacity: 0.45;
 }
 
 .xp-section {
-  padding: 20px;
+  padding: 12px 14px;
 
-  border-radius: 12px;
+  border-radius: 8px;
 
   background: rgba(255, 255, 255, 0.035);
 }
@@ -474,13 +593,13 @@
   display: flex;
   justify-content: space-between;
 
-  gap: 16px;
+  gap: 12px;
 
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .xp-header {
-  margin-bottom: 10px;
+  margin-bottom: 7px;
 }
 
 .xp-header span:first-child {
@@ -494,7 +613,7 @@
 
 .xp-bar {
   width: 100%;
-  height: 10px;
+  height: 7px;
 
   overflow: hidden;
 
@@ -514,7 +633,7 @@
 }
 
 .xp-footer {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .level-stats {
@@ -523,15 +642,15 @@
   grid-template-columns:
     repeat(2, minmax(0, 1fr));
 
-  gap: 14px;
+  gap: 9px;
 
-  margin-top: 14px;
+  margin-top: 9px;
 }
 
 .level-stat {
-  padding: 16px;
+  padding: 10px 12px;
 
-  border-radius: 12px;
+  border-radius: 8px;
 
   background: rgba(255, 255, 255, 0.035);
 }
@@ -539,18 +658,20 @@
 .level-stat span {
   display: block;
 
-  margin-bottom: 6px;
+  margin-bottom: 3px;
 
-  font-size: 12px;
+  font-size: 9px;
 
   opacity: 0.5;
 }
 
 .level-stat strong {
-  font-size: 18px;
+  font-size: 14px;
 }
 
-/* Power */
+/* =========================
+   POWER
+   ========================= */
 
 .total-power {
   text-align: right;
@@ -559,9 +680,9 @@
 .total-power span {
   display: block;
 
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 
-  font-size: 11px;
+  font-size: 8px;
 
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -570,7 +691,7 @@
 }
 
 .total-power strong {
-  font-size: 30px;
+  font-size: 22px;
   line-height: 1;
 }
 
@@ -580,15 +701,15 @@
   grid-template-columns:
     repeat(4, minmax(0, 1fr));
 
-  gap: 14px;
+  gap: 9px;
 }
 
 .power-card {
-  min-height: 90px;
+  min-height: 60px;
 
-  padding: 18px;
+  padding: 11px 12px;
 
-  border-radius: 12px;
+  border-radius: 8px;
 
   background: rgba(255, 255, 255, 0.035);
 }
@@ -596,31 +717,29 @@
 .power-card span {
   display: block;
 
-  margin-bottom: 12px;
+  margin-bottom: 7px;
 
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 9px;
+  line-height: 1.2;
 
-  opacity: 0.55;
+  opacity: 0.52;
 }
 
 .power-card strong {
-  font-size: 23px;
+  font-size: 17px;
 }
 
-/* Responsive */
+/* =========================
+   RESPONSIVE
+   ========================= */
 
 @media (max-width: 800px) {
-  .profile-header {
-    align-items: flex-start;
-    flex-direction: column;
+  .profile-page {
+    padding-top: 86px;
   }
 
-  .profile-weapons {
-    width: 100%;
-    box-sizing: border-box;
-
-    text-align: left;
+  .profile-header {
+    align-items: flex-start;
   }
 
   .power-grid {
@@ -631,51 +750,55 @@
 
 @media (max-width: 560px) {
   .profile-page {
-    padding: 20px 14px 40px;
+    padding:
+      80px 12px
+      24px;
 
     background-attachment: scroll;
   }
 
-  .profile-header,
-  .profile-block {
-    padding: 18px;
+  .profile-header {
+    align-items: flex-start;
+    flex-direction: column;
+
+    padding: 14px;
   }
 
-  .profile-identity {
-    align-items: flex-start;
+  .profile-block {
+    padding: 14px;
   }
 
   .profile-avatar {
-    width: 68px;
-    height: 68px;
-    flex-basis: 68px;
+    width: 54px;
+    height: 54px;
+
+    flex-basis: 54px;
   }
 
   .profile-name-section h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
 
-  .profile-destination {
-    align-items: flex-start;
-    flex-direction: column;
+  .profile-weapons {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    text-align: left;
   }
 
   .travel-dropdown {
-    left: 0;
-    width: 220px;
+    width: 205px;
   }
 
   .currency-grid,
-  .level-stats,
+  .level-stats {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
   .power-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .profile-block-header {
-    align-items: flex-start;
-  }
-
-  .total-power strong {
-    font-size: 24px;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
   }
 }
