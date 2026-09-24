@@ -359,40 +359,37 @@ function Profile() {
                           SELECT DESTINATION
                         </div>
 
-                        {DESTINATIONS.map((destination) => {
-                          const active =
-                            destination.name === data.profile.zone;
-
-                          return (
-                            <button
-                              key={destination.name}
-                              type="button"
-                              className={[
-                                "travel-destination",
-                                active
-                                  ? "travel-destination-active"
-                                  : "",
-                                "siva" in destination &&
-                                destination.siva
-                                  ? "travel-destination-siva"
-                                  : "",
-                              ]
-                                .filter(Boolean)
-                                .join(" ")}
-                              onClick={() => {
-                                void travel(destination.name);
-                              }}
-                            >
-                              <span>{destination.name}</span>
-
-                              {active && (
-                                <span className="destination-active-label">
-                                  CURRENT
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                          {DESTINATIONS.map((destination) => {
+                            const active =
+                              destination.name === data.profile.zone;
+                          
+                            return (
+                              <button
+                                key={destination.name}
+                                type="button"
+                                className={[
+                                  "travel-destination",
+                                  active ? "travel-destination-active" : "",
+                                  "siva" in destination && destination.siva
+                                    ? "travel-destination-siva"
+                                    : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")}
+                                onClick={() => {
+                                  void travel(destination.name);
+                                }}
+                              >
+                                <span>{destination.name}</span>
+                          
+                                {active && (
+                                  <span className="destination-active-label">
+                                    CURRENT
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
