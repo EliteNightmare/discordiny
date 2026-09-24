@@ -1,433 +1,271 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+
 import "./TopBar.css";
 
-type AuthResponse = {
-  authenticated: boolean;
-  user?: {
-    id: number;
-    discord_id: string;
-    username: string;
-    global_name: string | null;
-    avatar: string | null;
-  };
+import logo from "../assets/discordinylogo.png";
+import discordIcon from "../assets/discord_icon.png";
+
+type User = {
+  id: number;
+  discord_id: string;
+  username: string;
+  global_name: string | null;
+  avatar: string | null;
 };
 
-function getAvatarUrl(
-  discordId: string,
-  avatar: string | null,
-): string | null {
-  if (!avatar) {
-    return null;
-  }
-
-  return `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png?size=64`;
-}
-
-function navigate(path: string) {
-  window.location.href = path;
-}
-
-function TopBar() {
-  const [auth, setAuth] = useState<AuthResponse | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [arsenalOpen, setArsenalOpen] = useState(false);
-
-  const arsenalRef = useRef<HTMLDivElement | null>(null);
-
-  const currentPath = window.location.pathname;
+export default function TopBar() {
+  const [user, setUser] = useState<User | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
-    async function loadAuth() {
+    async function loadUser() {
       try {
         const response = await fetch("/api/auth/me", {
           credentials: "include",
         });
 
-        const data = (await response.json()) as AuthResponse;
+        if (!response.ok) {
+          setUser(null);
+          return;
+        }
 
-        setAuth(data);
-      } catch {
-        setAuth({
-          authenticated: false,
-        });
+        const data = await response.json();
+
+        if (data.authenticated) {
+          setUser(data.user);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error(
+          "Failed to load authenticated user:",
+          error
+        );
+
+        setUser(null);
       }
     }
 
-    void loadAuth();
+    loadUser();
   }, []);
 
-  useEffect(() => {
-    function handleOutsideClick(event: MouseEvent) {
-      if (
-        arsenalRef.current &&
-        !arsenalRef.current.contains(event.target as Node)
-      ) {
-        setArsenalOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleOutsideClick);
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleOutsideClick,
-      );
-    };
-  }, []);
-
-  function goTo(path: string) {
-    setMobileOpen(false);
-    setArsenalOpen(false);
-    navigate(path);
+  function goToProfile() {
+    window.location.href = "/profile";
   }
 
-  const arsenalActive =
-    currentPath === "/vault" ||
-    currentPath === "/armory" ||
-    currentPath === "/artifacts";
+  function handleAccountClick() {
+    if (!user) {
+      window.location.href = "/api/auth/login";
+      return;
+    }
+
+    setAccountMenuOpen(!accountMenuOpen);
+    setMobileMenuOpen(false);
+  }
+
+  function handleLogout() {
+    window.location.href = "/api/auth/logout";
+  }
+
+  function getAvatarUrl() {
+    if (!user?.avatar) {
+      return discordIcon;
+    }
+
+    return `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.avatar}.png?size=128`;
+  }
+
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+  }
 
   const displayName =
-    auth?.user?.global_name ||
-    auth?.user?.username ||
+    user?.global_name ||
+    user?.username ||
     "Account";
-
-  const avatarUrl =
-    auth?.user
-      ? getAvatarUrl(
-          auth.user.discord_id,
-          auth.user.avatar,
-        )
-      : null;
 
   return (
     <header className="top-bar">
-      {/* =========================
-          LEFT / LOGO
-          ========================= */}
-
       <div className="top-bar-left">
         <button
+          className="logo-button"
           type="button"
-          className="top-bar-logo"
-          onClick={() => goTo("/")}
-          aria-label="Discordiny Home"
         >
-          DISCORDINY
-        </button>
-      </div>
-
-      {/* =========================
-          DESKTOP NAVIGATION
-          ========================= */}
-
-      <nav className="main-navigation">
-        <button
-          type="button"
-          className={
-            currentPath === "/"
-              ? "nav-button nav-button-active"
-              : "nav-button"
-          }
-          onClick={() => goTo("/")}
-        >
-          Home
+          <img
+            src={logo}
+            alt="Discordiny"
+            className="discordiny-logo"
+          />
         </button>
 
-        <button
-          type="button"
-          className={
-            currentPath === "/profile"
-              ? "nav-button nav-button-active"
-              : "nav-button"
-          }
-          onClick={() => goTo("/profile")}
-        >
-          Profile
-        </button>
-
-        <button
-          type="button"
-          className={
-            currentPath === "/activities"
-              ? "nav-button nav-button-active"
-              : "nav-button"
-          }
-          onClick={() => goTo("/activities")}
-        >
-          Activities
-        </button>
-
-        {/* =========================
-            ARSENAL
-            ========================= */}
-
-        <div
-          ref={arsenalRef}
-          className="arsenal-nav"
-          onMouseEnter={() => setArsenalOpen(true)}
-          onMouseLeave={() => setArsenalOpen(false)}
-        >
+        {/* Desktop navigation */}
+        <nav className="main-navigation">
           <button
             type="button"
-            className={
-              arsenalActive
-                ? "nav-button arsenal-trigger nav-button-active"
-                : "nav-button arsenal-trigger"
-            }
-            aria-expanded={arsenalOpen}
-            aria-haspopup="menu"
-            onClick={() => {
-              setArsenalOpen((open) => !open);
-            }}
-          >
-            <span>Arsenal</span>
-
-            <span
-              className={
-                arsenalOpen
-                  ? "arsenal-chevron arsenal-chevron-open"
-                  : "arsenal-chevron"
-              }
-            >
-              ▼
-            </span>
-          </button>
-
-          {arsenalOpen && (
-            <div
-              className="arsenal-dropdown"
-              role="menu"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                className={
-                  currentPath === "/vault"
-                    ? "arsenal-dropdown-item arsenal-dropdown-item-active"
-                    : "arsenal-dropdown-item"
-                }
-                onClick={() => goTo("/vault")}
-              >
-                <span className="arsenal-item-title">
-                  Vault
-                </span>
-
-                <span className="arsenal-item-description">
-                  Weapons & equipment
-                </span>
-              </button>
-
-              <button
-                type="button"
-                role="menuitem"
-                className={
-                  currentPath === "/armory"
-                    ? "arsenal-dropdown-item arsenal-dropdown-item-active"
-                    : "arsenal-dropdown-item"
-                }
-                onClick={() => goTo("/armory")}
-              >
-                <span className="arsenal-item-title">
-                  Armory
-                </span>
-
-                <span className="arsenal-item-description">
-                  Armor collection
-                </span>
-              </button>
-
-              <button
-                type="button"
-                role="menuitem"
-                className={
-                  currentPath === "/artifacts"
-                    ? "arsenal-dropdown-item arsenal-dropdown-item-active"
-                    : "arsenal-dropdown-item"
-                }
-                onClick={() => goTo("/artifacts")}
-              >
-                <span className="arsenal-item-title">
-                  Artifacts
-                </span>
-
-                <span className="arsenal-item-description">
-                  Artifact collection
-                </span>
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* =========================
-          RIGHT / ACCOUNT
-          ========================= */}
-
-      <div className="top-bar-right">
-        {auth?.authenticated && auth.user ? (
-          <button
-            type="button"
-            className="account-button"
-            onClick={() => goTo("/account")}
-          >
-            {avatarUrl ? (
-              <img
-                className="account-avatar"
-                src={avatarUrl}
-                alt=""
-              />
-            ) : (
-              <span className="account-avatar-fallback">
-                {displayName.charAt(0).toUpperCase()}
-              </span>
-            )}
-
-            <span className="account-name">
-              {displayName}
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="login-button"
-            onClick={() => {
-              window.location.href =
-                "/api/auth/login";
-            }}
-          >
-            Login
-          </button>
-        )}
-
-        <button
-          type="button"
-          className={
-            mobileOpen
-              ? "mobile-menu-button mobile-menu-button-open"
-              : "mobile-menu-button"
-          }
-          aria-label="Toggle navigation"
-          aria-expanded={mobileOpen}
-          onClick={() => {
-            setMobileOpen((open) => !open);
-            setArsenalOpen(false);
-          }}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-      </div>
-
-      {/* =========================
-          MOBILE MENU
-          ========================= */}
-
-      {mobileOpen && (
-        <div className="mobile-navigation">
-          <button
-            type="button"
-            className={
-              currentPath === "/"
-                ? "mobile-nav-item mobile-nav-item-active"
-                : "mobile-nav-item"
-            }
-            onClick={() => goTo("/")}
-          >
-            Home
-          </button>
-
-          <button
-            type="button"
-            className={
-              currentPath === "/profile"
-                ? "mobile-nav-item mobile-nav-item-active"
-                : "mobile-nav-item"
-            }
-            onClick={() => goTo("/profile")}
+            onClick={goToProfile}
           >
             Profile
           </button>
 
-          <button
-            type="button"
-            className={
-              currentPath === "/activities"
-                ? "mobile-nav-item mobile-nav-item-active"
-                : "mobile-nav-item"
-            }
-            onClick={() => goTo("/activities")}
-          >
+          <button type="button">
+            Inventories
+          </button>
+
+          <button type="button">
             Activities
           </button>
 
-          <div className="mobile-arsenal">
+          <button type="button">
+            Triumphs
+          </button>
+
+          <button type="button">
+            Events
+          </button>
+
+          <button type="button">
+            About
+          </button>
+        </nav>
+      </div>
+
+      {/* Mobile navigation */}
+      <div className="mobile-navigation">
+        <button
+          className="mobile-navigation-button"
+          type="button"
+          aria-label="Open navigation menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => {
+            setMobileMenuOpen(!mobileMenuOpen);
+            setAccountMenuOpen(false);
+          }}
+        >
+          <span>Menu</span>
+
+          <span
+            className={`mobile-navigation-arrow ${
+              mobileMenuOpen ? "open" : ""
+            }`}
+          >
+            ▼
+          </span>
+        </button>
+
+        {mobileMenuOpen && (
+          <nav className="mobile-navigation-menu">
             <button
               type="button"
-              className={
-                arsenalActive
-                  ? "mobile-nav-item mobile-arsenal-trigger mobile-nav-item-active"
-                  : "mobile-nav-item mobile-arsenal-trigger"
-              }
               onClick={() => {
-                setArsenalOpen((open) => !open);
+                closeMobileMenu();
+                goToProfile();
               }}
             >
-              <span>Arsenal</span>
-
-              <span
-                className={
-                  arsenalOpen
-                    ? "arsenal-chevron arsenal-chevron-open"
-                    : "arsenal-chevron"
-                }
-              >
-                ▼
-              </span>
+              Profile
             </button>
 
-            {arsenalOpen && (
-              <div className="mobile-arsenal-menu">
-                <button
-                  type="button"
-                  onClick={() => goTo("/vault")}
-                >
-                  Vault
-                </button>
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Inventories
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => goTo("/armory")}
-                >
-                  Armory
-                </button>
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Activities
+            </button>
 
-                <button
-                  type="button"
-                  onClick={() => goTo("/artifacts")}
-                >
-                  Artifacts
-                </button>
-              </div>
-            )}
-          </div>
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Triumphs
+            </button>
 
-          <button
-            type="button"
-            className={
-              currentPath === "/account"
-                ? "mobile-nav-item mobile-nav-item-active"
-                : "mobile-nav-item"
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              Events
+            </button>
+
+            <button
+              type="button"
+              onClick={closeMobileMenu}
+            >
+              About
+            </button>
+          </nav>
+        )}
+      </div>
+
+      {/* Account */}
+      <div className="account-container">
+        <button
+          className="account-button"
+          type="button"
+          onClick={handleAccountClick}
+        >
+          <img
+            src={getAvatarUrl()}
+            alt={
+              user
+                ? `${displayName}'s Discord avatar`
+                : "Discord account"
             }
-            onClick={() => goTo("/account")}
-          >
-            Account
-          </button>
-        </div>
-      )}
+          />
+
+          <span>
+            {user ? displayName : "Account"}
+          </span>
+        </button>
+
+        {user && accountMenuOpen && (
+          <div className="account-menu">
+            <div className="account-menu-user">
+              <img
+                src={getAvatarUrl()}
+                alt=""
+              />
+
+              <div>
+                <strong>
+                  {displayName}
+                </strong>
+
+                <span>
+                  @{user.username}
+                </span>
+              </div>
+            </div>
+
+            <div className="account-menu-divider" />
+
+            <button
+              type="button"
+              className="account-menu-profile"
+              onClick={() => {
+                setAccountMenuOpen(false);
+                goToProfile();
+              }}
+            >
+              Profile
+            </button>
+
+            <button
+              type="button"
+              className="account-menu-logout"
+              onClick={handleLogout}
+            >
+              Log Out
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 }
-
-export default TopBar;
