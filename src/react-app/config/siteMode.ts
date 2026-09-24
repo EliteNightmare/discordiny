@@ -4,7 +4,7 @@ export type SiteMode =
   | "countdown";
 
 export const SITE_MODE: SiteMode =
-  "maintenance";
+  "countdown";
 
 /*
  * Only used when SITE_MODE is "countdown".
@@ -21,4 +21,4 @@ export const SITE_MODE: SiteMode =
  * "2026-12-01T20:00:00+01:00"
  */
 export const COUNTDOWN_TARGET =
-  "2026-10-01T20:00:00+02:00";
+  "2026-10-31T20:00:00+02:00";
