@@ -51,6 +51,10 @@
   height: auto;
 }
 
+/* =========================================================
+   DESKTOP NAVIGATION
+========================================================= */
+
 .main-navigation {
   display: flex;
   align-items: center;
@@ -60,7 +64,8 @@
   height: 100%;
 }
 
-.main-navigation button {
+.main-navigation > button,
+.topbar-dropdown > button {
   height: 40px;
 
   padding: 0 14px;
@@ -84,10 +89,131 @@
     color 0.15s ease;
 }
 
-.main-navigation button:hover {
+.main-navigation > button:hover,
+.topbar-dropdown > button:hover {
   color: white;
   background: rgba(255, 255, 255, 0.08);
 }
+
+/* =========================================================
+   DESKTOP DROPDOWNS
+========================================================= */
+
+.topbar-dropdown {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  height: 100%;
+}
+
+.topbar-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+}
+
+.topbar-dropdown-arrow {
+  display: inline-block;
+
+  font-size: 0.55rem;
+  opacity: 0.55;
+
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.topbar-dropdown-trigger:hover
+  .topbar-dropdown-arrow {
+  opacity: 1;
+}
+
+.topbar-dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.topbar-dropdown-menu {
+  position: absolute;
+
+  top: calc(100% - 8px);
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  min-width: 170px;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 6px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+
+  background: rgba(15, 15, 20, 0.97);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.35);
+
+  backdrop-filter: blur(12px);
+
+  z-index: 300;
+}
+
+/*
+ * Invisible bridge between the navigation button
+ * and its dropdown so hover doesn't close while
+ * moving the mouse downward.
+ */
+.topbar-dropdown-menu::before {
+  content: "";
+
+  position: absolute;
+
+  top: -10px;
+  left: 0;
+
+  width: 100%;
+  height: 10px;
+}
+
+.topbar-dropdown-menu button {
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: 0;
+  border-radius: 7px;
+
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.topbar-dropdown-menu button:hover {
+  color: white;
+
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* =========================================================
+   ACCOUNT BUTTON
+========================================================= */
 
 .account-button {
   display: flex;
@@ -133,7 +259,9 @@
 
 .account-button span {
   max-width: 140px;
+
   overflow: hidden;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -161,7 +289,9 @@
 
   .mobile-navigation {
     position: absolute;
+
     left: 50%;
+
     transform: translateX(-50%);
 
     display: flex;
@@ -172,6 +302,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
     gap: 7px;
 
     min-width: 100px;
@@ -194,6 +325,7 @@
 
   .mobile-navigation-arrow {
     font-size: 0.65rem;
+
     transition: transform 0.15s ease;
   }
 
@@ -203,12 +335,16 @@
 
   .mobile-navigation-menu {
     position: absolute;
+
     top: 48px;
     left: 50%;
 
     transform: translateX(-50%);
 
-    min-width: 180px;
+    min-width: 200px;
+    max-height: calc(100vh - 90px);
+
+    overflow-y: auto;
 
     display: flex;
     flex-direction: column;
@@ -228,7 +364,7 @@
     z-index: 200;
   }
 
-  .mobile-navigation-menu button {
+  .mobile-navigation-menu > button {
     width: 100%;
 
     padding: 11px 14px;
@@ -241,13 +377,72 @@
 
     font: inherit;
     font-size: 0.9rem;
+
     text-align: left;
 
     cursor: pointer;
   }
 
-  .mobile-navigation-menu button:hover {
+  .mobile-navigation-menu > button:hover {
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  /* Mobile Arsenal / NEWS triggers */
+
+  .mobile-navigation-menu
+    .mobile-submenu-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-submenu-arrow {
+    display: inline-block;
+
+    font-size: 0.55rem;
+    opacity: 0.55;
+
+    transition: transform 0.15s ease;
+  }
+
+  .mobile-submenu-arrow.open {
+    transform: rotate(180deg);
+  }
+
+  .mobile-submenu {
+    display: flex;
+    flex-direction: column;
+
+    margin: 0 4px 4px;
+    padding: 3px 0 3px 8px;
+
+    border-left:
+      1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .mobile-submenu button {
+    width: 100%;
+
+    padding: 9px 12px;
+
+    border: 0;
+    border-radius: 6px;
+
+    color: rgba(255, 255, 255, 0.65);
+    background: transparent;
+
+    font: inherit;
+    font-size: 0.84rem;
+
+    text-align: left;
+
+    cursor: pointer;
+  }
+
+  .mobile-submenu button:hover {
+    color: white;
+
+    background: rgba(255, 255, 255, 0.08);
   }
 
   .account-button span {
@@ -259,18 +454,21 @@
     height: 38px;
   }
 }
+
 /* =========================================================
    ACCOUNT MENU
 ========================================================= */
 
 .account-container {
   position: relative;
+
   display: flex;
   align-items: center;
 }
 
 .account-menu {
   position: absolute;
+
   top: calc(100% + 10px);
   right: 0;
 
@@ -324,6 +522,7 @@
   font-size: 0.9rem;
 
   overflow: hidden;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -334,6 +533,7 @@
   font-size: 0.75rem;
 
   overflow: hidden;
+
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -346,25 +546,7 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-.account-menu-logout {
-  width: 100%;
-
-  padding: 10px;
-
-  border: 0;
-  border-radius: 7px;
-
-  color: rgba(255, 255, 255, 0.85);
-  background: transparent;
-
-  font: inherit;
-  font-size: 0.85rem;
-
-  text-align: left;
-
-  cursor: pointer;
-}
-
+.account-menu-logout,
 .account-menu-profile {
   width: 100%;
 
@@ -384,10 +566,7 @@
   cursor: pointer;
 }
 
-.account-menu-profile:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-
+.account-menu-profile:hover,
 .account-menu-logout:hover {
   background: rgba(255, 255, 255, 0.08);
 }
