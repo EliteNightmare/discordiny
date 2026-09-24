@@ -16,7 +16,9 @@ import {
 
 import "./WeaponVault.css";
 
-type WeaponTier = "normal" | "adept";
+type WeaponTier =
+  | "normal"
+  | "adept";
 
 type WeaponVaultProps = {
   categorySlug: string;
@@ -44,36 +46,43 @@ type ProfileResponse = {
   upgradeMaterials: Record<string, number>;
 };
 
-type VisibleWeapon = WeaponData & {
-  image: string | null;
-};
+type VisibleWeapon =
+  WeaponData & {
+    image: string | null;
+  };
 
 /*
- * Import all weapon PNGs from:
- *
- * src/react-app/assets/weapons/<source>/
+ * Weapon icons.
+ */
+const weaponImages =
+  import.meta.glob(
+    "../assets/icons/weapons/**/*.png",
+    {
+      eager: true,
+      import: "default",
+      query: "?url",
+    },
+  ) as Record<string, string>;
+
+/*
+ * Activity banners.
  *
  * Examples:
  *
- * assets/weapons/lw/Apex Predator.png
- * assets/weapons/lw/Apex Predator (Adept).png
- *
- * assets/weapons/scourge/Hammerhead.png
- * assets/weapons/scourge/Hammerhead (Adept).png
+ * ../assets/activitybanners/lw.png
+ * ../assets/activitybanners/dsc.png
+ * ../assets/activitybanners/vog.png
  */
-const weaponImages = import.meta.glob(
-  "../assets/icons/weapons/**/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
+const activityBanners =
+  import.meta.glob(
+    "../assets/activitybanners/*.png",
+    {
+      eager: true,
+      import: "default",
+      query: "?url",
+    },
+  ) as Record<string, string>;
 
-/*
- * Normalize names when comparing D1 weapon names
- * against PNG filenames.
- */
 function normalizeName(
   value: string,
 ): string {
@@ -84,12 +93,6 @@ function normalizeName(
     .replace(/\s+/g, " ");
 }
 
-/*
- * Adept weapons are separate rows in D1.
- *
- * Apex Predator
- * Apex Predator (Adept)
- */
 function isAdeptWeapon(
   weaponName: string,
 ): boolean {
@@ -99,34 +102,29 @@ function isAdeptWeapon(
     .endsWith("(adept)");
 }
 
-/*
- * Find the image using the exact D1 weapon name.
- *
- * We DO NOT add "(Adept)" here.
- *
- * If D1 says:
- *
- * Apex Predator (Adept)
- *
- * then we look for:
- *
- * Apex Predator (Adept).png
- */
 function findWeaponImage(
   source: string,
   weaponName: string,
 ): string | null {
   const normalizedDesired =
-    normalizeName(weaponName);
+    normalizeName(
+      weaponName,
+    );
 
   const sourceSegment =
     `/icons/weapons/${source.toLowerCase()}/`;
 
   for (
-    const [path, imageUrl] of Object.entries(weaponImages)
+    const [path, imageUrl]
+    of Object.entries(
+      weaponImages,
+    )
   ) {
     const normalizedPath =
-      path.replace(/\\/g, "/");
+      path.replace(
+        /\\/g,
+        "/",
+      );
 
     const lowerPath =
       normalizedPath.toLowerCase();
@@ -144,7 +142,9 @@ function findWeaponImage(
         .split("/")
         .pop();
 
-    if (!filenameWithExtension) {
+    if (
+      !filenameWithExtension
+    ) {
       continue;
     }
 
@@ -155,8 +155,45 @@ function findWeaponImage(
       );
 
     if (
-      normalizeName(filename) ===
+      normalizeName(
+        filename,
+      ) ===
       normalizedDesired
+    ) {
+      return imageUrl;
+    }
+  }
+
+  return null;
+}
+
+function findActivityBanner(
+  source: string,
+): string | null {
+  const desiredFilename =
+    `${source.toLowerCase()}.png`;
+
+  for (
+    const [path, imageUrl]
+    of Object.entries(
+      activityBanners,
+    )
+  ) {
+    const normalizedPath =
+      path.replace(
+        /\\/g,
+        "/",
+      );
+
+    const filename =
+      normalizedPath
+        .split("/")
+        .pop()
+        ?.toLowerCase();
+
+    if (
+      filename ===
+      desiredFilename
     ) {
       return imageUrl;
     }
@@ -182,18 +219,6 @@ function WeaponVault({
         )
       : undefined;
 
-  /*
-   * Examples:
-   *
-   * Last Wish
-   * weaponSource = lw
-   *
-   * Scourge
-   * weaponSource = scourge
-   *
-   * Leviathan
-   * weaponSource = levi
-   */
   const weaponSource =
     activity?.weaponSource ??
     category?.directSource ??
@@ -204,13 +229,22 @@ function WeaponVault({
     category?.name ??
     "Weapon Vault";
 
+  const activityBanner =
+    weaponSource
+      ? findActivityBanner(
+          weaponSource,
+        )
+      : null;
+
   const [tier, setTier] =
     useState<WeaponTier>(
       "normal",
     );
 
   const [weapons, setWeapons] =
-    useState<WeaponData[]>([]);
+    useState<WeaponData[]>(
+      [],
+    );
 
   const [profile, setProfile] =
     useState<ProfileResponse | null>(
@@ -226,9 +260,6 @@ function WeaponVault({
   const [gridKey, setGridKey] =
     useState(0);
 
-  /*
-   * Load weapons + player materials.
-   */
   useEffect(() => {
     if (!weaponSource) {
       setLoading(false);
@@ -266,9 +297,11 @@ function WeaponVault({
           ),
         ]);
 
-        const weaponResult = (await weaponResponse.json()) as WeaponResponse;
+        const weaponResult =
+          (await weaponResponse.json()) as WeaponResponse;
 
-        const profileResult = (await profileResponse.json()) as ProfileResponse;
+        const profileResult =
+          (await profileResponse.json()) as ProfileResponse;
 
         if (
           !weaponResponse.ok ||
@@ -323,16 +356,6 @@ function WeaponVault({
     void loadWeaponVault();
   }, [weaponSource]);
 
-  /*
-   * Filter the D1 catalog according to
-   * the selected switch.
-   *
-   * NORMAL:
-   * only rows WITHOUT "(Adept)"
-   *
-   * ADEPT:
-   * only rows WITH "(Adept)"
-   */
   const visibleWeapons =
     useMemo<VisibleWeapon[]>(
       () => {
@@ -388,9 +411,6 @@ function WeaponVault({
       path;
   }
 
-  /*
-   * Animated Normal / Adept switch.
-   */
   function changeTier(
     nextTier: WeaponTier,
   ) {
@@ -400,7 +420,9 @@ function WeaponVault({
       return;
     }
 
-    setTier(nextTier);
+    setTier(
+      nextTier,
+    );
 
     setGridKey(
       (current) =>
@@ -408,9 +430,6 @@ function WeaponVault({
     );
   }
 
-  /*
-   * Invalid category / source.
-   */
   if (
     !category ||
     !weaponSource
@@ -421,17 +440,14 @@ function WeaponVault({
 
         <div className="weapon-vault-page">
           <div className="weapon-vault-status weapon-vault-status-error">
-            Weapon collection
-            not found.
+            Weapon collection not
+            found.
           </div>
         </div>
       </div>
     );
   }
 
-  /*
-   * Loading.
-   */
   if (loading) {
     return (
       <div className="weapon-vault-screen">
@@ -447,9 +463,6 @@ function WeaponVault({
     );
   }
 
-  /*
-   * Error.
-   */
   if (
     error ||
     !profile
@@ -486,11 +499,28 @@ function WeaponVault({
           }
         >
           <VaultTransition>
-            <section className="weapon-vault-block">
+            <section
+              className={
+                activityBanner
+                  ? "weapon-vault-block weapon-vault-block-banner"
+                  : "weapon-vault-block"
+              }
+              style={
+                activityBanner
+                  ? {
+                      backgroundImage:
+                        `linear-gradient(
+                          180deg,
+                          rgba(7, 9, 14, 0.58) 0%,
+                          rgba(7, 9, 14, 0.78) 38%,
+                          rgba(7, 9, 14, 0.95) 100%
+                        ),
+                        url("${activityBanner}")`,
+                    }
+                  : undefined
+              }
+            >
               <div className="weapon-vault-top">
-
-                {/* BACK */}
-
                 <button
                   type="button"
                   className="weapon-vault-back"
@@ -502,8 +532,6 @@ function WeaponVault({
                 >
                   ‹ {category.name}
                 </button>
-
-                {/* HEADER */}
 
                 <span className="weapon-vault-eyebrow">
                   LEGENDARY VAULT
@@ -521,8 +549,6 @@ function WeaponVault({
                       Weapon Collection
                     </p>
                   </div>
-
-                  {/* NORMAL / ADEPT SWITCH */}
 
                   <div
                     className={
@@ -584,10 +610,10 @@ function WeaponVault({
                 </div>
               </div>
 
-              {/* WEAPON GRID */}
-
               <div
-                key={gridKey}
+                key={
+                  gridKey
+                }
                 className="weapon-vault-grid"
               >
                 {visibleWeapons.length >
@@ -608,8 +634,6 @@ function WeaponVault({
                             itemClass
                           }
                         >
-                          {/* IMAGE */}
-
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
                               <img
@@ -627,8 +651,6 @@ function WeaponVault({
                               </div>
                             )}
 
-                            {/* LOCKED DARKENING */}
-
                             {!weapon.owned && (
                               <div
                                 className="weapon-vault-lock-overlay"
@@ -636,8 +658,6 @@ function WeaponVault({
                               />
                             )}
                           </div>
-
-                          {/* WEAPON INFO */}
 
                           <div className="weapon-vault-item-info">
                             <strong>
@@ -664,9 +684,8 @@ function WeaponVault({
                     "adept"
                       ? "Adept"
                       : "Normal"}{" "}
-                    weapons were
-                    found for this
-                    collection.
+                    weapons were found
+                    for this collection.
                   </div>
                 )}
               </div>
