@@ -62,7 +62,7 @@ type VisibleWeapon = WeaponData & {
  * assets/weapons/scourge/Hammerhead (Adept).png
  */
 const weaponImages = import.meta.glob(
-  "../assets/weapons/**/*.png",
+  "../assets/icons/weapons/**/*.png",
   {
     eager: true,
     import: "default",
