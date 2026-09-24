@@ -1,10 +1,10 @@
 import glimmerIcon from "../../assets/icons/currencies/glimmer.png";
 import lumiaLeavesIcon from "../../assets/icons/currencies/lumia-leaves.png";
 
-import enhancementCoreIcon from "../../assets/upgrade-materials/enhancement-core.png";
-import enhancementPrismIcon from "../../assets/upgrade-materials/enhancement-prism.png";
-import ascendantShardIcon from "../../assets/upgrade-materials/ascendant-shard.png";
-import ascendantAlloyIcon from "../../assets/upgrade-materials/ascendant-alloy.png";
+import enhancementCoreIcon from "../../assets/icons/upgrade-materials/enhancement-core.png";
+import enhancementPrismIcon from "../../assets/icons/upgrade-materials/enhancement-prism.png";
+import ascendantShardIcon from "../../assets/icons/upgrade-materials/ascendant-shard.png";
+import ascendantAlloyIcon from "../../assets/icons/upgrade-materials/ascendant-alloy.png";
 
 import "./VaultMaterials.css";
 
