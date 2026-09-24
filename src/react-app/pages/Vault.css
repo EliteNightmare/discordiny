@@ -438,3 +438,31 @@
     min-height: 90px;
   }
 }
+
+/* =========================================================
+   VAULT STATUS
+========================================================= */
+
+.vault-status {
+  width: min(500px, calc(100% - 30px));
+
+  margin: 40px auto;
+  padding: 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  background: rgba(10, 13, 20, 0.82);
+
+  text-align: center;
+
+  font-size: 12px;
+
+  opacity: 0.75;
+}
+
+.vault-status-error {
+  border-color: rgba(255, 80, 80, 0.22);
+
+  color: #ff9999;
+}
