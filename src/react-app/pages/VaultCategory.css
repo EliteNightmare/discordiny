@@ -1,0 +1,270 @@
+.vault-category-screen {
+  min-height: 100vh;
+
+  color: #ffffff;
+
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(70, 82, 115, 0.16),
+      transparent 42%
+    ),
+    #080a0f;
+}
+
+.vault-category-page {
+  padding-top: 92px;
+  padding-bottom: 40px;
+}
+
+.vault-category-block {
+  padding: 22px;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  background: rgba(10, 13, 20, 0.82);
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* BACK BUTTON */
+
+.vault-category-back {
+  margin: 0 0 20px;
+  padding: 0;
+
+  border: 0;
+
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
+
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.vault-category-back:hover {
+  color: #ffffff;
+
+  transform: translateX(-2px);
+}
+
+/* HEADER */
+
+.vault-category-eyebrow {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.16em;
+
+  opacity: 0.42;
+}
+
+.vault-category-block h1 {
+  margin: 0;
+
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 750;
+}
+
+.vault-category-block > p {
+  margin: 8px 0 0;
+
+  color: rgba(255, 255, 255, 0.5);
+
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ACTIVITY GRID */
+
+.vault-activity-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-top: 24px;
+}
+
+.vault-activity-card {
+  position: relative;
+
+  min-width: 0;
+  min-height: 92px;
+
+  padding: 15px 38px 15px 15px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.035);
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.vault-activity-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+
+  background: rgba(255, 255, 255, 0.07);
+
+  transform: translateY(-1px);
+}
+
+.vault-activity-label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-size: 8px;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+
+  opacity: 0.35;
+}
+
+.vault-activity-card strong {
+  display: block;
+
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.vault-activity-arrow {
+  position: absolute;
+
+  top: 50%;
+  right: 15px;
+
+  transform: translateY(-50%);
+
+  font-size: 22px;
+
+  opacity: 0.3;
+}
+
+/* DIRECT SOURCE */
+
+.vault-category-direct {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  margin-top: 24px;
+  padding: 18px;
+
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.vault-category-direct span {
+  font-size: 8px;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+
+  opacity: 0.35;
+}
+
+.vault-category-direct strong {
+  font-size: 15px;
+}
+
+.vault-category-direct small {
+  margin-top: 3px;
+
+  font-size: 10px;
+
+  opacity: 0.42;
+}
+
+/* EMPTY CATEGORY */
+
+.vault-category-empty {
+  margin-top: 24px;
+  padding: 18px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  font-size: 11px;
+
+  opacity: 0.5;
+}
+
+/* ERROR */
+
+.vault-category-error {
+  width: min(500px, calc(100% - 30px));
+
+  margin: 40px auto;
+  padding: 20px;
+
+  border: 1px solid rgba(255, 80, 80, 0.22);
+  border-radius: 12px;
+
+  color: #ff9999;
+  background: rgba(10, 13, 20, 0.82);
+
+  text-align: center;
+
+  font-size: 12px;
+}
+
+/* TABLET */
+
+@media (max-width: 1050px) {
+  .vault-activity-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+  .vault-category-page {
+    padding-top: 82px;
+  }
+}
+
+@media (max-width: 520px) {
+  .vault-category-block {
+    padding: 16px;
+  }
+
+  .vault-activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
