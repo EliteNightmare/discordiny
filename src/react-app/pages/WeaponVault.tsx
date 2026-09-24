@@ -45,12 +45,12 @@ type ProfileResponse = {
 };
 
 /*
- * Import every weapon PNG.
+ * Vite imports every weapon PNG at build time.
  *
  * Example:
  *
- * assets/weapons/lw/Apex Predator.png
- * assets/weapons/lw/Apex Predator (Adept).png
+ * ../assets/weapons/lw/Apex Predator.png
+ * ../assets/weapons/lw/Apex Predator (Adept).png
  */
 const weaponImages = import.meta.glob(
   "../assets/weapons/**/*.png",
@@ -62,9 +62,8 @@ const weaponImages = import.meta.glob(
 ) as Record<string, string>;
 
 /*
- * Normalizes weapon names so small differences
- * in capitalization / apostrophes / spacing
- * don't break image matching.
+ * Normalize names for matching D1 weapon names
+ * against PNG filenames.
  */
 function normalizeName(
   value: string,
@@ -77,15 +76,16 @@ function normalizeName(
 }
 
 /*
- * Adept weapons now exist as their OWN
- * records in D1.
+ * Returns true when the D1 weapon itself
+ * is an Adept weapon.
  *
- * Therefore:
+ * Example:
  *
  * Apex Predator
- * Apex Predator (Adept)
+ * -> false
  *
- * are treated as two separate weapons.
+ * Apex Predator (Adept)
+ * -> true
  */
 function isAdeptWeapon(
   weaponName: string,
@@ -97,26 +97,21 @@ function isAdeptWeapon(
 }
 
 /*
- * Find the image that exactly matches the
- * D1 weapon name inside the correct source
- * folder.
+ * Find the PNG that exactly matches the
+ * D1 weapon name inside the weapon source.
  *
- * Example:
+ * D1:
+ * Apex Predator
  *
- * source = lw
- * weaponName = Apex Predator
- *
- * matches:
- *
- * assets/weapons/lw/Apex Predator.png
+ * File:
+ * weapons/lw/Apex Predator.png
  *
  *
- * source = lw
- * weaponName = Apex Predator (Adept)
+ * D1:
+ * Apex Predator (Adept)
  *
- * matches:
- *
- * assets/weapons/lw/Apex Predator (Adept).png
+ * File:
+ * weapons/lw/Apex Predator (Adept).png
  */
 function findWeaponImage(
   source: string,
@@ -175,11 +170,15 @@ function WeaponVault({
     : undefined;
 
   /*
-   * Raids / Dungeons / etc. use the
-   * selected activity's weaponSource.
+   * Categories with activities:
    *
-   * Direct categories such as Strikes
-   * use category.directSource.
+   * /vault/raids/last-wish
+   * -> activity.weaponSource = "lw"
+   *
+   * Direct categories:
+   *
+   * Strikes
+   * -> category.directSource = "strike"
    */
   const weaponSource =
     activity?.weaponSource ??
@@ -212,10 +211,8 @@ function WeaponVault({
     useState(0);
 
   /*
-   * Load:
-   *
-   * 1. Weapon catalog + ownership
-   * 2. Player materials
+   * Load weapon catalog + ownership
+   * and Vault materials.
    */
   useEffect(() => {
     if (!weaponSource) {
@@ -283,7 +280,9 @@ function WeaponVault({
             : [],
         );
 
-        setProfile(profileResult);
+        setProfile(
+          profileResult,
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -299,14 +298,15 @@ function WeaponVault({
   }, [weaponSource]);
 
   /*
-   * Filter the 16 D1 records according
-   * to the selected tier.
-   *
    * NORMAL:
-   *   Apex Predator
+   *
+   * Only show database rows that DO NOT
+   * end in "(Adept)".
    *
    * ADEPT:
-   *   Apex Predator (Adept)
+   *
+   * Only show database rows that DO
+   * end in "(Adept)".
    */
   const visibleWeapons =
     useMemo(() => {
@@ -330,10 +330,11 @@ function WeaponVault({
         .map((weapon) => ({
           ...weapon,
 
-          image: findWeaponImage(
-            weaponSource,
-            weapon.name,
-          ),
+          image:
+            findWeaponImage(
+              weaponSource,
+              weapon.name,
+            ),
         }));
     }, [
       weapons,
@@ -348,15 +349,18 @@ function WeaponVault({
   }
 
   /*
-   * Switch between Normal and Adept.
+   * Switch Normal / Adept.
    *
-   * gridKey forces the weapon grid
-   * entrance animation to replay.
+   * gridKey causes the weapon-grid
+   * animation to replay whenever the
+   * selected tier changes.
    */
   function changeTier(
     nextTier: WeaponTier,
   ) {
-    if (nextTier === tier) {
+    if (
+      nextTier === tier
+    ) {
       return;
     }
 
@@ -369,7 +373,7 @@ function WeaponVault({
   }
 
   /*
-   * Invalid collection
+   * Invalid weapon collection.
    */
   if (
     !category ||
@@ -389,7 +393,7 @@ function WeaponVault({
   }
 
   /*
-   * Loading
+   * Loading.
    */
   if (loading) {
     return (
@@ -406,7 +410,7 @@ function WeaponVault({
   }
 
   /*
-   * Error
+   * Error.
    */
   if (
     error ||
@@ -446,7 +450,7 @@ function WeaponVault({
           <VaultTransition>
             <section className="weapon-vault-block">
 
-              {/* HEADER */}
+              {/* BACK BUTTON */}
 
               <div className="weapon-vault-top">
                 <button
@@ -460,6 +464,8 @@ function WeaponVault({
                 >
                   ‹ {category.name}
                 </button>
+
+                {/* HEADER */}
 
                 <span className="weapon-vault-eyebrow">
                   LEGENDARY VAULT
@@ -553,7 +559,7 @@ function WeaponVault({
                             : "weapon-vault-item-locked"
                         }`}
                       >
-                        {/* IMAGE */}
+                        {/* WEAPON IMAGE */}
 
                         <div className="weapon-vault-image-frame">
                           {weapon.image ? (
@@ -572,6 +578,8 @@ function WeaponVault({
                             </div>
                           )}
 
+                          {/* DARKEN UNOWNED WEAPONS */}
+
                           {!weapon.owned && (
                             <div
                               className="weapon-vault-lock-overlay"
@@ -580,7 +588,7 @@ function WeaponVault({
                           )}
                         </div>
 
-                        {/* NAME */}
+                        {/* WEAPON INFORMATION */}
 
                         <div className="weapon-vault-item-info">
                           <strong>
