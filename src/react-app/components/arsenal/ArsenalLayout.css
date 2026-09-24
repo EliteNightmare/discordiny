@@ -1,0 +1,128 @@
+/* =========================================================
+   ARSENAL LAYOUT
+   Shared by Vault, Armory and Artifacts
+========================================================= */
+
+.arsenal-layout {
+  width: min(1500px, calc(100% - 36px));
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(240px, 280px)
+    minmax(0, 1fr)
+    minmax(220px, 260px);
+
+  gap: 16px;
+
+  align-items: start;
+}
+
+
+/* =========================================================
+   LEFT COLUMN
+   Materials / currencies / inventories
+========================================================= */
+
+.arsenal-layout-left {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   CENTER COLUMN
+   Main Vault / Armory / Artifact content
+========================================================= */
+
+.arsenal-layout-main {
+  min-width: 0;
+}
+
+
+/* =========================================================
+   RIGHT COLUMN
+   Reserved for Global Activity Completions
+========================================================= */
+
+.arsenal-layout-right {
+  min-width: 0;
+  min-height: 1px;
+}
+
+
+/* =========================================================
+   MEDIUM DESKTOP / LAPTOP
+========================================================= */
+
+@media (max-width: 1150px) {
+  .arsenal-layout {
+    grid-template-columns:
+      minmax(210px, 240px)
+      minmax(0, 1fr)
+      minmax(180px, 210px);
+
+    gap: 12px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE / TABLET
+========================================================= */
+
+@media (max-width: 800px) {
+  .arsenal-layout {
+    width: min(100% - 24px, 720px);
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 12px;
+  }
+
+  /*
+   * Main Arsenal content comes first on mobile.
+   */
+  .arsenal-layout-main {
+    width: 100%;
+
+    order: 1;
+  }
+
+  /*
+   * Materials come underneath the main content.
+   *
+   * We'll turn the contents of this column into a
+   * collapsible Materials panel in the next step.
+   */
+  .arsenal-layout-left {
+    width: 100%;
+
+    order: 2;
+  }
+
+  /*
+   * Global Activity Completions is intentionally hidden
+   * on mobile while that feature is empty.
+   *
+   * Later we can turn it into another collapsible panel.
+   */
+  .arsenal-layout-right {
+    display: none;
+  }
+}
+
+
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
+
+@media (max-width: 480px) {
+  .arsenal-layout {
+    width: calc(100% - 20px);
+
+    gap: 10px;
+  }
+}
