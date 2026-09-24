@@ -3638,10 +3638,6 @@ app.get("/api/game/activities", async (c) => {
   /* =======================================================
      CURRENT DESTINATION DUNGEON / RAID
 
-     Grasp of Avarice remains in ACTIVITIES, but is excluded
-     here because Discordiny treats Cosmodrome as having no
-     destination Dungeon.
-
      Plaguelands naturally returns null for both because no
      regular Dungeon or Raid is assigned to it.
   ======================================================= */
@@ -3650,7 +3646,6 @@ app.get("/api/game/activities", async (c) => {
     getDestinationActivity(
       ACTIVITIES.dungeons,
       destination,
-      ["grasp"],
     );
 
   const destinationRaid =
