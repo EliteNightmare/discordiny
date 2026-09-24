@@ -10,10 +10,6 @@
 .profile-page {
   min-height: 100vh;
 
-  /*
-   * Space for the shared fixed TopBar.
-   * This prevents the profile header from sitting behind it.
-   */
   padding: 92px 18px 32px;
 
   background-position: center center;
@@ -22,7 +18,6 @@
   background-attachment: fixed;
 
   transition: background-image 350ms ease;
-
   box-sizing: border-box;
 }
 
@@ -34,10 +29,6 @@
   width: min(1050px, 100%);
   margin: 0 auto;
 
-  /*
-   * IMPORTANT:
-   * Don't clip the Travel dropdown.
-   */
   overflow: visible;
 }
 
@@ -122,6 +113,7 @@
   margin: 3px 0 0;
 
   font-size: 11px;
+
   opacity: 0.5;
 }
 
@@ -144,12 +136,10 @@
    ========================= */
 
 .profile-header {
-  /*
-   * Do NOT use overflow:hidden here.
-   * Travel dropdown needs to escape this block.
-   */
   position: relative;
+
   z-index: 20;
+
   overflow: visible;
 
   display: flex;
@@ -177,6 +167,7 @@
   align-items: center;
 
   gap: 14px;
+
   min-width: 0;
 }
 
@@ -220,6 +211,7 @@
   margin-top: 5px;
 
   font-size: 11px;
+
   opacity: 0.7;
 }
 
@@ -260,6 +252,7 @@
 
 .travel-control {
   position: relative;
+
   z-index: 100;
 
   overflow: visible;
@@ -308,6 +301,7 @@
   display: inline-block;
 
   font-size: 6px;
+
   opacity: 0.55;
 
   transition: transform 150ms ease;
@@ -323,6 +317,7 @@
 
 .travel-dropdown {
   position: absolute;
+
   z-index: 9999;
 
   top: calc(100% + 7px);
@@ -332,11 +327,8 @@
 
   padding: 5px;
 
-  /*
-   * The dropdown itself may scroll if a small
-   * viewport cannot display all destinations.
-   */
   max-height: 340px;
+
   overflow-y: auto;
   overflow-x: hidden;
 
@@ -345,15 +337,11 @@
 
   background: rgba(7, 9, 14, 0.98);
 
-  box-shadow:
-    0 18px 50px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65);
 
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 
-  /*
-   * Force the same font as the rest of Discordiny.
-   */
   font-family: inherit;
 
   box-sizing: border-box;
@@ -373,8 +361,6 @@
   opacity: 0.42;
 }
 
-/* Destination rows */
-
 .travel-destination {
   width: 100%;
 
@@ -393,10 +379,6 @@
   background: transparent;
   color: inherit;
 
-  /*
-   * Browser buttons otherwise sometimes use
-   * their own system font.
-   */
   font-family: inherit;
   font-size: 11px;
   font-weight: 500;
@@ -476,8 +458,6 @@
     );
 }
 
-/* Scrollbar */
-
 .travel-dropdown::-webkit-scrollbar {
   width: 5px;
 }
@@ -488,6 +468,7 @@
 
 .travel-dropdown::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.16);
+
   border-radius: 999px;
 }
 
@@ -511,6 +492,38 @@
   display: block;
 
   font-size: 17px;
+}
+
+.profile-weapons-label {
+  justify-content: flex-end;
+}
+
+/*
+ * The frame stays compact, while the actual weapon
+ * artwork is enlarged inside it.
+ */
+.weapon-icon-frame {
+  width: 28px;
+  height: 28px;
+
+  flex: 0 0 28px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+}
+
+.weapon-profile-icon {
+  display: block;
+
+  width: 48px;
+  height: 48px;
+
+  max-width: none;
+
+  object-fit: contain;
 }
 
 /* =========================
@@ -539,13 +552,81 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
+.currency-card-label {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.currency-icon {
+  width: 26px;
+  height: 26px;
+
+  flex-shrink: 0;
+
+  object-fit: contain;
+}
+
 .currency-name {
   font-size: 11px;
+
   opacity: 0.68;
 }
 
 .currency-card strong {
   font-size: 14px;
+}
+
+/* =========================
+   FEATURE BLOCK ICONS
+   ========================= */
+
+.profile-block-title-with-icon {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+}
+
+.profile-feature-icon {
+  width: 46px;
+  height: 46px;
+
+  flex: 0 0 46px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-feature-icon img {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+}
+
+/* =========================
+   GENERIC STAT ICONS
+   ========================= */
+
+.profile-stat-label {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+.profile-stat-icon {
+  width: 20px;
+  height: 20px;
+
+  flex-shrink: 0;
+
+  object-fit: contain;
 }
 
 /* =========================
@@ -599,6 +680,8 @@
 }
 
 .xp-header {
+  align-items: center;
+
   margin-bottom: 7px;
 }
 
@@ -606,7 +689,7 @@
   font-weight: 600;
 }
 
-.xp-header span:last-child,
+.xp-header > span:last-child,
 .xp-footer {
   opacity: 0.55;
 }
@@ -787,6 +870,10 @@
     text-align: left;
   }
 
+  .profile-weapons-label {
+    justify-content: flex-start;
+  }
+
   .travel-dropdown {
     width: 205px;
   }
@@ -801,10 +888,17 @@
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
   }
+
+  .profile-feature-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-basis: 42px;
+  }
 }
+
 /* =========================================================
    DESKTOP PROFILE READABILITY
-   Slightly larger cards/text on PC only
 ========================================================= */
 
 @media (min-width: 801px) {
@@ -816,6 +910,7 @@
 
   .profile-header {
     padding: 21px 24px;
+
     gap: 22px;
   }
 
@@ -836,6 +931,7 @@
 
   .profile-title {
     margin-top: 6px;
+
     font-size: 12px;
   }
 
@@ -859,6 +955,8 @@
     font-size: 10px;
   }
 
+  /* Weapons */
+
   .profile-weapons {
     min-width: 120px;
 
@@ -867,6 +965,22 @@
 
   .profile-weapons strong {
     font-size: 19px;
+  }
+
+  /*
+   * Keep the icon's layout footprint small,
+   * but zoom the artwork significantly.
+   */
+  .weapon-icon-frame {
+    width: 30px;
+    height: 30px;
+
+    flex-basis: 30px;
+  }
+
+  .weapon-profile-icon {
+    width: 58px;
+    height: 58px;
   }
 
   /* Main blocks */
@@ -889,6 +1003,21 @@
     font-size: 12px;
   }
 
+  /*
+   * Large Level / Power artwork at the
+   * upper-left of each respective block.
+   */
+  .profile-feature-icon {
+    width: 58px;
+    height: 58px;
+
+    flex-basis: 58px;
+  }
+
+  .profile-block-title-with-icon {
+    gap: 16px;
+  }
+
   /* Currencies */
 
   .currency-grid {
@@ -899,12 +1028,32 @@
     padding: 13px 15px;
   }
 
+  .currency-card-label {
+    gap: 10px;
+  }
+
+  .currency-icon {
+    width: 30px;
+    height: 30px;
+  }
+
   .currency-name {
     font-size: 12px;
   }
 
   .currency-card strong {
     font-size: 16px;
+  }
+
+  /* XP */
+
+  .profile-stat-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .profile-stat-label {
+    gap: 8px;
   }
 
   /* Level */
@@ -1006,61 +1155,5 @@
 
   .destination-active-label {
     font-size: 8px;
-  }
-}
-/* =========================================================
-   PROFILE ICONS
-========================================================= */
-
-.profile-stat-label {
-  display: flex;
-  align-items: center;
-
-  gap: 7px;
-}
-
-.profile-stat-icon {
-  width: 20px;
-  height: 20px;
-
-  flex-shrink: 0;
-
-  object-fit: contain;
-}
-
-.currency-card-label {
-  display: flex;
-  align-items: center;
-
-  gap: 9px;
-}
-
-.currency-icon {
-  width: 26px;
-  height: 26px;
-
-  flex-shrink: 0;
-
-  object-fit: contain;
-}
-
-/* Slightly larger on desktop */
-@media (min-width: 801px) {
-  .profile-stat-icon {
-    width: 22px;
-    height: 22px;
-  }
-
-  .currency-icon {
-    width: 30px;
-    height: 30px;
-  }
-
-  .profile-stat-label {
-    gap: 8px;
-  }
-
-  .currency-card-label {
-    gap: 10px;
   }
 }
