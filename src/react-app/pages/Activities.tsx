@@ -130,56 +130,84 @@ function getGeneralActivityBanner(
     return undefined;
   }
 
-  const source =
-    activity.weapon_source
-      ?.toLowerCase();
-
-  const name =
+  const normalizedName =
     activity.name
-      .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
 
-  const bannerBySource: Record<
-    string,
-    string
-  > = {
-    strike: "strike.png",
-    nf: "nightfall.png",
-    gm: "grandmaster.png",
+  let filename:
+    | string
+    | undefined;
 
-    bgs: "battlegrounds.png",
-    emph: "empirehunt.png",
-    nigh: "nightmarehunt.png",
+  // Infiltrations
+  if (
+    normalizedName.includes(
+      "battleground",
+    )
+  ) {
+    filename =
+      "battlegrounds.png";
+  } else if (
+    normalizedName.includes(
+      "empirehunt",
+    )
+  ) {
+    filename =
+      "empirehunt.png";
+  } else if (
+    normalizedName.includes(
+      "nightmarehunt",
+    )
+  ) {
+    filename =
+      "nightmarehunt.png";
 
-    nether: "nether.png",
-    contest: "contest.png",
-    coil: "coil.png",
-  };
+  // Showdowns
+  } else if (
+    normalizedName.includes(
+      "greathunt",
+    )
+  ) {
+    filename =
+      "greathunt.png";
+  } else if (
+    normalizedName.includes(
+      "lucentfireteam",
+    )
+  ) {
+    filename =
+      "lucentfireteam.png";
+  } else if (
+    normalizedName.includes(
+      "exochallenge",
+    )
+  ) {
+    filename =
+      "exochallenge.png";
 
-  const bannerByName: Record<
-    string,
-    string
-  > = {
-    "the great hunt":
-      "greathunt.png",
-
-    "great hunt":
-      "greathunt.png",
-
-    "lucent fireteam":
-      "lucentfireteam.png",
-
-    "exo challenge":
-      "exochallenge.png",
-  };
-
-  const filename =
-    bannerByName[name] ??
-    (
-      source
-        ? bannerBySource[source]
-        : undefined
-    );
+  // Crawls
+  } else if (
+    normalizedName.includes(
+      "nether",
+    )
+  ) {
+    filename =
+      "nether.png";
+  } else if (
+    normalizedName.includes(
+      "contest",
+    )
+  ) {
+    filename =
+      "contest.png";
+  } else if (
+    normalizedName.includes(
+      "coil",
+    )
+  ) {
+    filename =
+      "coil.png";
+  }
 
   if (!filename) {
     return undefined;
