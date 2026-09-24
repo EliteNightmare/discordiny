@@ -1,0 +1,546 @@
+.weapon-vault-screen {
+  min-height: 100vh;
+
+  color: #ffffff;
+
+  background:
+    radial-gradient(
+      circle at top,
+      rgba(70, 82, 115, 0.16),
+      transparent 42%
+    ),
+    #080a0f;
+}
+
+.weapon-vault-page {
+  padding-top: 92px;
+  padding-bottom: 40px;
+}
+
+/* =========================================================
+   MAIN BLOCK
+========================================================= */
+
+.weapon-vault-block {
+  padding: 22px;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  background: rgba(10, 13, 20, 0.82);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.2);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.weapon-vault-top {
+  min-width: 0;
+}
+
+/* =========================================================
+   BACK
+========================================================= */
+
+.weapon-vault-back {
+  margin: 0 0 20px;
+  padding: 0;
+
+  border: 0;
+
+  color: rgba(255, 255, 255, 0.58);
+  background: transparent;
+
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.weapon-vault-back:hover {
+  color: #ffffff;
+
+  transform: translateX(-2px);
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.weapon-vault-eyebrow {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.16em;
+
+  opacity: 0.42;
+}
+
+.weapon-vault-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 20px;
+}
+
+.weapon-vault-heading h1 {
+  margin: 0;
+
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 750;
+}
+
+.weapon-vault-heading p {
+  margin: 7px 0 0;
+
+  color: rgba(255, 255, 255, 0.48);
+
+  font-size: 11px;
+}
+
+/* =========================================================
+   NORMAL / ADEPT SWITCH
+========================================================= */
+
+.weapon-tier-switch {
+  position: relative;
+
+  width: 230px;
+  height: 40px;
+
+  flex: 0 0 230px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  padding: 3px;
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+
+  background: rgba(0, 0, 0, 0.32);
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+.weapon-tier-slider {
+  position: absolute;
+
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+
+  width: calc(50% - 3px);
+
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.08)
+    );
+
+  box-shadow:
+    0 0 16px rgba(255, 255, 255, 0.05),
+    inset 0 0 12px rgba(255, 255, 255, 0.035);
+
+  box-sizing: border-box;
+
+  transition:
+    transform 240ms
+      cubic-bezier(0.22, 1, 0.36, 1),
+    background 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.weapon-tier-switch-adept
+  .weapon-tier-slider {
+  transform: translateX(100%);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.19),
+      rgba(255, 255, 255, 0.09)
+    );
+
+  box-shadow:
+    0 0 20px rgba(255, 255, 255, 0.07),
+    inset 0 0 12px rgba(255, 255, 255, 0.04);
+}
+
+.weapon-tier-option {
+  position: relative;
+
+  z-index: 1;
+
+  min-width: 0;
+
+  border: 0;
+
+  color: rgba(255, 255, 255, 0.34);
+  background: transparent;
+
+  font: inherit;
+  font-size: 9px;
+  font-weight: 650;
+
+  letter-spacing: 0.13em;
+
+  cursor: pointer;
+
+  transition:
+    color 180ms ease,
+    text-shadow 180ms ease,
+    font-weight 180ms ease;
+}
+
+.weapon-tier-option:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.weapon-tier-option.active {
+  color: rgba(255, 255, 255, 0.98);
+
+  font-weight: 850;
+
+  text-shadow:
+    0 0 10px
+      rgba(255, 255, 255, 0.2);
+}
+
+/* =========================================================
+   WEAPON GRID
+========================================================= */
+
+@keyframes weaponGridEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.weapon-vault-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-top: 24px;
+
+  animation:
+    weaponGridEnter 180ms ease-out both;
+}
+
+/* =========================================================
+   WEAPON ITEM
+========================================================= */
+
+.weapon-vault-item {
+  min-width: 0;
+
+  padding: 8px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.025);
+
+  overflow: hidden;
+
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.weapon-vault-item-owned:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+
+  background: rgba(255, 255, 255, 0.05);
+
+  transform: translateY(-2px);
+}
+
+/* =========================================================
+   WEAPON IMAGE
+========================================================= */
+
+.weapon-vault-image-frame {
+  position: relative;
+
+  width: 100%;
+
+  aspect-ratio: 1 / 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 6px;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(255, 255, 255, 0.055),
+      rgba(255, 255, 255, 0.015)
+    );
+
+  overflow: hidden;
+}
+
+.weapon-vault-image {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  transition:
+    filter 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.weapon-vault-item-owned
+  .weapon-vault-image {
+  opacity: 1;
+
+  filter:
+    brightness(1)
+    saturate(1);
+}
+
+.weapon-vault-item-owned:hover
+  .weapon-vault-image {
+  transform: scale(1.035);
+}
+
+/* =========================================================
+   LOCKED / UNOWNED
+========================================================= */
+
+.weapon-vault-item-locked {
+  opacity: 0.58;
+}
+
+.weapon-vault-item-locked
+  .weapon-vault-image {
+  opacity: 0.38;
+
+  filter:
+    grayscale(0.85)
+    brightness(0.38)
+    saturate(0.4);
+}
+
+.weapon-vault-lock-overlay {
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.08),
+      rgba(0, 0, 0, 0.38)
+    );
+}
+
+/* =========================================================
+   MISSING IMAGE
+========================================================= */
+
+.weapon-vault-image-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+
+  color: rgba(255, 255, 255, 0.2);
+
+  font-size: 28px;
+  font-weight: 800;
+
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* =========================================================
+   WEAPON TEXT
+========================================================= */
+
+.weapon-vault-item-info {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+
+  padding: 9px 3px 3px;
+}
+
+.weapon-vault-item-info strong {
+  min-width: 0;
+
+  color: rgba(255, 255, 255, 0.88);
+
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weapon-vault-item-info span {
+  color: rgba(255, 255, 255, 0.32);
+
+  font-size: 8px;
+  font-weight: 750;
+
+  letter-spacing: 0.11em;
+
+  text-transform: uppercase;
+}
+
+.weapon-vault-item-locked
+  .weapon-vault-item-info {
+  opacity: 0.5;
+}
+
+/* =========================================================
+   EMPTY / STATUS
+========================================================= */
+
+.weapon-vault-empty {
+  grid-column: 1 / -1;
+
+  padding: 30px 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.02);
+
+  color: rgba(255, 255, 255, 0.45);
+
+  text-align: center;
+
+  font-size: 11px;
+}
+
+.weapon-vault-status {
+  width: min(500px, calc(100% - 30px));
+
+  margin: 40px auto;
+  padding: 20px;
+
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(10, 13, 20, 0.82);
+
+  text-align: center;
+
+  font-size: 12px;
+}
+
+.weapon-vault-status-error {
+  border-color: rgba(255, 80, 80, 0.22);
+
+  color: #ff9999;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 1200px) {
+  .weapon-vault-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .weapon-vault-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .weapon-tier-switch {
+    width: 100%;
+
+    flex-basis: 40px;
+  }
+
+  .weapon-vault-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  .weapon-vault-page {
+    padding-top: 82px;
+  }
+}
+
+@media (max-width: 520px) {
+  .weapon-vault-block {
+    padding: 16px;
+  }
+
+  .weapon-vault-grid {
+    gap: 7px;
+  }
+
+  .weapon-vault-item {
+    padding: 6px;
+  }
+
+  .weapon-vault-item-info strong {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weapon-tier-slider,
+  .weapon-tier-option,
+  .weapon-vault-grid,
+  .weapon-vault-image,
+  .weapon-vault-item {
+    animation: none;
+    transition: none;
+  }
+}
