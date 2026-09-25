@@ -865,6 +865,8 @@ export default function Activities() {
 
       <main className="activities-page">
         <div className="activities-container">
+          <div className="activities-layout">
+            <div className="activities-main">
 
           <header className="activities-header">
             <span className="activities-eyebrow">
@@ -1404,6 +1406,37 @@ export default function Activities() {
               {error}
             </div>
           )}
+            </div>
+
+            <aside
+              className="global-activity-feed"
+              aria-label="Global activity feed"
+            >
+              <div className="global-activity-feed-inner">
+                <div className="global-activity-feed-heading">
+                  <span>LIVE FEED</span>
+                  <h2>Global Activity</h2>
+                </div>
+
+                <div className="global-activity-feed-empty">
+                  <span
+                    className="global-activity-feed-pulse"
+                    aria-hidden="true"
+                  />
+
+                  <strong>
+                    WAITING FOR ACTIVITY
+                  </strong>
+
+                  <p>
+                    Clears, wipes and weapon
+                    drops from all players
+                    will appear here.
+                  </p>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </main>
     </div>
