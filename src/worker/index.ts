@@ -4727,7 +4727,516 @@ app.post("/api/game/activity/run", async (c) => {
 
   const nowSeconds =
     Math.floor(Date.now() / 1000);
+  /* =======================================================
+     INFILTRATION EXECUTION
+  ======================================================= */
 
+  const currentInfiltration =
+    getRotatingActivity(
+      ACTIVITIES.infiltrations,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  if (
+    currentInfiltration?.id ===
+    activityId
+  ) {
+    /* =====================================================
+       COOLDOWN
+    ===================================================== */
+
+    const cooldownRow =
+      await c.env.DB
+        .prepare(
+          `SELECT timestamp
+           FROM player_cooldowns
+           WHERE user_id = ?
+             AND activity = ?
+           LIMIT 1`,
+        )
+        .bind(
+          session.user_id,
+          INFILTRATION_COOLDOWN_KEY,
+        )
+        .first<{
+          timestamp: number;
+        }>();
+
+    const readyAt =
+      Math.max(
+        0,
+        Number(
+          cooldownRow?.timestamp ?? 0,
+        ) || 0,
+      );
+
+    const remainingSeconds =
+      Math.max(
+        0,
+        readyAt - nowSeconds,
+      );
+
+    if (remainingSeconds > 0) {
+      return c.json(
+        {
+          authenticated: true,
+          success: false,
+
+          error:
+            "Infiltration is on cooldown.",
+
+          limit: {
+            kind:
+              "cooldown" as const,
+
+            cooldownSeconds:
+              INFILTRATION_COOLDOWN_SECONDS,
+
+            remainingSeconds,
+
+            readyAt,
+          },
+        },
+        429,
+      );
+    }
+
+
+    /* =====================================================
+       WEAPON POOLS
+
+       Battleground   -> bgs
+       Empire Hunt    -> emph
+       Nightmare Hunt -> nigh
+    ===================================================== */
+
+    const infiltrationCatalog =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             name,
+             emoji_id,
+             rarity,
+             source
+           FROM weapons
+           WHERE source IN (
+             'bgs',
+             'emph',
+             'nigh'
+           )
+           ORDER BY name`,
+        )
+        .all<{
+          name: string;
+          emoji_id: string | null;
+          rarity: string | null;
+          source: string;
+        }>();
+
+
+    /* =====================================================
+       OWNED WEAPONS
+    ===================================================== */
+
+    const ownedWeapons =
+      await c.env.DB
+        .prepare(
+          `SELECT weapon_name
+           FROM player_weapons
+           WHERE user_id = ?`,
+        )
+        .bind(
+          session.user_id,
+        )
+        .all<{
+          weapon_name: string;
+        }>();
+
+    const ownedWeaponNames =
+      (ownedWeapons.results ?? [])
+        .map(
+          (weapon) =>
+            weapon.weapon_name,
+        );
+
+
+    /* =====================================================
+       BUILD THREE WEAPON POOLS
+    ===================================================== */
+
+    const infiltrationRows =
+      infiltrationCatalog.results ?? [];
+
+    const weaponPools = [
+      {
+        source:
+          "bgs" as const,
+
+        weapons:
+          infiltrationRows.filter(
+            (weapon) =>
+              weapon.source === "bgs",
+          ),
+      },
+
+      {
+        source:
+          "emph" as const,
+
+        weapons:
+          infiltrationRows.filter(
+            (weapon) =>
+              weapon.source === "emph",
+          ),
+      },
+
+      {
+        source:
+          "nigh" as const,
+
+        weapons:
+          infiltrationRows.filter(
+            (weapon) =>
+              weapon.source === "nigh",
+          ),
+      },
+    ];
+
+
+    /* =====================================================
+       RUN INFILTRATION
+
+       All RNG happens exactly once here.
+    ===================================================== */
+
+    const result =
+      runInfiltration(
+        weaponPools,
+        ownedWeaponNames,
+      );
+
+
+    /* =====================================================
+       DATABASE WRITES
+    ===================================================== */
+
+    const writes:
+      D1PreparedStatement[] = [];
+
+
+    /* =====================================================
+       START 10 SECOND COOLDOWN
+    ===================================================== */
+
+    const nextReadyAt =
+      nowSeconds +
+      INFILTRATION_COOLDOWN_SECONDS;
+
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_cooldowns
+            (
+              user_id,
+              activity,
+              timestamp
+            )
+           VALUES (?, ?, ?)
+           ON CONFLICT(
+             user_id,
+             activity
+           )
+           DO UPDATE SET
+             timestamp =
+               excluded.timestamp`,
+        )
+        .bind(
+          session.user_id,
+          INFILTRATION_COOLDOWN_KEY,
+          nextReadyAt,
+        ),
+    );
+
+
+    /* =====================================================
+       REWARDS
+    ===================================================== */
+
+    const infiltrationCurrencies =
+      new Set([
+        "Glimmer",
+        "Lumia Leaves",
+      ]);
+
+    const infiltrationUpgradeMaterials =
+      new Set([
+        "Pinnacle Cipher",
+        "Ascendant Alloy",
+      ]);
+
+    for (
+      const [
+        rewardName,
+        rawAmount,
+      ]
+      of Object.entries(
+        result.rewards,
+      )
+    ) {
+      const amount =
+        Math.trunc(
+          rawAmount,
+        );
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        continue;
+      }
+
+
+      /* -------------------------------
+         CURRENCIES
+      -------------------------------- */
+
+      if (
+        infiltrationCurrencies.has(
+          rewardName,
+        )
+      ) {
+        writes.push(
+          c.env.DB
+            .prepare(
+              `INSERT INTO player_currencies
+                (
+                  user_id,
+                  currency_name,
+                  amount
+                )
+               VALUES (?, ?, ?)
+               ON CONFLICT(
+                 user_id,
+                 currency_name
+               )
+               DO UPDATE SET
+                 amount =
+                   player_currencies.amount
+                   + excluded.amount`,
+            )
+            .bind(
+              session.user_id,
+              rewardName,
+              amount,
+            ),
+        );
+
+        continue;
+      }
+
+
+      /* -------------------------------
+         UPGRADE MATERIALS
+      -------------------------------- */
+
+      if (
+        infiltrationUpgradeMaterials.has(
+          rewardName,
+        )
+      ) {
+        writes.push(
+          c.env.DB
+            .prepare(
+              `INSERT INTO player_upgrade_materials
+                (
+                  user_id,
+                  material_name,
+                  amount
+                )
+               VALUES (?, ?, ?)
+               ON CONFLICT(
+                 user_id,
+                 material_name
+               )
+               DO UPDATE SET
+                 amount =
+                   player_upgrade_materials.amount
+                   + excluded.amount`,
+            )
+            .bind(
+              session.user_id,
+              rewardName,
+              amount,
+            ),
+        );
+      }
+    }
+
+
+    /* =====================================================
+       XP
+    ===================================================== */
+
+    if (result.xp > 0) {
+      writes.push(
+        c.env.DB
+          .prepare(
+            `UPDATE player_profiles
+             SET
+               exp = exp + ?,
+               updated_at =
+                 CURRENT_TIMESTAMP
+             WHERE user_id = ?`,
+          )
+          .bind(
+            result.xp,
+            session.user_id,
+          ),
+      );
+    }
+
+
+    /* =====================================================
+       WEAPONS
+
+       result.weapons contains actual drops only.
+       infiltration.ts hard-caps this at 2.
+    ===================================================== */
+
+    for (
+      const weapon of
+      result.weapons
+    ) {
+      if (
+        !weapon.dropped ||
+        !weapon.name
+      ) {
+        continue;
+      }
+
+      writes.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_weapons
+              (
+                user_id,
+                weapon_name,
+                masterwork
+              )
+             VALUES (?, ?, 0)
+             ON CONFLICT(
+               user_id,
+               weapon_name
+             )
+             DO NOTHING`,
+          )
+          .bind(
+            session.user_id,
+            weapon.name,
+          ),
+      );
+    }
+
+
+    /* =====================================================
+       GLOBAL ACTIVITY FEED
+
+       The existing feed schema supports one optional
+       weapon. The complete private result still contains
+       both drops when two weapons drop.
+    ===================================================== */
+
+    const feedWeapon =
+      result.weapons[0] ?? null;
+
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO global_activity_feed
+            (
+              user_id,
+              activity_name,
+              activity_type,
+              result,
+              weapon_name,
+              weapon_adept
+            )
+           VALUES (
+             ?,
+             ?,
+             ?,
+             'CLEAR',
+             ?,
+             ?
+           )`,
+        )
+        .bind(
+          session.user_id,
+          currentInfiltration.name,
+          "infiltration",
+
+          feedWeapon?.name ??
+            null,
+
+          feedWeapon?.adept
+            ? 1
+            : 0,
+        ),
+    );
+
+
+    /* =====================================================
+       COMMIT
+    ===================================================== */
+
+    await c.env.DB.batch(
+      writes,
+    );
+
+
+    /* =====================================================
+       RESPONSE
+    ===================================================== */
+
+    return c.json({
+      authenticated: true,
+      success: true,
+
+      player: {
+        name:
+          session.global_name ||
+          session.username,
+
+        level:
+          profile.level,
+      },
+
+      limit: {
+        kind:
+          "cooldown" as const,
+
+        cooldownSeconds:
+          INFILTRATION_COOLDOWN_SECONDS,
+
+        remainingSeconds:
+          INFILTRATION_COOLDOWN_SECONDS,
+
+        readyAt:
+          nextReadyAt,
+      },
+
+      result: {
+        ...result,
+
+        activityId:
+          currentInfiltration.id,
+
+        activityName:
+          currentInfiltration.name,
+      },
+    });
+  }
 
   /* =======================================================
      VANGUARD EXECUTION
@@ -4817,6 +5326,12 @@ app.post("/api/game/activity/run", async (c) => {
     const ownedWeapons = await c.env.DB.prepare(
       `SELECT weapon_name FROM player_weapons WHERE user_id = ?`,
     ).bind(session.user_id).all<{ weapon_name: string }>();
+    const ownedWeaponNames =
+      (ownedWeapons.results ?? [])
+        .map(
+          (ownedWeapon) =>
+            ownedWeapon.weapon_name,
+        );
 
     const rewardRoll = rollVanguardRewards(vanguardActivity.type);
     const weapon = rollVanguardWeapon(
