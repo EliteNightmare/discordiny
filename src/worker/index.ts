@@ -4797,8 +4797,7 @@ app.post("/api/game/activity/run", async (c) => {
     const rewardRoll = rollVanguardRewards(vanguardActivity.type);
     const weapon = rollVanguardWeapon(
       weaponCatalog.results ?? [],
-      (ownedWeapons.results ?? []).map((row) => row.weapon_name),
-      weaponStats,
+      ownedWeaponNames,
     );
     const result = makeVanguardResult(vanguardActivity, rewardRoll.rewards, rewardRoll.xp, weapon);
     const writes: D1PreparedStatement[] = [];
