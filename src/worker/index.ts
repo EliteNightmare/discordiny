@@ -13,6 +13,11 @@ import {
   setCookie,
 } from "hono/cookie";
 import { ACTIVITIES } from "./game/activities";
+import {
+  runEndgameActivity,
+  type EndgameActivity,
+  type WeaponStats,
+} from "./game/endgame";
 
 type WeaponRow = {
   weapon_name: string;
@@ -4264,6 +4269,873 @@ app.get("/api/game/weapons", async (c) => {
         };
       },
     ),
+  });
+});
+
+/* =========================================================
+   GAME - RUN ENDGAME ACTIVITY
+========================================================= */
+
+app.post("/api/game/activity/run", async (c) => {
+  /* =======================================================
+     AUTHENTICATION
+  ======================================================= */
+
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+        error: "Not authenticated",
+      },
+      401,
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT
+         sessions.user_id,
+         users.username,
+         users.global_name
+       FROM sessions
+       INNER JOIN users
+         ON users.id = sessions.user_id
+       WHERE sessions.id = ?
+         AND sessions.expires_at > ?
+       LIMIT 1`,
+    )
+    .bind(
+      sessionId,
+      new Date().toISOString(),
+    )
+    .first<{
+      user_id: number;
+      username: string;
+      global_name: string | null;
+    }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+        error: "Not authenticated",
+      },
+      401,
+    );
+  }
+
+  /* =======================================================
+     REQUEST
+  ======================================================= */
+
+  let body: {
+    activityId?: string;
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      {
+        error: "Invalid JSON body",
+      },
+      400,
+    );
+  }
+
+  const activityId =
+    body.activityId?.trim();
+
+  if (!activityId) {
+    return c.json(
+      {
+        error: "Missing activityId",
+      },
+      400,
+    );
+  }
+
+  /* =======================================================
+     PLAYER PROFILE
+  ======================================================= */
+
+  let profile =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           level,
+           exp,
+           zone
+         FROM player_profiles
+         WHERE user_id = ?
+         LIMIT 1`,
+      )
+      .bind(session.user_id)
+      .first<{
+        level: number;
+        exp: number;
+        zone: string;
+      }>();
+
+  if (!profile) {
+    await c.env.DB
+      .prepare(
+        `INSERT INTO player_profiles
+          (
+            user_id,
+            level,
+            exp,
+            power,
+            zone
+          )
+         VALUES (?, 0, 0, 0, 'Cosmodrome')`,
+      )
+      .bind(session.user_id)
+      .run();
+
+    profile = {
+      level: 0,
+      exp: 0,
+      zone: "Cosmodrome",
+    };
+  }
+
+  /* =======================================================
+     RESOLVE AUTHORITATIVE ACTIVITY
+
+     The browser only sends an ID.
+
+     Regular raids/dungeons must belong to the player's
+     current destination.
+
+     Daily raids/dungeons must be the activity currently
+     selected by the server rotation.
+  ======================================================= */
+
+  const nowSeconds =
+    Math.floor(Date.now() / 1000);
+
+  let activity:
+    ActivityEntry | null = null;
+
+  const regularRaid =
+    ACTIVITIES.raids[
+      activityId as keyof typeof ACTIVITIES.raids
+    ];
+
+  if (
+    regularRaid &&
+    regularRaid.destination === profile.zone
+  ) {
+    activity =
+      makeActivityEntry(
+        activityId,
+        regularRaid,
+      );
+  }
+
+  if (!activity) {
+    const regularDungeon =
+      ACTIVITIES.dungeons[
+        activityId as keyof typeof ACTIVITIES.dungeons
+      ];
+
+    if (
+      regularDungeon &&
+      regularDungeon.destination === profile.zone
+    ) {
+      activity =
+        makeActivityEntry(
+          activityId,
+          regularDungeon,
+        );
+    }
+  }
+
+  if (!activity) {
+    const dailyRaid =
+      getRotatingActivity(
+        ACTIVITIES.daily.raids,
+        DAILY_ROTATION_SECONDS,
+        nowSeconds,
+      );
+
+    if (
+      dailyRaid?.id === activityId
+    ) {
+      activity = dailyRaid;
+    }
+  }
+
+  if (!activity) {
+    const dailyDungeon =
+      getRotatingActivity(
+        ACTIVITIES.daily.dungeons,
+        DAILY_ROTATION_SECONDS,
+        nowSeconds,
+      );
+
+    if (
+      dailyDungeon?.id === activityId
+    ) {
+      activity = dailyDungeon;
+    }
+  }
+
+  if (!activity) {
+    return c.json(
+      {
+        error:
+          "That raid or dungeon is not currently available.",
+      },
+      400,
+    );
+  }
+
+  if (
+    activity.type !== "raid" &&
+    activity.type !== "dungeon"
+  ) {
+    return c.json(
+      {
+        error:
+          "Activity is not a raid or dungeon.",
+      },
+      400,
+    );
+  }
+
+  if (
+    !activity.weapon_source ||
+    !activity.reward_table ||
+    !activity.encounters ||
+    activity.encounters.length === 0
+  ) {
+    return c.json(
+      {
+        error:
+          "Activity configuration is incomplete.",
+      },
+      500,
+    );
+  }
+
+  /* =======================================================
+     CALCULATE CURRENT POWER
+
+     Never trust Power sent by React.
+  ======================================================= */
+
+  const {
+    calculateWeaponPower,
+    calculateArmorPower,
+    calculateArtifactPower,
+    calculateLevelPower,
+  } = await import("./game/power");
+
+  const {
+    getLevelProgress,
+  } = await import("./game/level");
+
+  const playerWeapons =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           player_weapons.weapon_name,
+           player_weapons.masterwork,
+           weapons.rarity
+         FROM player_weapons
+         LEFT JOIN weapons
+           ON weapons.name =
+              player_weapons.weapon_name
+         WHERE player_weapons.user_id = ?`,
+      )
+      .bind(session.user_id)
+      .all<WeaponRow>();
+
+  const weaponRows =
+    playerWeapons.results ?? [];
+
+  const armor =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           helmet,
+           arms,
+           chest,
+           legs
+         FROM player_armor
+         WHERE user_id = ?
+         LIMIT 1`,
+      )
+      .bind(session.user_id)
+      .first<ArmorRow>();
+
+  const artifacts =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           artifact_name,
+           level
+         FROM player_artifacts
+         WHERE user_id = ?`,
+      )
+      .bind(session.user_id)
+      .all<ArtifactRow>();
+
+  const artifactRows =
+    artifacts.results ?? [];
+
+  const levelProgress =
+    getLevelProgress(
+      Number(profile.exp) || 0,
+    );
+
+  const calculatedPower =
+    calculateWeaponPower(
+      weaponRows,
+    ) +
+    calculateArmorPower(
+      armor ?? null,
+    ) +
+    calculateArtifactPower(
+      artifactRows,
+    ) +
+    calculateLevelPower(
+      levelProgress.level,
+    );
+
+  /* =======================================================
+     PLAYER WEAPON STATS
+  ======================================================= */
+
+  const statsRow =
+    await c.env.DB
+      .prepare(
+        `SELECT stats
+         FROM player_stats
+         WHERE user_id = ?
+         LIMIT 1`,
+      )
+      .bind(session.user_id)
+      .first<{
+        stats: string;
+      }>();
+
+  let weaponStats:
+    WeaponStats = {};
+
+  if (statsRow?.stats) {
+    try {
+      const parsed =
+        JSON.parse(
+          statsRow.stats,
+        ) as {
+          weapons?: WeaponStats;
+        };
+
+      if (
+        parsed.weapons &&
+        typeof parsed.weapons === "object"
+      ) {
+        weaponStats =
+          parsed.weapons;
+      }
+    } catch {
+      weaponStats = {};
+    }
+  }
+
+  /* =======================================================
+     WEAPON POOL
+  ======================================================= */
+
+  const weaponCatalog =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           name,
+           emoji_id,
+           rarity
+         FROM weapons
+         WHERE source = ?
+         ORDER BY name`,
+      )
+      .bind(
+        activity.weapon_source,
+      )
+      .all<{
+        name: string;
+        emoji_id: string | null;
+        rarity: string | null;
+      }>();
+
+  const ownedWeaponNames =
+    weaponRows.map(
+      (weapon) =>
+        weapon.weapon_name,
+    );
+
+  /* =======================================================
+     RUN ACTIVITY
+
+     All RNG happens here, on the Worker.
+  ======================================================= */
+
+  const result =
+    runEndgameActivity(
+      {
+        id: activity.id,
+        name: activity.name,
+
+        type:
+          activity.type as
+            | "raid"
+            | "dungeon",
+
+        destination:
+          activity.destination,
+
+        weapon_source:
+          activity.weapon_source,
+
+        reward_table:
+          activity.reward_table as
+            | "raid"
+            | "dungeon",
+
+        unique_material:
+          activity.unique_material,
+
+        encounters:
+          activity.encounters,
+      } satisfies EndgameActivity,
+
+      {
+        level:
+          levelProgress.level,
+
+        power:
+          calculatedPower,
+
+        weaponStats,
+
+        ownedWeapons:
+          ownedWeaponNames,
+      },
+
+      weaponCatalog.results ?? [],
+    );
+
+  /* =======================================================
+     BUILD DATABASE WRITES
+  ======================================================= */
+
+  const writes:
+    D1PreparedStatement[] = [];
+
+  const currencyNames =
+    new Set([
+      "Glimmer",
+      "Lumia Leaves",
+      "Spoils of Conquest",
+      "Synthweave",
+    ]);
+
+  const upgradeMaterialNames =
+    new Set([
+      "Enhancement Core",
+      "Enhancement Prism",
+      "Ascendant Shard",
+    ]);
+
+  for (
+    const [rewardName, amount]
+    of Object.entries(
+      result.rewards,
+    )
+  ) {
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      continue;
+    }
+
+    if (
+      currencyNames.has(
+        rewardName,
+      )
+    ) {
+      writes.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_currencies
+              (
+                user_id,
+                currency_name,
+                amount
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(
+               user_id,
+               currency_name
+             )
+             DO UPDATE SET
+               amount =
+                 player_currencies.amount
+                 + excluded.amount`,
+          )
+          .bind(
+            session.user_id,
+            rewardName,
+            Math.trunc(amount),
+          ),
+      );
+
+      continue;
+    }
+
+    if (
+      upgradeMaterialNames.has(
+        rewardName,
+      )
+    ) {
+      writes.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_upgrade_materials
+              (
+                user_id,
+                material_name,
+                amount
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(
+               user_id,
+               material_name
+             )
+             DO UPDATE SET
+               amount =
+                 player_upgrade_materials.amount
+                 + excluded.amount`,
+          )
+          .bind(
+            session.user_id,
+            rewardName,
+            Math.trunc(amount),
+          ),
+      );
+
+      continue;
+    }
+
+    /*
+     * Anything remaining should be the activity's
+     * unique raid/dungeon material.
+     */
+    if (
+      rewardName ===
+      activity.unique_material
+    ) {
+      const table =
+        activity.type === "raid"
+          ? "player_raid_materials"
+          : "player_dungeon_materials";
+
+      writes.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO ${table}
+              (
+                user_id,
+                material_name,
+                amount
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(
+               user_id,
+               material_name
+             )
+             DO UPDATE SET
+               amount =
+                 ${table}.amount
+                 + excluded.amount`,
+          )
+          .bind(
+            session.user_id,
+            rewardName,
+            Math.trunc(amount),
+          ),
+      );
+    }
+  }
+
+  /* =======================================================
+     XP
+  ======================================================= */
+
+  if (result.xp > 0) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `UPDATE player_profiles
+           SET
+             exp = exp + ?,
+             updated_at =
+               CURRENT_TIMESTAMP
+           WHERE user_id = ?`,
+        )
+        .bind(
+          result.xp,
+          session.user_id,
+        ),
+    );
+  }
+
+  /* =======================================================
+     WEAPON DROP
+  ======================================================= */
+
+  if (
+    result.weapon.dropped &&
+    result.weapon.name
+  ) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_weapons
+            (
+              user_id,
+              weapon_name,
+              masterwork
+            )
+           VALUES (?, ?, 0)
+           ON CONFLICT(
+             user_id,
+             weapon_name
+           )
+           DO NOTHING`,
+        )
+        .bind(
+          session.user_id,
+          result.weapon.name,
+        ),
+    );
+  }
+
+  /* =======================================================
+     GLOBAL ACTIVITY FEED
+
+     PUBLIC DATA:
+       player
+       activity
+       CLEAR / WIPE
+       optional weapon
+
+     NO XP / currencies / materials.
+  ======================================================= */
+
+  writes.push(
+    c.env.DB
+      .prepare(
+        `INSERT INTO global_activity_feed
+          (
+            user_id,
+            activity_name,
+            activity_type,
+            result,
+            weapon_name,
+            weapon_adept
+          )
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        session.user_id,
+        activity.name,
+        activity.type,
+        result.fullClear
+          ? "CLEAR"
+          : "WIPE",
+        result.weapon.dropped
+          ? result.weapon.name
+          : null,
+        result.weapon.adept
+          ? 1
+          : 0,
+      ),
+  );
+
+  /* =======================================================
+     COMMIT
+
+     D1 batch executes the activity's writes together.
+  ======================================================= */
+
+  if (writes.length > 0) {
+    await c.env.DB.batch(
+      writes,
+    );
+  }
+
+  /* =======================================================
+     RESPONSE
+
+     This complete result is private to the player and is
+     what our animated activity popup will play through.
+  ======================================================= */
+
+  return c.json({
+    authenticated: true,
+    success: true,
+
+    player: {
+      name:
+        session.global_name ||
+        session.username,
+
+      power:
+        calculatedPower,
+
+      level:
+        levelProgress.level,
+    },
+
+    result,
+  });
+});
+
+
+/* =========================================================
+   GAME - GLOBAL ACTIVITY FEED
+========================================================= */
+
+app.get("/api/game/activity/feed", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      {
+        authenticated: false,
+        events: [],
+      },
+      401,
+    );
+  }
+
+  const session =
+    await c.env.DB
+      .prepare(
+        `SELECT user_id
+         FROM sessions
+         WHERE id = ?
+           AND expires_at > ?
+         LIMIT 1`,
+      )
+      .bind(
+        sessionId,
+        new Date().toISOString(),
+      )
+      .first<{
+        user_id: number;
+      }>();
+
+  if (!session) {
+    return c.json(
+      {
+        authenticated: false,
+        events: [],
+      },
+      401,
+    );
+  }
+
+  const events =
+    await c.env.DB
+      .prepare(
+        `SELECT
+           global_activity_feed.id,
+           global_activity_feed.activity_name,
+           global_activity_feed.activity_type,
+           global_activity_feed.result,
+           global_activity_feed.weapon_name,
+           global_activity_feed.weapon_adept,
+           global_activity_feed.created_at,
+
+           users.username,
+           users.global_name
+
+         FROM global_activity_feed
+
+         INNER JOIN users
+           ON users.id =
+              global_activity_feed.user_id
+
+         ORDER BY
+           global_activity_feed.id DESC
+
+         LIMIT 30`,
+      )
+      .all<{
+        id: number;
+        activity_name: string;
+        activity_type: string;
+        result: string;
+        weapon_name: string | null;
+        weapon_adept: number;
+        created_at: string;
+        username: string;
+        global_name: string | null;
+      }>();
+
+  return c.json({
+    authenticated: true,
+
+    events:
+      (events.results ?? []).map(
+        (event) => ({
+          id: event.id,
+
+          player:
+            event.global_name ||
+            event.username,
+
+          activity:
+            event.activity_name,
+
+          activityType:
+            event.activity_type,
+
+          result:
+            event.result,
+
+          weapon:
+            event.weapon_name
+              ? {
+                  name:
+                    event.weapon_name,
+
+                  adept:
+                    Boolean(
+                      event.weapon_adept,
+                    ),
+                }
+              : null,
+
+          createdAt:
+            event.created_at,
+        }),
+      ),
   });
 });
 
