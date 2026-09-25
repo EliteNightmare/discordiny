@@ -69,6 +69,27 @@ const weaponImages = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const destinationMaterialImages = import.meta.glob(
+  "../assets/icons/destination-materials/*.png",
+  { eager: true, import: "default", query: "?url" },
+) as Record<string, string>;
+
+const dungeonMaterialImages = import.meta.glob(
+  "../assets/icons/dungeon-materials/*.png",
+  { eager: true, import: "default", query: "?url" },
+) as Record<string, string>;
+
+const raidMaterialImages = import.meta.glob(
+  "../assets/icons/raid-materials/*.png",
+  { eager: true, import: "default", query: "?url" },
+) as Record<string, string>;
+
+const materialImages = {
+  ...destinationMaterialImages,
+  ...dungeonMaterialImages,
+  ...raidMaterialImages,
+};
+
 function normalizeAssetName(value: string) {
   return value
     .toLowerCase()
@@ -101,6 +122,16 @@ function getWeaponImage(
         filenameWithoutExtension,
       ) === normalizedWeapon
     );
+  })?.[1];
+}
+
+function getMaterialImage(materialName: string): string | undefined {
+  const normalizedMaterial = normalizeAssetName(materialName);
+
+  return Object.entries(materialImages).find(([path]) => {
+    const filename = path.split("/").pop() ?? "";
+    const filenameWithoutExtension = filename.replace(/\.png$/i, "");
+    return normalizeAssetName(filenameWithoutExtension) === normalizedMaterial;
   })?.[1];
 }
 
@@ -542,20 +573,22 @@ export default function ActivityRunModal({
                             amount,
                           ]) => (
                             <article
-                              key={
-                                name
-                              }
+                              key={name}
+                              className={getMaterialImage(name) ? "has-icon" : undefined}
                             >
-                              <small>
-                                {name.toUpperCase()}
-                              </small>
+                              {getMaterialImage(name) && (
+                                <img
+                                  className="activity-run-reward-icon"
+                                  src={getMaterialImage(name)}
+                                  alt=""
+                                  aria-hidden="true"
+                                />
+                              )}
 
-                              <strong>
-                                +
-                                {number(
-                                  amount,
-                                )}
-                              </strong>
+                              <div className="activity-run-reward-copy">
+                                <small>{name.toUpperCase()}</small>
+                                <strong>+{number(amount)}</strong>
+                              </div>
                             </article>
                           ),
                         )}
