@@ -362,7 +362,7 @@
 
 
 /* =========================================================
-   MINIMAL CLOVIS BRAY TERMINAL
+   MINIMAL TERMINAL
    ========================================================= */
 
 .terminal-connected {
@@ -464,7 +464,7 @@
 
 
 /* =========================================================
-   TERMINAL CODE INPUT
+   CODE INPUT
    ========================================================= */
 
 .cbc-minimal-prompt {
@@ -631,6 +631,58 @@ button:hover {
 .cbc-prompt-box
 button:active {
   transform: scale(0.97);
+}
+
+
+/* =========================================================
+   INVALID CODE
+   ========================================================= */
+
+.cbc-command-error {
+  min-height: 18px;
+
+  margin-top: 12px;
+
+  text-align: center;
+
+  color: transparent;
+
+  font-family:
+    "Courier New",
+    Courier,
+    monospace;
+
+  font-size: 0.56rem;
+  font-weight: 700;
+
+  letter-spacing: 0.16em;
+
+  transition:
+    color
+    150ms ease;
+}
+
+.cbc-command-error-visible {
+  color: #668da6;
+}
+
+
+/* =========================================================
+   FILE WINDOW LAYER
+   ========================================================= */
+
+.terminal-window-layer {
+  position: absolute;
+  inset: 0;
+
+  z-index: 20;
+
+  pointer-events: none;
+}
+
+.terminal-window-layer
+.terminal-file-window {
+  pointer-events: auto;
 }
 
 
