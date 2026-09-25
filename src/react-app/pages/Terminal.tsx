@@ -1,8 +1,11 @@
 import {
-  FormEvent,
   useEffect,
   useRef,
   useState,
+} from "react";
+
+import type {
+  FormEvent,
 } from "react";
 
 import cbcLogo from "../assets/cbclogo.png";
@@ -17,6 +20,10 @@ import type {
 
 import TerminalWindow from "../terminal/TerminalWindow";
 
+import type {
+  TerminalWindowPosition,
+} from "../terminal/TerminalWindow";
+
 import "./Terminal.css";
 
 type TerminalState =
@@ -27,8 +34,12 @@ type TerminalState =
 
 type OpenTerminalFile = {
   file: TerminalFile;
+
   zIndex: number;
-  offset: number;
+
+  position: TerminalWindowPosition;
+
+  minimized: boolean;
 };
 
 export default function Terminal() {
@@ -62,18 +73,17 @@ export default function Terminal() {
     );
 
   /*
-   * File windows begin above the
-   * terminal interface.
+   * Each focused/opened window gets
+   * a higher z-index.
    */
   const nextZIndex =
     useRef(100);
 
   /*
-   * Used to stagger newly opened
-   * desktop windows.
+   * ========================================================
+   * TERMINAL AUTHENTICATION
+   * ========================================================
    */
-  const nextOffset =
-    useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,11 +111,18 @@ export default function Terminal() {
           return;
         }
 
+        /*
+         * Existing terminal session.
+         */
         if (
           sessionData.authenticated
         ) {
           setState("connected");
 
+          /*
+           * Remove any old instance
+           * key from the address bar.
+           */
           window.history.replaceState(
             {},
             "",
@@ -116,11 +133,10 @@ export default function Terminal() {
         }
 
         /*
-         * No active session.
+         * No active terminal session.
          *
-         * Attempt admission using the
-         * one-time instance key from
-         * the URL.
+         * Try to obtain the one-time
+         * instance key from the URL.
          */
         const instanceKey =
           window.location.pathname
@@ -134,6 +150,10 @@ export default function Terminal() {
 
         setState("connecting");
 
+        /*
+         * Consume the one-time
+         * terminal instance.
+         */
         const connectResponse =
           await fetch(
             "/api/terminal/connect",
@@ -170,8 +190,10 @@ export default function Terminal() {
         }
 
         /*
-         * Instance consumed.
-         * Remove it from the URL.
+         * Admission succeeded.
+         *
+         * Remove the consumed key from
+         * the visible URL.
          */
         window.history.replaceState(
           {},
@@ -194,6 +216,11 @@ export default function Terminal() {
     };
   }, []);
 
+  /*
+   * Focus the terminal input whenever
+   * the authenticated interface first
+   * becomes available.
+   */
   useEffect(() => {
     if (
       state === "connected"
@@ -203,9 +230,11 @@ export default function Terminal() {
   }, [state]);
 
   /*
-   * Bring a terminal file window to
-   * the front.
+   * ========================================================
+   * WINDOW MANAGEMENT
+   * ========================================================
    */
+
   function focusFile(
     fileId: string,
   ) {
@@ -222,6 +251,7 @@ export default function Terminal() {
             ) {
               return {
                 ...openFile,
+
                 zIndex:
                   newZIndex,
               };
@@ -233,9 +263,6 @@ export default function Terminal() {
     );
   }
 
-  /*
-   * Close one virtual terminal file.
-   */
   function closeFile(
     fileId: string,
   ) {
@@ -248,6 +275,10 @@ export default function Terminal() {
         ),
     );
 
+    /*
+     * Return keyboard focus to the
+     * command input after closing.
+     */
     window.setTimeout(
       () => {
         inputRef.current?.focus();
@@ -256,9 +287,91 @@ export default function Terminal() {
     );
   }
 
-  /*
-   * Open a virtual terminal file.
-   */
+  function moveFile(
+    fileId: string,
+    position: TerminalWindowPosition,
+  ) {
+    setOpenFiles(
+      (current) =>
+        current.map(
+          (openFile) => {
+            if (
+              openFile.file.id !==
+              fileId
+            ) {
+              return openFile;
+            }
+
+            return {
+              ...openFile,
+
+              position,
+            };
+          },
+        ),
+    );
+  }
+
+  function minimizeFile(
+    fileId: string,
+  ) {
+    const newZIndex =
+      nextZIndex.current++;
+
+    setOpenFiles(
+      (current) =>
+        current.map(
+          (openFile) => {
+            if (
+              openFile.file.id !==
+              fileId
+            ) {
+              return openFile;
+            }
+
+            return {
+              ...openFile,
+
+              minimized: true,
+
+              zIndex:
+                newZIndex,
+            };
+          },
+        ),
+    );
+  }
+
+  function restoreFile(
+    fileId: string,
+  ) {
+    const newZIndex =
+      nextZIndex.current++;
+
+    setOpenFiles(
+      (current) =>
+        current.map(
+          (openFile) => {
+            if (
+              openFile.file.id !==
+              fileId
+            ) {
+              return openFile;
+            }
+
+            return {
+              ...openFile,
+
+              minimized: false,
+
+              zIndex:
+                newZIndex,
+            };
+          },
+        ),
+    );
+  }
+
   function openFile(
     file: TerminalFile,
   ) {
@@ -270,12 +383,36 @@ export default function Terminal() {
       );
 
     /*
-     * Already open?
-     * Just bring it to the front.
+     * File already open.
+     *
+     * Restore it if minimized and
+     * bring it to the front.
      */
     if (existing) {
-      focusFile(
-        file.id,
+      const newZIndex =
+        nextZIndex.current++;
+
+      setOpenFiles(
+        (current) =>
+          current.map(
+            (openFile) => {
+              if (
+                openFile.file.id !==
+                file.id
+              ) {
+                return openFile;
+              }
+
+              return {
+                ...openFile,
+
+                minimized: false,
+
+                zIndex:
+                  newZIndex,
+              };
+            },
+          ),
       );
 
       return;
@@ -284,26 +421,50 @@ export default function Terminal() {
     const zIndex =
       nextZIndex.current++;
 
-    const offset =
-      nextOffset.current;
+    /*
+     * New windows are slightly
+     * staggered so opening several
+     * files doesn't perfectly stack
+     * them on top of each other.
+     */
+    const windowNumber =
+      openFiles.length % 5;
 
     /*
-     * Stagger windows:
+     * Normal desktop window size is
+     * approximately 620 x 440.
      *
-     * 0px
-     * 20px
-     * 40px
-     * 60px
-     * then start again.
+     * Start near the center.
      */
-    nextOffset.current += 20;
+    const desktopWidth = 620;
+    const desktopHeight = 440;
 
-    if (
-      nextOffset.current >
-      60
-    ) {
-      nextOffset.current = 0;
-    }
+    const baseX =
+      window.innerWidth / 2 -
+      desktopWidth / 2;
+
+    const baseY =
+      window.innerHeight / 2 -
+      desktopHeight / 2;
+
+    const position:
+      TerminalWindowPosition = {
+        x:
+          Math.max(
+            20,
+            baseX +
+              windowNumber *
+                24,
+          ),
+
+        y:
+          Math.max(
+            20,
+            baseY +
+              windowNumber *
+                24,
+          ),
+      };
 
     setOpenFiles(
       (current) => [
@@ -311,12 +472,22 @@ export default function Terminal() {
 
         {
           file,
+
           zIndex,
-          offset,
+
+          position,
+
+          minimized: false,
         },
       ],
     );
   }
+
+  /*
+   * ========================================================
+   * TERMINAL INPUT
+   * ========================================================
+   */
 
   function handleTerminalClick() {
     if (
@@ -326,9 +497,12 @@ export default function Terminal() {
     }
 
     /*
-     * Don't steal focus while the
-     * player is interacting with an
-     * open file window.
+     * Only automatically focus the
+     * command field when there are no
+     * file windows open.
+     *
+     * This prevents window interaction
+     * from constantly stealing focus.
      */
     if (
       openFiles.length === 0
@@ -338,7 +512,7 @@ export default function Terminal() {
   }
 
   function handleSubmit(
-    event: FormEvent,
+    event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
@@ -354,6 +528,9 @@ export default function Terminal() {
         trimmed,
       );
 
+    /*
+     * Invalid terminal access code.
+     */
     if (!file) {
       setCommandError(
         "ACCESS CODE NOT RECOGNIZED",
@@ -371,6 +548,9 @@ export default function Terminal() {
       return;
     }
 
+    /*
+     * Valid terminal file.
+     */
     setCommandError("");
 
     setCommand("");
@@ -379,8 +559,14 @@ export default function Terminal() {
   }
 
   /*
-   * EXISTING CONNECTION LOADING SCREEN
+   * ========================================================
+   * LOADING SCREEN
+   * ========================================================
+   *
+   * Existing SIVA-style connection
+   * screen remains unchanged.
    */
+
   if (
     state === "checking" ||
     state === "connecting"
@@ -410,8 +596,11 @@ export default function Terminal() {
   }
 
   /*
-   * CLOVIS BRAY ACCESS DENIED
+   * ========================================================
+   * ACCESS DENIED
+   * ========================================================
    */
+
   if (state === "refused") {
     return (
       <main className="terminal-page terminal-refused">
@@ -491,8 +680,11 @@ export default function Terminal() {
   }
 
   /*
+   * ========================================================
    * AUTHENTICATED TERMINAL
+   * ========================================================
    */
+
   return (
     <main
       className="terminal-page terminal-connected"
@@ -501,6 +693,12 @@ export default function Terminal() {
       }
     >
       <div className="cbc-background-grid" />
+
+      {/*
+       * ----------------------------------------------------
+       * MAIN TERMINAL INTERFACE
+       * ----------------------------------------------------
+       */}
 
       <section className="cbc-minimal-terminal">
         <header className="cbc-minimal-brand">
@@ -540,10 +738,18 @@ export default function Terminal() {
                   event.target.value,
                 );
 
+                /*
+                 * Remove the invalid-code
+                 * warning as soon as the
+                 * player begins typing
+                 * again.
+                 */
                 if (
                   commandError
                 ) {
-                  setCommandError("");
+                  setCommandError(
+                    "",
+                  );
                 }
               }}
               autoComplete="off"
@@ -576,8 +782,15 @@ export default function Terminal() {
       </section>
 
       {/*
-       * VIRTUAL TERMINAL FILE WINDOWS
+       * ----------------------------------------------------
+       * TERMINAL FILE WINDOW MANAGER
+       * ----------------------------------------------------
+       *
+       * These are virtual terminal
+       * records only. They are not
+       * website/root files.
        */}
+
       <div className="terminal-window-layer">
         {openFiles.map(
           (openFile) => (
@@ -585,20 +798,41 @@ export default function Terminal() {
               key={
                 openFile.file.id
               }
+
               file={
                 openFile.file
               }
+
               zIndex={
                 openFile.zIndex
               }
-              offset={
-                openFile.offset
+
+              position={
+                openFile.position
               }
+
+              minimized={
+                openFile.minimized
+              }
+
               onClose={
                 closeFile
               }
+
               onFocus={
                 focusFile
+              }
+
+              onMove={
+                moveFile
+              }
+
+              onMinimize={
+                minimizeFile
+              }
+
+              onRestore={
+                restoreFile
               }
             />
           ),
