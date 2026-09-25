@@ -69,6 +69,24 @@ const weaponImages = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const currencyImages = import.meta.glob(
+  "../assets/icons/currencies/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const upgradeMaterialImages = import.meta.glob(
+  "../assets/icons/upgrade-materials/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
 const destinationMaterialImages = import.meta.glob(
   "../assets/icons/destination-materials/*.png",
   { eager: true, import: "default", query: "?url" },
@@ -85,6 +103,8 @@ const raidMaterialImages = import.meta.glob(
 ) as Record<string, string>;
 
 const materialImages = {
+  ...currencyImages,
+  ...upgradeMaterialImages,
   ...destinationMaterialImages,
   ...dungeonMaterialImages,
   ...raidMaterialImages,
