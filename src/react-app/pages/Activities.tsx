@@ -6,6 +6,7 @@ import {
 } from "react";
 
 import TopBar from "../components/TopBar";
+import ActivityRunModal from "../components/ActivityRunModal";
 import "./Activities.css";
 
 type Activity = {
@@ -65,6 +66,7 @@ type ActivityCardProps = {
   backgroundPosition?: string;
   backgroundSize?: string;
   daily?: boolean;
+  onClick?: () => void;
 };
 
 const DESTINATIONS = [
@@ -412,6 +414,7 @@ function ActivityCard({
   backgroundPosition,
   backgroundSize,
   daily = false,
+  onClick,
 }: ActivityCardProps) {
   const className = [
     "activity-dashboard-card",
@@ -433,6 +436,7 @@ function ActivityCard({
       type="button"
       className={className}
       disabled={!activity}
+      onClick={activity ? onClick : undefined}
       style={
         backgroundImage
           ? {
@@ -529,6 +533,11 @@ export default function Activities() {
     traveling,
     setTraveling,
   ] = useState(false);
+
+  const [
+    selectedEndgameActivity,
+    setSelectedEndgameActivity,
+  ] = useState<Activity | null>(null);
 
   const loadedAtRef =
     useRef(Date.now());
@@ -802,6 +811,12 @@ export default function Activities() {
      */
   }
 
+  function openEndgameActivity(activity: Activity | null) {
+    if (!activity) return;
+    if (activity.type !== "raid" && activity.type !== "dungeon") return;
+    setSelectedEndgameActivity(activity);
+  }
+
   if (loading) {
     return (
       <div className="activities-screen">
@@ -937,6 +952,7 @@ export default function Activities() {
                 }
                 backgroundPosition="center"
                 backgroundSize="85% auto"
+                onClick={() => openEndgameActivity(data.rotation.dailyDungeon.activity)}
                 daily
               />
 
@@ -956,6 +972,7 @@ export default function Activities() {
                 }
                 backgroundPosition="center"
                 backgroundSize="85% auto"
+                onClick={() => openEndgameActivity(data.rotation.dailyRaid.activity)}
                 daily
               />
             </div>
@@ -1382,6 +1399,7 @@ export default function Activities() {
                     data.current.dungeon,
                   )
                 }
+                onClick={() => openEndgameActivity(data.current.dungeon)}
               />
 
               <ActivityCard
@@ -1397,6 +1415,7 @@ export default function Activities() {
                     data.current.raid,
                   )
                 }
+                onClick={() => openEndgameActivity(data.current.raid)}
               />
             </div>
           </section>
@@ -1439,6 +1458,15 @@ export default function Activities() {
           </div>
         </div>
       </main>
+
+      {selectedEndgameActivity && (
+        <ActivityRunModal
+          activity={selectedEndgameActivity}
+          backgroundImage={getActivityBanner(selectedEndgameActivity)}
+          onClose={() => setSelectedEndgameActivity(null)}
+          onFinished={() => void loadActivities()}
+        />
+      )}
     </div>
   );
 }
