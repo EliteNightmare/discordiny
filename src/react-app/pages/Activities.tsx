@@ -733,6 +733,15 @@ export default function Activities() {
 
   const [feedClock, setFeedClock] =
     useState(Date.now());
+  const [isMobileFeed, setIsMobileFeed] =
+    useState(
+      () =>
+        typeof window !== "undefined" &&
+        window.matchMedia(
+          "(max-width: 650px)",
+        ).matches,
+    );
+
 
   const feedRefreshingRef =
     useRef(false);
@@ -940,6 +949,30 @@ export default function Activities() {
       );
     };
   }, [data]);
+
+  useEffect(() => {
+    const media = window.matchMedia(
+      "(max-width: 650px)",
+    );
+
+    const updateMobileFeed = () => {
+      setIsMobileFeed(media.matches);
+    };
+
+    updateMobileFeed();
+
+    media.addEventListener(
+      "change",
+      updateMobileFeed,
+    );
+
+    return () => {
+      media.removeEventListener(
+        "change",
+        updateMobileFeed,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     function handleOutsideClick(
@@ -1207,6 +1240,11 @@ export default function Activities() {
 
   const dailyRaidCharges =
     data.player.endgame.dailyRaid;
+
+  const visibleGlobalActivityEvents =
+    isMobileFeed
+      ? globalActivityEvents.slice(0, 5)
+      : globalActivityEvents;
 
   return (
     <div className="activities-screen">
@@ -1824,9 +1862,9 @@ export default function Activities() {
                   <h2>Global Activity</h2>
                 </div>
 
-                {globalActivityEvents.length > 0 ? (
+                {visibleGlobalActivityEvents.length > 0 ? (
                   <div className="global-activity-feed-events">
-                    {globalActivityEvents.map(
+                    {visibleGlobalActivityEvents.map(
                       (event) => (
                         <article
                           className="global-activity-event"
