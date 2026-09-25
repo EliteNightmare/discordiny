@@ -7,6 +7,16 @@ import {
 
 import cbcLogo from "../assets/cbclogo.png";
 
+import {
+  findTerminalFile,
+} from "../terminal/terminalFiles";
+
+import type {
+  TerminalFile,
+} from "../terminal/terminalFiles";
+
+import TerminalWindow from "../terminal/TerminalWindow";
+
 import "./Terminal.css";
 
 type TerminalState =
@@ -14,6 +24,12 @@ type TerminalState =
   | "connecting"
   | "connected"
   | "refused";
+
+type OpenTerminalFile = {
+  file: TerminalFile;
+  zIndex: number;
+  offset: number;
+};
 
 export default function Terminal() {
   const [
@@ -28,10 +44,36 @@ export default function Terminal() {
     setCommand,
   ] = useState("");
 
+  const [
+    commandError,
+    setCommandError,
+  ] = useState("");
+
+  const [
+    openFiles,
+    setOpenFiles,
+  ] = useState<
+    OpenTerminalFile[]
+  >([]);
+
   const inputRef =
     useRef<HTMLInputElement>(
       null,
     );
+
+  /*
+   * File windows begin above the
+   * terminal interface.
+   */
+  const nextZIndex =
+    useRef(100);
+
+  /*
+   * Used to stagger newly opened
+   * desktop windows.
+   */
+  const nextOffset =
+    useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,10 +106,6 @@ export default function Terminal() {
         ) {
           setState("connected");
 
-          /*
-           * Remove any consumed instance
-           * key from the address bar.
-           */
           window.history.replaceState(
             {},
             "",
@@ -78,11 +116,11 @@ export default function Terminal() {
         }
 
         /*
-         * No existing session.
+         * No active session.
          *
-         * The first path component
-         * should contain our one-time
-         * terminal instance key.
+         * Attempt admission using the
+         * one-time instance key from
+         * the URL.
          */
         const instanceKey =
           window.location.pathname
@@ -96,10 +134,6 @@ export default function Terminal() {
 
         setState("connecting");
 
-        /*
-         * Attempt to consume the
-         * one-time instance key.
-         */
         const connectResponse =
           await fetch(
             "/api/terminal/connect",
@@ -136,10 +170,8 @@ export default function Terminal() {
         }
 
         /*
-         * Admission succeeded.
-         *
-         * Remove the secret instance
-         * key from the visible URL.
+         * Instance consumed.
+         * Remove it from the URL.
          */
         window.history.replaceState(
           {},
@@ -170,9 +202,136 @@ export default function Terminal() {
     }
   }, [state]);
 
+  /*
+   * Bring a terminal file window to
+   * the front.
+   */
+  function focusFile(
+    fileId: string,
+  ) {
+    const newZIndex =
+      nextZIndex.current++;
+
+    setOpenFiles(
+      (current) =>
+        current.map(
+          (openFile) => {
+            if (
+              openFile.file.id ===
+              fileId
+            ) {
+              return {
+                ...openFile,
+                zIndex:
+                  newZIndex,
+              };
+            }
+
+            return openFile;
+          },
+        ),
+    );
+  }
+
+  /*
+   * Close one virtual terminal file.
+   */
+  function closeFile(
+    fileId: string,
+  ) {
+    setOpenFiles(
+      (current) =>
+        current.filter(
+          (openFile) =>
+            openFile.file.id !==
+            fileId,
+        ),
+    );
+
+    window.setTimeout(
+      () => {
+        inputRef.current?.focus();
+      },
+      0,
+    );
+  }
+
+  /*
+   * Open a virtual terminal file.
+   */
+  function openFile(
+    file: TerminalFile,
+  ) {
+    const existing =
+      openFiles.find(
+        (openFile) =>
+          openFile.file.id ===
+          file.id,
+      );
+
+    /*
+     * Already open?
+     * Just bring it to the front.
+     */
+    if (existing) {
+      focusFile(
+        file.id,
+      );
+
+      return;
+    }
+
+    const zIndex =
+      nextZIndex.current++;
+
+    const offset =
+      nextOffset.current;
+
+    /*
+     * Stagger windows:
+     *
+     * 0px
+     * 20px
+     * 40px
+     * 60px
+     * then start again.
+     */
+    nextOffset.current += 20;
+
+    if (
+      nextOffset.current >
+      60
+    ) {
+      nextOffset.current = 0;
+    }
+
+    setOpenFiles(
+      (current) => [
+        ...current,
+
+        {
+          file,
+          zIndex,
+          offset,
+        },
+      ],
+    );
+  }
+
   function handleTerminalClick() {
     if (
-      state === "connected"
+      state !== "connected"
+    ) {
+      return;
+    }
+
+    /*
+     * Don't steal focus while the
+     * player is interacting with an
+     * open file window.
+     */
+    if (
+      openFiles.length === 0
     ) {
       inputRef.current?.focus();
     }
@@ -190,27 +349,37 @@ export default function Terminal() {
       return;
     }
 
-    /*
-     * Placeholder for the terminal-file
-     * system we'll add next.
-     *
-     * Eventually this will resolve a
-     * terminal-only code and open its
-     * corresponding file window.
-     */
-    console.log(
-      "Terminal code:",
-      trimmed,
-    );
+    const file =
+      findTerminalFile(
+        trimmed,
+      );
+
+    if (!file) {
+      setCommandError(
+        "ACCESS CODE NOT RECOGNIZED",
+      );
+
+      setCommand("");
+
+      window.setTimeout(
+        () => {
+          inputRef.current?.focus();
+        },
+        0,
+      );
+
+      return;
+    }
+
+    setCommandError("");
 
     setCommand("");
+
+    openFile(file);
   }
 
   /*
    * EXISTING CONNECTION LOADING SCREEN
-   *
-   * Kept as the existing red/SIVA
-   * connection screen.
    */
   if (
     state === "checking" ||
@@ -322,12 +491,7 @@ export default function Terminal() {
   }
 
   /*
-   * AUTHENTICATED CLOVIS BRAY TERMINAL
-   *
-   * Intentionally minimal.
-   *
-   * File windows will be rendered over
-   * this interface in the next step.
+   * AUTHENTICATED TERMINAL
    */
   return (
     <main
@@ -371,11 +535,17 @@ export default function Terminal() {
             <input
               ref={inputRef}
               value={command}
-              onChange={(event) =>
+              onChange={(event) => {
                 setCommand(
                   event.target.value,
-                )
-              }
+                );
+
+                if (
+                  commandError
+                ) {
+                  setCommandError("");
+                }
+              }}
               autoComplete="off"
               autoCapitalize="off"
               spellCheck={false}
@@ -390,8 +560,50 @@ export default function Terminal() {
               EXECUTE
             </button>
           </div>
+
+          <div
+            className={
+              commandError
+                ? "cbc-command-error cbc-command-error-visible"
+                : "cbc-command-error"
+            }
+            aria-live="polite"
+          >
+            {commandError ||
+              "\u00A0"}
+          </div>
         </form>
       </section>
+
+      {/*
+       * VIRTUAL TERMINAL FILE WINDOWS
+       */}
+      <div className="terminal-window-layer">
+        {openFiles.map(
+          (openFile) => (
+            <TerminalWindow
+              key={
+                openFile.file.id
+              }
+              file={
+                openFile.file
+              }
+              zIndex={
+                openFile.zIndex
+              }
+              offset={
+                openFile.offset
+              }
+              onClose={
+                closeFile
+              }
+              onFocus={
+                focusFile
+              }
+            />
+          ),
+        )}
+      </div>
     </main>
   );
 }
