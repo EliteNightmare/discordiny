@@ -23,6 +23,11 @@
   backdrop-filter: blur(12px);
 }
 
+
+/* =========================================================
+   ACCOUNT HEADER
+========================================================= */
+
 .account-header {
   display: flex;
   align-items: center;
@@ -51,12 +56,55 @@
   font-size: 0.95rem;
 }
 
+
+/* =========================================================
+   DIVIDER
+========================================================= */
+
 .account-divider {
   width: 100%;
   height: 1px;
   margin: 28px 0;
   background: rgba(255, 255, 255, 0.08);
 }
+
+
+/* =========================================================
+   BUNGIE ERROR
+========================================================= */
+
+.account-bungie-error {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  margin: 0 0 20px;
+  padding: 14px 16px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgba(255, 90, 90, 0.3);
+  border-radius: 9px;
+
+  background: rgba(120, 25, 25, 0.22);
+}
+
+.account-bungie-error strong {
+  color: rgb(255, 130, 130);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.account-bungie-error span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+
+/* =========================================================
+   ACCOUNT INFORMATION
+========================================================= */
 
 .account-information {
   display: flex;
@@ -93,16 +141,25 @@
   font-weight: 500;
 }
 
+
+/* =========================================================
+   LINK / UNLINK BUTTON
+========================================================= */
+
 .account-link-button {
   flex-shrink: 0;
   padding: 9px 18px;
+
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 7px;
+
   color: white;
   background: rgba(255, 255, 255, 0.08);
+
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
+
   cursor: pointer;
 }
 
@@ -110,10 +167,25 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+.account-link-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   LOADING
+========================================================= */
+
 .account-loading {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.95rem;
 }
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
 
 @media (max-width: 767px) {
   .account-page {
@@ -135,6 +207,19 @@
 
   .account-identity h1 {
     font-size: 1.5rem;
+  }
+
+  .account-bungie-error {
+    padding: 13px 14px;
+    margin-bottom: 16px;
+  }
+
+  .account-bungie-error strong {
+    font-size: 0.85rem;
+  }
+
+  .account-bungie-error span {
+    font-size: 0.8rem;
   }
 
   .account-information-item {
