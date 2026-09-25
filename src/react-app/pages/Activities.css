@@ -1340,6 +1340,18 @@
 ========================================================= */
 
 @media (max-width: 650px) {
+  .global-activity-feed {
+    min-height: 0;
+  }
+
+  .global-activity-feed-inner {
+    min-height: 0;
+  }
+
+  .global-activity-feed-events {
+    overflow: hidden;
+  }
+
   .activities-page {
     padding: 96px 15px 42px;
   }
