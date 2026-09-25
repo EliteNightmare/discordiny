@@ -5,40 +5,19 @@
 .terminal-file-window {
   position: absolute;
 
-  top: 50%;
-  left: 50%;
-
   display: flex;
   flex-direction: column;
 
   width:
     min(
-      720px,
-      calc(100vw - 80px)
+      620px,
+      calc(100vw - 60px)
     );
 
   height:
     min(
-      520px,
-      calc(100dvh - 100px)
-    );
-
-  margin-top:
-    min(
-      -260px,
-      calc(
-        (100dvh - 100px) /
-        -2
-      )
-    );
-
-  margin-left:
-    min(
-      -360px,
-      calc(
-        (100vw - 80px) /
-        -2
-      )
+      440px,
+      calc(100dvh - 80px)
     );
 
   overflow: hidden;
@@ -58,15 +37,29 @@
   color: #edf4f7;
 
   box-shadow:
-    0 30px 100px
-    rgba(0, 0, 0, 0.72),
-    0 0 60px
-    rgba(49, 132, 187, 0.08);
+    0 24px 80px
+    rgba(0, 0, 0, 0.7),
+    0 0 50px
+    rgba(49, 132, 187, 0.07);
 
   animation:
     terminal-file-open
-    180ms
+    160ms
     ease-out;
+}
+
+
+/* =========================================================
+   DRAGGING
+   ========================================================= */
+
+.terminal-window-dragging {
+  user-select: none !important;
+  cursor: grabbing !important;
+}
+
+.terminal-window-dragging * {
+  user-select: none !important;
 }
 
 
@@ -81,13 +74,13 @@
 
   flex: 0 0 auto;
 
-  min-height: 68px;
+  min-height: 58px;
 
   padding:
     0
-    12px
+    10px
     0
-    22px;
+    18px;
 
   background:
     #111a20;
@@ -95,6 +88,12 @@
   border-bottom:
     1px solid
     #263640;
+
+  cursor: grab;
+}
+
+.terminal-file-titlebar:active {
+  cursor: grabbing;
 }
 
 .terminal-file-title-info {
@@ -105,11 +104,11 @@
 }
 
 .terminal-file-system {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 
   color: #4c8fb9;
 
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   font-weight: 800;
 
   letter-spacing: 0.2em;
@@ -121,10 +120,10 @@ strong {
 
   color: #eef4f7;
 
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 700;
 
-  letter-spacing: 0.12em;
+  letter-spacing: 0.11em;
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -132,20 +131,29 @@ strong {
 
 
 /* =========================================================
-   CLOSE BUTTON
+   WINDOW CONTROLS
    ========================================================= */
 
-.terminal-file-close {
+.terminal-file-controls {
+  display: flex;
+  align-items: center;
+
+  flex: 0 0 auto;
+
+  gap: 7px;
+
+  margin-left: 18px;
+}
+
+.terminal-file-control {
   display: flex;
   align-items: center;
   justify-content: center;
 
   flex: 0 0 auto;
 
-  width: 42px;
-  height: 42px;
-
-  margin-left: 20px;
+  width: 34px;
+  height: 34px;
 
   padding: 0;
 
@@ -160,12 +168,17 @@ strong {
   background:
     #0b1216;
 
-  color: #8ba0ac;
+  color: #8499a5;
 
   cursor: pointer;
 
-  font-size: 1.35rem;
-  font-weight: 300;
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 1rem;
+  font-weight: 400;
 
   line-height: 1;
 
@@ -180,16 +193,31 @@ strong {
     140ms ease;
 }
 
-.terminal-file-close:hover {
+.terminal-file-control:hover {
   border-color: #559dca;
 
-  background: #13212a;
+  background:
+    #13212a;
 
   color: #ffffff;
 }
 
-.terminal-file-close:active {
-  transform: scale(0.92);
+.terminal-file-control:active {
+  transform: scale(0.9);
+}
+
+.terminal-file-minimize {
+  padding-bottom: 5px;
+
+  font-size: 1rem;
+}
+
+.terminal-file-expand {
+  font-size: 0.9rem;
+}
+
+.terminal-file-close {
+  font-size: 1.2rem;
 }
 
 
@@ -205,7 +233,8 @@ strong {
   width: 100%;
   height: 3px;
 
-  background: #1e2a32;
+  background:
+    #1e2a32;
 }
 
 .terminal-file-blue-line
@@ -214,7 +243,8 @@ span {
 
   width: 32%;
 
-  background: #428bb9;
+  background:
+    #428bb9;
 
   box-shadow:
     0 0 15px
@@ -235,8 +265,8 @@ span {
   min-height: 0;
 
   padding:
-    24px
-    26px;
+    20px
+    22px;
 }
 
 
@@ -249,14 +279,14 @@ span {
 
   grid-template-columns:
     1fr
-    1.5fr
+    1.45fr
     1fr;
 
   flex: 0 0 auto;
 
-  gap: 18px;
+  gap: 16px;
 
-  padding-bottom: 20px;
+  padding-bottom: 16px;
 
   border-bottom:
     1px solid
@@ -273,14 +303,14 @@ div {
 
 .terminal-file-metadata
 span {
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 
   color: #50636f;
 
-  font-size: 0.47rem;
+  font-size: 0.43rem;
   font-weight: 800;
 
-  letter-spacing: 0.18em;
+  letter-spacing: 0.17em;
 }
 
 .terminal-file-metadata
@@ -289,10 +319,10 @@ strong {
 
   color: #6399ba;
 
-  font-size: 0.57rem;
+  font-size: 0.52rem;
   font-weight: 700;
 
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
 
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -300,7 +330,7 @@ strong {
 
 
 /* =========================================================
-   FILE CONTENT
+   CONTENT
    ========================================================= */
 
 .terminal-file-content {
@@ -308,11 +338,11 @@ strong {
 
   min-height: 0;
 
-  margin-top: 22px;
+  margin-top: 18px;
 
   overflow-y: auto;
 
-  padding-right: 12px;
+  padding-right: 10px;
 
   scrollbar-width: thin;
 
@@ -326,7 +356,7 @@ p {
   margin:
     0
     0
-    8px;
+    7px;
 
   color: #9cabb4;
 
@@ -335,9 +365,9 @@ p {
     Courier,
     monospace;
 
-  font-size: 0.76rem;
+  font-size: 0.7rem;
 
-  line-height: 1.7;
+  line-height: 1.65;
 
   white-space: pre-wrap;
   word-break: break-word;
@@ -355,11 +385,11 @@ p {
 
   flex: 0 0 auto;
 
-  min-height: 38px;
+  min-height: 34px;
 
   padding:
     0
-    22px;
+    18px;
 
   border-top:
     1px solid
@@ -367,10 +397,98 @@ p {
 
   color: #455761;
 
-  font-size: 0.46rem;
+  font-size: 0.42rem;
   font-weight: 700;
 
-  letter-spacing: 0.14em;
+  letter-spacing: 0.13em;
+}
+
+
+/* =========================================================
+   MINIMIZED WINDOW
+   ========================================================= */
+
+.terminal-file-window-minimized {
+  display: block;
+
+  width: 330px;
+  height: auto;
+
+  overflow: visible;
+
+  border:
+    1px solid
+    #344a58;
+
+  background:
+    #10191f;
+
+  box-shadow:
+    0 16px 50px
+    rgba(0, 0, 0, 0.6),
+    0 0 30px
+    rgba(49, 132, 187, 0.05);
+}
+
+.terminal-file-minimized-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  min-height: 54px;
+
+  padding:
+    0
+    8px
+    0
+    16px;
+
+  cursor: grab;
+
+  background:
+    linear-gradient(
+      90deg,
+      #111b21,
+      #0d151a
+    );
+}
+
+.terminal-file-minimized-bar:active {
+  cursor: grabbing;
+}
+
+.terminal-file-minimized-title {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+}
+
+.terminal-file-minimized-title
+span {
+  margin-bottom: 3px;
+
+  color: #4c8fb9;
+
+  font-size: 0.4rem;
+  font-weight: 800;
+
+  letter-spacing: 0.17em;
+}
+
+.terminal-file-minimized-title
+strong {
+  overflow: hidden;
+
+  color: #dce7ec;
+
+  font-size: 0.58rem;
+  font-weight: 700;
+
+  letter-spacing: 0.08em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
@@ -401,50 +519,67 @@ p {
   .terminal-file-window {
     position: fixed;
 
-    top: 10px;
+    top: 10px !important;
     right: 10px;
     bottom: 10px;
-    left: 10px;
+    left: 10px !important;
 
     width: auto;
     height: auto;
 
-    margin: 0;
+    transform: none !important;
+  }
 
-    transform:
-      none !important;
+  .terminal-file-window-minimized {
+    top: auto !important;
+    right: 10px;
+    bottom: 14px;
+    left: 10px !important;
+
+    width: auto;
+    height: 54px;
   }
 
   .terminal-file-titlebar {
-    min-height: 62px;
+    min-height: 56px;
 
     padding:
       0
-      9px
+      8px
       0
-      16px;
+      14px;
+
+    cursor: default;
+  }
+
+  .terminal-file-minimized-bar {
+    cursor: default;
   }
 
   .terminal-file-system {
-    font-size: 0.43rem;
+    font-size: 0.4rem;
   }
 
   .terminal-file-title-info
   strong {
-    font-size: 0.62rem;
+    font-size: 0.58rem;
   }
 
-  .terminal-file-close {
-    width: 40px;
-    height: 40px;
+  .terminal-file-controls {
+    gap: 5px;
 
-    margin-left: 12px;
+    margin-left: 10px;
+  }
+
+  .terminal-file-control {
+    width: 36px;
+    height: 36px;
   }
 
   .terminal-file-body {
     padding:
-      18px
-      16px;
+      17px
+      15px;
   }
 
   .terminal-file-metadata {
@@ -453,7 +588,7 @@ p {
       1fr;
 
     gap:
-      14px
+      13px
       10px;
   }
 
@@ -466,14 +601,14 @@ p {
   }
 
   .terminal-file-content {
-    margin-top: 18px;
+    margin-top: 17px;
 
     padding-right: 5px;
   }
 
   .terminal-file-content
   p {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
   }
 
   .terminal-file-footer {
@@ -481,6 +616,14 @@ p {
       0
       14px;
 
-    font-size: 0.4rem;
+    font-size: 0.38rem;
+  }
+
+  .terminal-file-minimized-title
+  strong {
+    max-width:
+      calc(
+        100vw - 145px
+      );
   }
 }
