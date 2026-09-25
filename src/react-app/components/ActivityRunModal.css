@@ -337,6 +337,24 @@
   background:rgba(255,255,255,.035)
 }
 
+.activity-run-rewards article.has-icon {
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+
+.activity-run-reward-icon {
+  width:36px;
+  height:36px;
+  flex:0 0 36px;
+  object-fit:contain;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.32))
+}
+
+.activity-run-reward-copy {
+  min-width:0
+}
+
 .activity-run-rewards small {
   display:block;
   overflow:hidden;
@@ -644,6 +662,12 @@ to {
 
 .activity-run-final .weapon-drop {
     min-height:92px
+  }
+
+.activity-run-reward-icon {
+    width:32px;
+    height:32px;
+    flex-basis:32px
   }
 
 .activity-run-final-weapon-icon {
