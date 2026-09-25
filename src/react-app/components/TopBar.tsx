@@ -764,10 +764,10 @@ export default function TopBar() {
                     false,
                   );
 
-                  goToProfile();
+                  goTo("/account");
                 }}
               >
-                Profile
+                Account
               </button>
 
               <button
