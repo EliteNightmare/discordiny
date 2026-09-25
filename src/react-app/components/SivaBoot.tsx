@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -29,21 +30,120 @@ export default function SivaBoot({
       "INITIALIZING DISCORDINY",
     );
 
-  const [terminalTriggered, setTerminalTriggered] =
-    useState(false);
+  const [
+    terminalTriggered,
+    setTerminalTriggered,
+  ] = useState(false);
 
+  /*
+   * Desktop keyboard state.
+   */
   const heldKeys =
     useRef<Set<string>>(
       new Set(),
     );
 
+  /*
+   * Mobile hidden-button state.
+   */
+  const mobileHeld =
+    useRef<Set<number>>(
+      new Set(),
+    );
+
+  /*
+   * Prevent more than one terminal
+   * instance from being created.
+   */
   const triggered =
     useRef(false);
 
+  /*
+   * Shared terminal activation.
+   *
+   * Both the desktop keyboard shortcut
+   * and the mobile buttons use this
+   * exact same function.
+   */
+  const activateTerminal =
+    useCallback(async () => {
+      if (triggered.current) {
+        return;
+      }
+
+      triggered.current = true;
+
+      setTerminalTriggered(
+        true,
+      );
+
+      setStatus(
+        "SIVA ACCESS VECTOR DETECTED",
+      );
+
+      try {
+        const response =
+          await fetch(
+            "/api/terminal/create",
+            {
+              method: "POST",
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success ||
+          !data.instanceKey
+        ) {
+          throw new Error(
+            "Instance creation failed.",
+          );
+        }
+
+        setStatus(
+          "OPENING SIVA TERMINAL",
+        );
+
+        window.location.href =
+          `https://terminal.discordiny.com/${encodeURIComponent(
+            data.instanceKey,
+          )}`;
+      } catch {
+        /*
+         * Terminal creation failed.
+         * Release the trigger and let
+         * Discordiny finish booting.
+         */
+        triggered.current =
+          false;
+
+        setTerminalTriggered(
+          false,
+        );
+
+        heldKeys.current.clear();
+        mobileHeld.current.clear();
+
+        setStatus(
+          "SYSTEM READY",
+        );
+
+        window.setTimeout(
+          () => {
+            onComplete();
+          },
+          500,
+        );
+      }
+    }, [onComplete]);
+
+  /*
+   * Five-second boot sequence.
+   */
   useEffect(() => {
-    /*
-     * Five-second boot sequence.
-     */
     const startedAt =
       Date.now();
 
@@ -110,9 +210,9 @@ export default function SivaBoot({
           );
 
           /*
-           * Don't open Home if the
-           * secret terminal trigger is
-           * currently being processed.
+           * Do not open Home if a
+           * terminal request is already
+           * being processed.
            */
           if (!triggered.current) {
             onComplete();
@@ -127,6 +227,12 @@ export default function SivaBoot({
     };
   }, [onComplete]);
 
+  /*
+   * Desktop:
+   *
+   * Shift + S + I + V + A must all
+   * physically be held at once.
+   */
   useEffect(() => {
     function normalizeKey(
       event: KeyboardEvent,
@@ -138,89 +244,6 @@ export default function SivaBoot({
       }
 
       return event.key.toLowerCase();
-    }
-
-    async function activateTerminal() {
-      /*
-       * Prevent duplicate requests if
-       * key-repeat events fire while the
-       * keys are being held.
-       */
-      if (triggered.current) {
-        return;
-      }
-
-      triggered.current = true;
-
-      setTerminalTriggered(
-        true,
-      );
-
-      setStatus(
-        "SIVA ACCESS VECTOR DETECTED",
-      );
-
-      try {
-        const response =
-          await fetch(
-            "/api/terminal/create",
-            {
-              method: "POST",
-            },
-          );
-
-        const data =
-          await response.json();
-
-        if (
-          !response.ok ||
-          !data.success ||
-          !data.instanceKey
-        ) {
-          throw new Error(
-            "Instance creation failed.",
-          );
-        }
-
-        setStatus(
-          "OPENING SIVA TERMINAL",
-        );
-
-        /*
-         * Redirect to the secure
-         * one-time terminal instance.
-         */
-        window.location.href =
-          `https://terminal.discordiny.com/${encodeURIComponent(
-            data.instanceKey,
-          )}`;
-      } catch {
-        /*
-         * If something goes wrong,
-         * cancel the Easter egg and
-         * allow Discordiny to finish
-         * booting normally.
-         */
-        triggered.current =
-          false;
-
-        setTerminalTriggered(
-          false,
-        );
-
-        heldKeys.current.clear();
-
-        setStatus(
-          "SYSTEM READY",
-        );
-
-        window.setTimeout(
-          () => {
-            onComplete();
-          },
-          500,
-        );
-      }
     }
 
     function checkKeys() {
@@ -262,12 +285,8 @@ export default function SivaBoot({
     }
 
     function handleBlur() {
-      /*
-       * Avoid keys getting "stuck"
-       * if the browser loses focus
-       * while a key is held.
-       */
       heldKeys.current.clear();
+      mobileHeld.current.clear();
     }
 
     window.addEventListener(
@@ -301,7 +320,37 @@ export default function SivaBoot({
         handleBlur,
       );
     };
-  }, [onComplete]);
+  }, [activateTerminal]);
+
+  /*
+   * Mobile:
+   *
+   * All three obscure controls must
+   * physically be held simultaneously.
+   */
+  function handleMobileDown(
+    button: number,
+  ) {
+    mobileHeld.current.add(
+      button,
+    );
+
+    if (
+      mobileHeld.current.has(1) &&
+      mobileHeld.current.has(2) &&
+      mobileHeld.current.has(3)
+    ) {
+      void activateTerminal();
+    }
+  }
+
+  function handleMobileUp(
+    button: number,
+  ) {
+    mobileHeld.current.delete(
+      button,
+    );
+  }
 
   return (
     <main
@@ -409,6 +458,74 @@ export default function SivaBoot({
         <span>
           BUILD://ACTIVE
         </span>
+      </div>
+
+      {/*
+       * Hidden mobile access controls.
+       *
+       * CSS only reveals these on
+       * coarse-pointer/touch devices.
+       */}
+      <div
+        className="siva-mobile-access"
+        aria-label="System diagnostics"
+      >
+        <button
+          type="button"
+          aria-label="Diagnostic control one"
+          onPointerDown={() =>
+            handleMobileDown(1)
+          }
+          onPointerUp={() =>
+            handleMobileUp(1)
+          }
+          onPointerCancel={() =>
+            handleMobileUp(1)
+          }
+          onPointerLeave={() =>
+            handleMobileUp(1)
+          }
+        >
+          ◈
+        </button>
+
+        <button
+          type="button"
+          aria-label="Diagnostic control two"
+          onPointerDown={() =>
+            handleMobileDown(2)
+          }
+          onPointerUp={() =>
+            handleMobileUp(2)
+          }
+          onPointerCancel={() =>
+            handleMobileUp(2)
+          }
+          onPointerLeave={() =>
+            handleMobileUp(2)
+          }
+        >
+          ∴
+        </button>
+
+        <button
+          type="button"
+          aria-label="Diagnostic control three"
+          onPointerDown={() =>
+            handleMobileDown(3)
+          }
+          onPointerUp={() =>
+            handleMobileUp(3)
+          }
+          onPointerCancel={() =>
+            handleMobileUp(3)
+          }
+          onPointerLeave={() =>
+            handleMobileUp(3)
+          }
+        >
+          //
+        </button>
       </div>
     </main>
   );
