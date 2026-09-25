@@ -17,8 +17,20 @@
 
 .activities-container {
   width: 100%;
-  max-width: 1280px;
+  max-width: 1640px;
   margin: 0 auto;
+}
+
+.activities-layout {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr) 310px;
+  gap: 34px;
+  align-items: start;
+}
+
+.activities-main {
+  min-width: 0;
 }
 
 
@@ -1004,8 +1016,203 @@
 
 
 /* =========================================================
+   GLOBAL ACTIVITY FEED
+========================================================= */
+
+.global-activity-feed {
+  position: relative;
+  min-width: 0;
+  align-self: stretch;
+  border-left:
+    1px solid rgba(255, 255, 255, 0.1);
+}
+
+.global-activity-feed-inner {
+  position: sticky;
+  top: 104px;
+  min-height: 560px;
+  padding: 4px 0 28px 26px;
+}
+
+.global-activity-feed-heading {
+  margin-bottom: 24px;
+}
+
+.global-activity-feed-heading span {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.global-activity-feed-heading h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.global-activity-feed-empty {
+  position: relative;
+  padding: 20px 0;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.global-activity-feed-pulse {
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin-bottom: 15px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 0 0 0 rgba(255, 255, 255, 0.2);
+  animation:
+    global-activity-pulse
+    2s ease-out infinite;
+}
+
+.global-activity-feed-empty strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.global-activity-feed-empty p {
+  max-width: 225px;
+  margin: 9px 0 0;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+@keyframes global-activity-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0.22);
+  }
+
+  70% {
+    box-shadow:
+      0 0 0 8px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+
+/* Future feed event structure.
+   Global announcements intentionally contain ONLY:
+   - clear or wipe
+   - weapon reward, when one drops
+*/
+
+.global-activity-event {
+  position: relative;
+  padding: 15px 0 16px;
+  border-top:
+    1px solid rgba(255, 255, 255, 0.07);
+}
+
+.global-activity-event:first-child {
+  border-top: 0;
+}
+
+.global-activity-event-player {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.global-activity-event-activity {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.global-activity-event-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.global-activity-event-result.clear {
+  color: rgba(183, 231, 194, 0.86);
+}
+
+.global-activity-event-result.wipe {
+  color: rgba(255, 137, 137, 0.82);
+}
+
+.global-activity-event-weapon {
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left:
+    2px solid rgba(226, 195, 108, 0.48);
+}
+
+.global-activity-event-weapon span {
+  display: block;
+  color: rgba(226, 195, 108, 0.58);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.global-activity-event-weapon strong {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 236, 177, 0.94);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.global-activity-event-time {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 0.58rem;
+}
+
+/* =========================================================
    TABLET
 ========================================================= */
+
+@media (max-width: 1180px) {
+  .activities-layout {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .global-activity-feed {
+    border-top:
+      1px solid rgba(255, 255, 255, 0.1);
+    border-left: 0;
+  }
+
+  .global-activity-feed-inner {
+    position: relative;
+    top: auto;
+    min-height: 220px;
+    padding: 28px 0 0;
+  }
+}
 
 @media (max-width: 900px) {
   .activities-grid-three {
@@ -1120,7 +1327,8 @@
   .exploration-scan,
   .exploration-particles i,
   .exploration-progress-fill span,
-  .exploring-dots i {
+  .exploring-dots i,
+  .global-activity-feed-pulse {
     animation: none !important;
   }
 }
