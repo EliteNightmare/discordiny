@@ -501,26 +501,19 @@ export default function ActivityRunModal({
                   </strong>
                 </div>
 
-                <div>
-                  <span>POWER</span>
-                  <strong>
-                    {number(
-                      result.power,
-                    )}
-                  </strong>
-                </div>
+                {!['strike', 'nightfall', 'gm'].includes(activity.type) && (
+                  <>
+                    <div>
+                      <span>POWER</span>
+                      <strong>{number(result.power)}</strong>
+                    </div>
 
-                <div>
-                  <span>
-                    CLEAR CHANCE
-                  </span>
-                  <strong>
-                    {result.successChance.toFixed(
-                      1,
-                    )}
-                    %
-                  </strong>
-                </div>
+                    <div>
+                      <span>CLEAR CHANCE</span>
+                      <strong>{result.successChance.toFixed(1)}%</strong>
+                    </div>
+                  </>
+                )}
               </div>
 
               {phase ===
