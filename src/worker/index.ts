@@ -4154,7 +4154,7 @@ app.get("/api/game/activities", async (c) => {
            timestamp
          FROM player_cooldowns
          WHERE user_id = ?
-           AND activity IN (?, ?, ?, ?, ?, ?, ?)`,
+           AND activity IN (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         session.user_id,
@@ -4165,6 +4165,7 @@ app.get("/api/game/activities", async (c) => {
         VANGUARD_STRIKE_COOLDOWN_KEY,
         VANGUARD_NIGHTFALL_COOLDOWN_KEY,
         VANGUARD_GM_COOLDOWN_KEY,
+        INFILTRATION_COOLDOWN_KEY,
       )
       .all<{
         activity: string;
@@ -4219,6 +4220,7 @@ app.get("/api/game/activities", async (c) => {
   const vanguardStrikeReadyAt = endgameCooldownMap.get(VANGUARD_STRIKE_COOLDOWN_KEY) ?? 0;
   const vanguardNightfallReadyAt = endgameCooldownMap.get(VANGUARD_NIGHTFALL_COOLDOWN_KEY) ?? 0;
   const vanguardGmReadyAt = endgameCooldownMap.get(VANGUARD_GM_COOLDOWN_KEY) ?? 0;
+  const infiltrationReadyAt = endgameCooldownMap.get(INFILTRATION_COOLDOWN_KEY) ?? 0;
 
   /* =======================================================
      RESPONSE
@@ -4269,6 +4271,20 @@ app.get("/api/game/activities", async (c) => {
           readyAt: vanguardGmReadyAt,
           minLevel: GM_MIN_LEVEL,
         },
+      },
+
+      infiltration: {
+        cooldownSeconds:
+          INFILTRATION_COOLDOWN_SECONDS,
+      
+        remainingSeconds:
+          Math.max(
+            0,
+            infiltrationReadyAt - nowSeconds,
+          ),
+      
+        readyAt:
+          infiltrationReadyAt,
       },
 
       endgame: {
