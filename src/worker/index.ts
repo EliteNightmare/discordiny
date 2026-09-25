@@ -3722,6 +3722,8 @@ const VANGUARD_STRIKE_COOLDOWN_KEY = "__vanguard_strike";
 const VANGUARD_NIGHTFALL_COOLDOWN_KEY = "__vanguard_nightfall";
 const VANGUARD_GM_COOLDOWN_KEY = "__vanguard_gm";
 
+const INFILTRATION_COOLDOWN_KEY = "__infiltration";
+
 function getDailyEndgameChargeKey(
   type: "raid" | "dungeon",
   nowSeconds: number,
