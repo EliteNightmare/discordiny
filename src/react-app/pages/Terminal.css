@@ -18,6 +18,7 @@
 
 /* =========================================================
    EXISTING LOADING SCREEN
+   DO NOT CHANGE
    ========================================================= */
 
 .terminal-loading {
@@ -102,20 +103,20 @@
 
 
 /* =========================================================
-   CLOVIS BRAY SHARED BACKGROUND
+   CLOVIS BRAY DARK BACKGROUND
    ========================================================= */
 
 .terminal-connected,
 .terminal-refused {
   background:
-    linear-gradient(
-      135deg,
-      #e5e8eb 0%,
-      #cdd3d9 46%,
-      #f3f5f6 100%
+    radial-gradient(
+      circle at 50% 20%,
+      #18242d 0%,
+      #0c1217 42%,
+      #06090c 100%
     );
 
-  color: #17202a;
+  color: #eef5f8;
 }
 
 .cbc-background-grid {
@@ -126,13 +127,13 @@
 
   background-image:
     linear-gradient(
-      rgba(43, 74, 99, 0.055)
+      rgba(77, 151, 202, 0.055)
       1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      rgba(43, 74, 99, 0.055)
+      rgba(77, 151, 202, 0.055)
       1px,
       transparent 1px
     );
@@ -144,7 +145,7 @@
   mask-image:
     linear-gradient(
       to bottom,
-      rgba(0, 0, 0, 0.75),
+      rgba(0, 0, 0, 0.9),
       transparent
     );
 }
@@ -177,19 +178,16 @@
 
   border:
     1px solid
-    rgba(55, 72, 88, 0.2);
+    rgba(99, 145, 176, 0.2);
 
   background:
-    rgba(
-      245,
-      247,
-      248,
-      0.88
-    );
+    rgba(11, 17, 22, 0.94);
 
   box-shadow:
-    0 30px 80px
-    rgba(31, 43, 53, 0.14);
+    0 30px 100px
+    rgba(0, 0, 0, 0.55),
+    0 0 60px
+    rgba(49, 125, 176, 0.04);
 
   backdrop-filter:
     blur(12px);
@@ -207,6 +205,12 @@
   height: 58px;
 
   object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 0 12px
+      rgba(73, 153, 207, 0.16)
+    );
 }
 
 .cbc-refused-header > div {
@@ -215,7 +219,7 @@
 }
 
 .cbc-refused-header span {
-  color: #263744;
+  color: #f0f5f8;
 
   font-size: 0.88rem;
   font-weight: 800;
@@ -226,7 +230,7 @@
 .cbc-refused-header small {
   margin-top: 3px;
 
-  color: #71808b;
+  color: #718491;
 
   font-size: 0.56rem;
   font-weight: 700;
@@ -246,17 +250,17 @@
   background:
     linear-gradient(
       to right,
-      #366d98 0%,
-      #366d98 30%,
-      #b9c1c7 30%,
-      #b9c1c7 100%
+      #4084b2 0%,
+      #4084b2 30%,
+      #26333c 30%,
+      #26333c 100%
     );
 }
 
 .cbc-refused-code {
   margin-bottom: 12px;
 
-  color: #52728b;
+  color: #5598c4;
 
   font-size: 0.62rem;
   font-weight: 800;
@@ -267,7 +271,7 @@
 .cbc-refused-panel h1 {
   margin: 0;
 
-  color: #273742;
+  color: #f4f7f9;
 
   font-size:
     clamp(
@@ -291,7 +295,7 @@
     0
     34px;
 
-  color: #68747d;
+  color: #8d9ca6;
 
   font-size: 0.86rem;
 
@@ -315,11 +319,11 @@
 
   border-top:
     1px solid
-    #d2d7db;
+    #25323b;
 
   border-bottom:
     1px solid
-    #d2d7db;
+    #25323b;
 
   font-size: 0.6rem;
 
@@ -327,11 +331,11 @@
 }
 
 .cbc-refused-details span {
-  color: #8a959d;
+  color: #63727c;
 }
 
 .cbc-refused-details strong {
-  color: #386d94;
+  color: #5aa0ce;
 
   font-weight: 800;
 }
@@ -339,7 +343,7 @@
 .cbc-refused-footer {
   margin-top: 28px;
 
-  color: #98a1a8;
+  color: #4e5e69;
 
   font-size: 0.54rem;
   font-weight: 700;
@@ -373,23 +377,22 @@
 
   border:
     1px solid
-    rgba(49, 68, 83, 0.2);
+    rgba(82, 126, 155, 0.22);
 
   background:
-    rgba(
-      239,
-      242,
-      244,
-      0.94
-    );
+    rgba(9, 14, 18, 0.95);
 
   box-shadow:
-    0 25px 70px
-    rgba(26, 40, 51, 0.16);
+    0 30px 100px
+    rgba(0, 0, 0, 0.52),
+    0 0 80px
+    rgba(48, 126, 178, 0.04);
 }
 
 
-/* HEADER */
+/* =========================================================
+   HEADER
+   ========================================================= */
 
 .cbc-terminal-header {
   display: flex;
@@ -401,6 +404,9 @@
   padding:
     0
     32px;
+
+  background:
+    rgba(255, 255, 255, 0.01);
 }
 
 .cbc-brand {
@@ -415,6 +421,12 @@
   height: 58px;
 
   object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 0 12px
+      rgba(70, 150, 205, 0.12)
+    );
 }
 
 .cbc-brand-copy {
@@ -423,7 +435,7 @@
 }
 
 .cbc-brand-copy strong {
-  color: #263946;
+  color: #f0f5f8;
 
   font-size: 0.8rem;
 
@@ -433,7 +445,7 @@
 .cbc-brand-copy span {
   margin-top: 3px;
 
-  color: #75838d;
+  color: #697b87;
 
   font-size: 0.52rem;
   font-weight: 700;
@@ -449,7 +461,7 @@
 }
 
 .cbc-header-data span {
-  color: #8a959c;
+  color: #61737f;
 
   font-size: 0.54rem;
   font-weight: 700;
@@ -460,7 +472,7 @@
 .cbc-header-data strong {
   margin-top: 5px;
 
-  color: #39749e;
+  color: #4b98ca;
 
   font-size: 0.64rem;
 
@@ -476,7 +488,7 @@
     0
     32px;
 
-  background: #c4cbd0;
+  background: #1f2b33;
 }
 
 .cbc-terminal-divider span {
@@ -484,11 +496,17 @@
 
   width: 28%;
 
-  background: #3978a6;
+  background: #4087b6;
+
+  box-shadow:
+    0 0 16px
+    rgba(64, 135, 182, 0.25);
 }
 
 
-/* MAIN */
+/* =========================================================
+   MAIN
+   ========================================================= */
 
 .cbc-terminal-main {
   display: grid;
@@ -515,11 +533,11 @@
 
   border-right:
     1px solid
-    #c9d0d5;
+    #202d35;
 }
 
 .cbc-sidebar-label {
-  color: #71818d;
+  color: #637580;
 
   font-size: 0.56rem;
   font-weight: 800;
@@ -530,12 +548,16 @@
 .cbc-terminal-number {
   margin-top: 8px;
 
-  color: #2d6d9d;
+  color: #478fbe;
 
   font-size: 4.6rem;
   font-weight: 200;
 
   line-height: 1;
+
+  text-shadow:
+    0 0 24px
+    rgba(71, 143, 190, 0.12);
 }
 
 .cbc-sidebar-data {
@@ -555,11 +577,11 @@
 .cbc-sidebar-data span {
   margin-top: 10px;
 
-  color: #929ca3;
+  color: #53636d;
 }
 
 .cbc-sidebar-data strong {
-  color: #3f657f;
+  color: #5a8ba9;
 
   font-size: 0.58rem;
 }
@@ -582,8 +604,10 @@
   gap: 30px;
 }
 
-.cbc-console-heading > div > span {
-  color: #668095;
+.cbc-console-heading
+> div
+> span {
+  color: #63839a;
 
   font-size: 0.55rem;
   font-weight: 800;
@@ -597,7 +621,7 @@
     0
     0;
 
-  color: #283944;
+  color: #f0f4f6;
 
   font-size:
     clamp(
@@ -621,7 +645,7 @@
 
   padding-top: 4px;
 
-  color: #52778f;
+  color: #6195b5;
 
   font-size: 0.55rem;
   font-weight: 800;
@@ -635,16 +659,20 @@
 
   border-radius: 50%;
 
-  background: #4384b2;
+  background: #4b9bd0;
 
   box-shadow:
     0 0 0
     4px
-    rgba(67, 132, 178, 0.12);
+    rgba(75, 155, 208, 0.1),
+    0 0 14px
+    rgba(75, 155, 208, 0.4);
 }
 
 
-/* OUTPUT */
+/* =========================================================
+   TERMINAL OUTPUT
+   ========================================================= */
 
 .cbc-output {
   flex: 1;
@@ -661,19 +689,20 @@
 
   border-left:
     3px solid
-    #3978a6;
+    #4087b6;
 
   background:
-    rgba(
-      255,
-      255,
-      255,
-      0.5
-    );
+    rgba(2, 6, 9, 0.56);
+
+  box-shadow:
+    inset
+    0 0 40px
+    rgba(0, 0, 0, 0.25);
 
   scrollbar-width: thin;
+
   scrollbar-color:
-    #9baab5
+    #344b5b
     transparent;
 }
 
@@ -682,7 +711,7 @@
 
   margin-bottom: 4px;
 
-  color: #64737e;
+  color: #8799a4;
 
   font-family:
     "Courier New",
@@ -703,7 +732,7 @@
 }
 
 .cbc-line-system {
-  color: #316b95;
+  color: #58a0ce;
 
   font-weight: 700;
 }
@@ -711,17 +740,19 @@
 .cbc-line-command {
   margin-top: 14px;
 
-  color: #243b4a;
+  color: #f0f5f7;
 
   font-weight: 700;
 }
 
 .cbc-line-response {
-  color: #697781;
+  color: #82939e;
 }
 
 
-/* ROUND BOXED PROMPT */
+/* =========================================================
+   ROUND TERMINAL CODE PROMPT
+   ========================================================= */
 
 .cbc-prompt {
   margin-top: 22px;
@@ -734,7 +765,7 @@
     8px
     18px;
 
-  color: #72838f;
+  color: #667d8c;
 
   font-size: 0.52rem;
   font-weight: 800;
@@ -758,39 +789,46 @@
 
   border:
     1px solid
-    #aebbc4;
+    #304654;
 
   border-radius: 999px;
 
-  background: #f9fafb;
+  background:
+    #0c1318;
 
   box-shadow:
     inset
-    0 1px 2px
-    rgba(23, 42, 55, 0.05),
-    0 5px 20px
-    rgba(34, 55, 69, 0.06);
+    0 1px 4px
+    rgba(0, 0, 0, 0.6),
+    0 5px 25px
+    rgba(0, 0, 0, 0.18);
 
   transition:
     border-color
     150ms ease,
     box-shadow
+    150ms ease,
+    background
     150ms ease;
 }
 
 .cbc-prompt-box:focus-within {
-  border-color: #3b7aa8;
+  border-color: #4b98ca;
+
+  background: #0e171d;
 
   box-shadow:
     0 0 0
     4px
-    rgba(59, 122, 168, 0.1);
+    rgba(75, 152, 202, 0.09),
+    0 0 30px
+    rgba(48, 129, 184, 0.07);
 }
 
 .cbc-prompt-chevron {
   margin-right: 12px;
 
-  color: #3978a6;
+  color: #4b98ca;
 
   font-family:
     "Courier New",
@@ -812,7 +850,9 @@
 
   background: transparent;
 
-  color: #243a48;
+  color: #eef5f8;
+
+  caret-color: #59a7d9;
 
   font-family:
     "Courier New",
@@ -825,8 +865,9 @@
   letter-spacing: 0.06em;
 }
 
-.cbc-prompt-box input::placeholder {
-  color: #a8b0b6;
+.cbc-prompt-box
+input::placeholder {
+  color: #475761;
 }
 
 .cbc-prompt-box button {
@@ -842,8 +883,8 @@
 
   border-radius: 999px;
 
-  background: #3978a6;
-  color: white;
+  background: #3e83b0;
+  color: #ffffff;
 
   cursor: pointer;
 
@@ -852,23 +893,37 @@
 
   letter-spacing: 0.14em;
 
+  box-shadow:
+    0 0 18px
+    rgba(62, 131, 176, 0.12);
+
   transition:
     background
     150ms ease,
     transform
+    150ms ease,
+    box-shadow
     150ms ease;
 }
 
-.cbc-prompt-box button:hover {
-  background: #2e668f;
+.cbc-prompt-box
+button:hover {
+  background: #4a96c7;
+
+  box-shadow:
+    0 0 24px
+    rgba(74, 150, 199, 0.22);
 }
 
-.cbc-prompt-box button:active {
+.cbc-prompt-box
+button:active {
   transform: scale(0.97);
 }
 
 
-/* FOOTER */
+/* =========================================================
+   FOOTER
+   ========================================================= */
 
 .cbc-terminal-footer {
   display: grid;
@@ -888,9 +943,9 @@
 
   border-top:
     1px solid
-    #c8cfd4;
+    #202d35;
 
-  color: #8a969e;
+  color: #52626c;
 
   font-size: 0.48rem;
   font-weight: 700;
@@ -898,14 +953,16 @@
   letter-spacing: 0.13em;
 }
 
-.cbc-terminal-footer span:nth-child(2) {
+.cbc-terminal-footer
+span:nth-child(2) {
   text-align: center;
 }
 
-.cbc-terminal-footer span:last-child {
+.cbc-terminal-footer
+span:last-child {
   text-align: right;
 
-  color: #50758e;
+  color: #527c96;
 }
 
 
