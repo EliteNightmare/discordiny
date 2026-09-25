@@ -38,6 +38,11 @@ type ActivitiesResponse = {
       percentage: number;
       capped: boolean;
     };
+    vanguard: {
+      strike: { cooldownSeconds: number; remainingSeconds: number; readyAt: number };
+      nightfall: { cooldownSeconds: number; remainingSeconds: number; readyAt: number };
+      gm: { cooldownSeconds: number; remainingSeconds: number; readyAt: number; minLevel: number };
+    };
     endgame: {
       dungeon: {
         cooldownSeconds: number;
@@ -1160,7 +1165,7 @@ export default function Activities() {
 
   function openEndgameActivity(activity: Activity | null) {
     if (!activity) return;
-    if (activity.type !== "raid" && activity.type !== "dungeon") return;
+    if (!["raid", "dungeon", "strike", "nightfall", "gm"].includes(activity.type)) return;
     setSelectedEndgameActivity(activity);
   }
 
@@ -1240,6 +1245,10 @@ export default function Activities() {
 
   const dailyRaidCharges =
     data.player.endgame.dailyRaid;
+
+  const strikeCooldownRemaining = Math.max(0, data.player.vanguard.strike.remainingSeconds - clock);
+  const nightfallCooldownRemaining = Math.max(0, data.player.vanguard.nightfall.remainingSeconds - clock);
+  const gmCooldownRemaining = Math.max(0, data.player.vanguard.gm.remainingSeconds - clock);
 
   const visibleGlobalActivityEvents =
     isMobileFeed
@@ -1638,6 +1647,9 @@ export default function Activities() {
                     "strike.png",
                   )
                 }
+                disabled={strikeCooldownRemaining > 0}
+                status={strikeCooldownRemaining > 0 ? `◷ ${formatRotationTime(strikeCooldownRemaining)}` : "READY"}
+                onClick={() => openEndgameActivity(data.current.strike)}
               />
 
               <ActivityCard
@@ -1663,6 +1675,9 @@ export default function Activities() {
                     "nightfall.png",
                   )
                 }
+                disabled={nightfallCooldownRemaining > 0}
+                status={nightfallCooldownRemaining > 0 ? `◷ ${formatRotationTime(nightfallCooldownRemaining)}` : "READY"}
+                onClick={() => openEndgameActivity(data.rotation.nightfall.activity)}
               />
 
               <ActivityCard
@@ -1688,6 +1703,9 @@ export default function Activities() {
                     "grandmaster.png",
                   )
                 }
+                disabled={gmCooldownRemaining > 0}
+                status={gmCooldownRemaining > 0 ? `◷ ${formatRotationTime(gmCooldownRemaining)}` : `READY · LVL ${data.player.vanguard.gm.minLevel}+`}
+                onClick={() => openEndgameActivity(data.rotation.grandmaster.activity)}
               />
             </div>
           </section>
