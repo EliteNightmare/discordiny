@@ -15,61 +15,6 @@ type TerminalState =
   | "connected"
   | "refused";
 
-type TerminalLine = {
-  id: number;
-  type:
-    | "system"
-    | "command"
-    | "response";
-  text: string;
-};
-
-let nextLineId = 1;
-
-function makeLine(
-  type: TerminalLine["type"],
-  text: string,
-): TerminalLine {
-  return {
-    id: nextLineId++,
-    type,
-    text,
-  };
-}
-
-function getInitialLines(): TerminalLine[] {
-  return [
-    makeLine(
-      "system",
-      "CLOVIS BRAY CORPORATION",
-    ),
-    makeLine(
-      "system",
-      "EXOSCIENCE NETWORK TERMINAL",
-    ),
-    makeLine(
-      "system",
-      "REMOTE SESSION ESTABLISHED",
-    ),
-    makeLine(
-      "system",
-      "",
-    ),
-    makeLine(
-      "response",
-      "Authorization accepted.",
-    ),
-    makeLine(
-      "response",
-      "Terminal command interface online.",
-    ),
-    makeLine(
-      "response",
-      "Awaiting access code.",
-    ),
-  ];
-}
-
 export default function Terminal() {
   const [
     state,
@@ -79,24 +24,12 @@ export default function Terminal() {
   );
 
   const [
-    lines,
-    setLines,
-  ] = useState<TerminalLine[]>(
-    [],
-  );
-
-  const [
     command,
     setCommand,
   ] = useState("");
 
   const inputRef =
     useRef<HTMLInputElement>(
-      null,
-    );
-
-  const outputRef =
-    useRef<HTMLDivElement>(
       null,
     );
 
@@ -131,13 +64,9 @@ export default function Terminal() {
         ) {
           setState("connected");
 
-          setLines(
-            getInitialLines(),
-          );
-
           /*
-           * Remove any old consumed
-           * instance key from the URL.
+           * Remove any consumed instance
+           * key from the address bar.
            */
           window.history.replaceState(
             {},
@@ -149,10 +78,11 @@ export default function Terminal() {
         }
 
         /*
-         * No existing terminal session.
+         * No existing session.
          *
-         * Attempt admission using the
-         * instance key in the URL.
+         * The first path component
+         * should contain our one-time
+         * terminal instance key.
          */
         const instanceKey =
           window.location.pathname
@@ -166,6 +96,10 @@ export default function Terminal() {
 
         setState("connecting");
 
+        /*
+         * Attempt to consume the
+         * one-time instance key.
+         */
         const connectResponse =
           await fetch(
             "/api/terminal/connect",
@@ -202,8 +136,10 @@ export default function Terminal() {
         }
 
         /*
-         * Instance successfully consumed.
-         * Hide the one-time key.
+         * Admission succeeded.
+         *
+         * Remove the secret instance
+         * key from the visible URL.
          */
         window.history.replaceState(
           {},
@@ -212,10 +148,6 @@ export default function Terminal() {
         );
 
         setState("connected");
-
-        setLines(
-          getInitialLines(),
-        );
       } catch {
         if (!cancelled) {
           setState("refused");
@@ -238,15 +170,6 @@ export default function Terminal() {
     }
   }, [state]);
 
-  useEffect(() => {
-    outputRef.current?.scrollTo({
-      top:
-        outputRef.current
-          .scrollHeight,
-      behavior: "smooth",
-    });
-  }, [lines]);
-
   function handleTerminalClick() {
     if (
       state === "connected"
@@ -267,26 +190,27 @@ export default function Terminal() {
       return;
     }
 
-    setLines((current) => [
-      ...current,
-
-      makeLine(
-        "command",
-        `> ${trimmed}`,
-      ),
-
-      makeLine(
-        "response",
-        "ACCESS CODE NOT RECOGNIZED.",
-      ),
-    ]);
+    /*
+     * Placeholder for the terminal-file
+     * system we'll add next.
+     *
+     * Eventually this will resolve a
+     * terminal-only code and open its
+     * corresponding file window.
+     */
+    console.log(
+      "Terminal code:",
+      trimmed,
+    );
 
     setCommand("");
   }
 
   /*
-   * Keep the existing loading state
-   * structurally unchanged.
+   * EXISTING CONNECTION LOADING SCREEN
+   *
+   * Kept as the existing red/SIVA
+   * connection screen.
    */
   if (
     state === "checking" ||
@@ -317,7 +241,7 @@ export default function Terminal() {
   }
 
   /*
-   * CLOVIS BRAY ACCESS DENIED SCREEN
+   * CLOVIS BRAY ACCESS DENIED
    */
   if (state === "refused") {
     return (
@@ -397,6 +321,14 @@ export default function Terminal() {
     );
   }
 
+  /*
+   * AUTHENTICATED CLOVIS BRAY TERMINAL
+   *
+   * Intentionally minimal.
+   *
+   * File windows will be rendered over
+   * this interface in the next step.
+   */
   return (
     <main
       className="terminal-page terminal-connected"
@@ -406,175 +338,60 @@ export default function Terminal() {
     >
       <div className="cbc-background-grid" />
 
-      <div className="cbc-terminal-shell">
-        <header className="cbc-terminal-header">
-          <div className="cbc-brand">
-            <img
-              src={cbcLogo}
-              alt="Clovis Bray Corporation"
-              className="cbc-logo"
-            />
+      <section className="cbc-minimal-terminal">
+        <header className="cbc-minimal-brand">
+          <img
+            src={cbcLogo}
+            alt="Clovis Bray Corporation"
+            className="cbc-minimal-logo"
+          />
 
-            <div className="cbc-brand-copy">
-              <strong>
-                CLOVIS BRAY
-              </strong>
+          <div className="cbc-minimal-title">
+            <h1>
+              CLOVIS BRAY
+            </h1>
 
-              <span>
-                CORPORATION
-              </span>
-            </div>
-          </div>
-
-          <div className="cbc-header-data">
             <span>
-              EXOSCIENCE NETWORK
+              CORPORATION
             </span>
-
-            <strong>
-              ONLINE
-            </strong>
           </div>
         </header>
 
-        <div className="cbc-terminal-divider">
-          <span />
-        </div>
+        <form
+          className="cbc-minimal-prompt"
+          onSubmit={
+            handleSubmit
+          }
+        >
+          <div className="cbc-prompt-box">
+            <span className="cbc-prompt-chevron">
+              &gt;
+            </span>
 
-        <section className="cbc-terminal-main">
-          <aside className="cbc-sidebar">
-            <div className="cbc-sidebar-label">
-              TERMINAL
-            </div>
-
-            <div className="cbc-terminal-number">
-              01
-            </div>
-
-            <div className="cbc-sidebar-data">
-              <span>
-                CONNECTION
-              </span>
-
-              <strong>
-                SECURE
-              </strong>
-
-              <span>
-                PROTOCOL
-              </span>
-
-              <strong>
-                CBX-7
-              </strong>
-
-              <span>
-                INSTANCE
-              </span>
-
-              <strong>
-                ACTIVE
-              </strong>
-            </div>
-          </aside>
-
-          <section className="cbc-console">
-            <div className="cbc-console-heading">
-              <div>
-                <span>
-                  REMOTE SYSTEM
-                </span>
-
-                <h1>
-                  COMMAND
-                  <br />
-                  TERMINAL
-                </h1>
-              </div>
-
-              <div className="cbc-console-status">
-                <span className="cbc-status-dot" />
-
-                AUTHORIZED
-              </div>
-            </div>
-
-            <div
-              ref={outputRef}
-              className="cbc-output"
-            >
-              {lines.map((line) => (
-                <div
-                  key={line.id}
-                  className={
-                    `cbc-line cbc-line-${line.type}`
-                  }
-                >
-                  {line.text ||
-                    "\u00A0"}
-                </div>
-              ))}
-            </div>
-
-            <form
-              className="cbc-prompt"
-              onSubmit={
-                handleSubmit
+            <input
+              ref={inputRef}
+              value={command}
+              onChange={(event) =>
+                setCommand(
+                  event.target.value,
+                )
               }
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              aria-label="Terminal code"
+              placeholder="ENTER TERMINAL CODE"
+            />
+
+            <button
+              type="submit"
+              aria-label="Execute terminal code"
             >
-              <div className="cbc-prompt-label">
-                ENTER TERMINAL CODE
-              </div>
-
-              <div className="cbc-prompt-box">
-                <span className="cbc-prompt-chevron">
-                  &gt;
-                </span>
-
-                <input
-                  ref={inputRef}
-                  value={command}
-                  onChange={(
-                    event,
-                  ) =>
-                    setCommand(
-                      event.target
-                        .value,
-                    )
-                  }
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  aria-label="Terminal code"
-                  placeholder="INPUT CODE"
-                />
-
-                <button
-                  type="submit"
-                  aria-label="Submit terminal code"
-                >
-                  EXECUTE
-                </button>
-              </div>
-            </form>
-          </section>
-        </section>
-
-        <footer className="cbc-terminal-footer">
-          <span>
-            CLOVIS BRAY CORPORATION
-          </span>
-
-          <span>
-            EXOSCIENCE //
-            RESTRICTED NETWORK
-          </span>
-
-          <span>
-            CB.OS
-          </span>
-        </footer>
-      </div>
+              EXECUTE
+            </button>
+          </div>
+        </form>
+      </section>
     </main>
   );
 }
