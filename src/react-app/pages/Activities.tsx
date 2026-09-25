@@ -98,7 +98,9 @@ const activityBanners = import.meta.glob(
   },
 ) as Record<string, string>;
 
-function normalizeAssetName(value: string) {
+function normalizeAssetName(
+  value: string,
+) {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -108,7 +110,9 @@ function normalizeAssetName(value: string) {
 function findDestinationImage(
   destination: string,
 ): string {
-  return `/destinations/${normalizeAssetName(destination)}.png`;
+  return `/destinations/${normalizeAssetName(
+    destination,
+  )}.png`;
 }
 
 function findGeneralImage(
@@ -117,9 +121,11 @@ function findGeneralImage(
   return Object.entries(
     generalImages,
   ).find(([path]) =>
-    path.toLowerCase().endsWith(
-      `/general/${filename.toLowerCase()}`,
-    ),
+    path
+      .toLowerCase()
+      .endsWith(
+        `/general/${filename.toLowerCase()}`,
+      ),
   )?.[1];
 }
 
@@ -162,7 +168,7 @@ function getGeneralActivityBanner(
     filename =
       "nightmarehunt.png";
 
-  // Showdowns
+    // Showdowns
   } else if (
     normalizedName.includes(
       "greathunt",
@@ -185,7 +191,7 @@ function getGeneralActivityBanner(
     filename =
       "exochallenge.png";
 
-  // Crawls
+    // Crawls
   } else if (
     normalizedName.includes(
       "nether",
@@ -245,14 +251,20 @@ function formatRotationTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(0, Math.floor(seconds));
+    Math.max(
+      0,
+      Math.floor(seconds),
+    );
 
   const hours =
-    Math.floor(safeSeconds / 3600);
+    Math.floor(
+      safeSeconds / 3600,
+    );
 
   const minutes =
     Math.floor(
-      (safeSeconds % 3600) / 60,
+      (safeSeconds % 3600) /
+        60,
     );
 
   const secs =
@@ -261,33 +273,51 @@ function formatRotationTime(
   if (hours > 0) {
     return `${hours}h ${minutes
       .toString()
-      .padStart(2, "0")}m ${secs
+      .padStart(
+        2,
+        "0",
+      )}m ${secs
       .toString()
-      .padStart(2, "0")}s`;
+      .padStart(
+        2,
+        "0",
+      )}s`;
   }
 
   return `${minutes}:${secs
     .toString()
-    .padStart(2, "0")}`;
+    .padStart(
+      2,
+      "0",
+    )}`;
 }
 
 function formatExploreTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(0, Math.floor(seconds));
+    Math.max(
+      0,
+      Math.floor(seconds),
+    );
 
   const hours =
-    Math.floor(safeSeconds / 3600);
+    Math.floor(
+      safeSeconds / 3600,
+    );
 
   const minutes =
     Math.floor(
-      (safeSeconds % 3600) / 60,
+      (safeSeconds % 3600) /
+        60,
     );
 
   return `${hours}h ${minutes
     .toString()
-    .padStart(2, "0")}m`;
+    .padStart(
+      2,
+      "0",
+    )}m`;
 }
 
 function AnimatedClock() {
@@ -347,9 +377,11 @@ function ActivityCard({
                 url("${backgroundImage}")
               `,
               backgroundPosition:
-                backgroundPosition ?? "center",
+                backgroundPosition ??
+                "center",
               backgroundSize:
-                backgroundSize ?? "cover",
+                backgroundSize ??
+                "cover",
             }
           : undefined
       }
@@ -393,7 +425,9 @@ function ActivityCard({
 
         {activity?.destination && (
           <span className="activity-dashboard-destination">
-            {activity.destination}
+            {
+              activity.destination
+            }
           </span>
         )}
       </div>
@@ -402,37 +436,54 @@ function ActivityCard({
 }
 
 export default function Activities() {
-  const [data, setData] =
+  const [
+    data,
+    setData,
+  ] =
     useState<ActivitiesResponse | null>(
       null,
     );
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState("");
 
-  const [clock, setClock] =
+  const [
+    clock,
+    setClock,
+  ] =
     useState(0);
 
   const [
     exploreElapsed,
     setExploreElapsed,
-  ] = useState(0);
+  ] =
+    useState(0);
 
   const [
     travelOpen,
     setTravelOpen,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const [
     traveling,
     setTraveling,
-  ] = useState(false);
+  ] =
+    useState(false);
 
   const loadedAtRef =
-    useRef(Date.now());
+    useRef(
+      Date.now(),
+    );
 
   const refreshingRef =
     useRef(false);
@@ -447,7 +498,9 @@ export default function Activities() {
       async (
         showLoading = false,
       ) => {
-        if (refreshingRef.current) {
+        if (
+          refreshingRef.current
+        ) {
           return;
         }
 
@@ -488,9 +541,11 @@ export default function Activities() {
 
           setExploreElapsed(
             Math.min(
-              result.player.explore
+              result.player
+                .explore
                 .elapsedSeconds,
-              result.player.explore
+              result.player
+                .explore
                 .maxSeconds,
             ),
           );
@@ -499,7 +554,8 @@ export default function Activities() {
           setError("");
         } catch (err) {
           setError(
-            err instanceof Error
+            err instanceof
+              Error
               ? err.message
               : "Unable to load activities.",
           );
@@ -507,7 +563,9 @@ export default function Activities() {
           refreshingRef.current =
             false;
 
-          if (showLoading) {
+          if (
+            showLoading
+          ) {
             setLoading(false);
           }
         }
@@ -516,7 +574,9 @@ export default function Activities() {
     );
 
   useEffect(() => {
-    void loadActivities(true);
+    void loadActivities(
+      true,
+    );
   }, [loadActivities]);
 
   useEffect(() => {
@@ -529,7 +589,9 @@ export default function Activities() {
           event.target as Node,
         )
       ) {
-        setTravelOpen(false);
+        setTravelOpen(
+          false,
+        );
       }
     }
 
@@ -548,19 +610,24 @@ export default function Activities() {
 
   useEffect(() => {
     const interval =
-      window.setInterval(() => {
-        setClock(
-          Math.floor(
-            (
-              Date.now() -
-              loadedAtRef.current
-            ) / 1000,
-          ),
-        );
-      }, 1000);
+      window.setInterval(
+        () => {
+          setClock(
+            Math.floor(
+              (
+                Date.now() -
+                loadedAtRef.current
+              ) / 1000,
+            ),
+          );
+        },
+        1000,
+      );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval,
+      );
     };
   }, []);
 
@@ -571,14 +638,19 @@ export default function Activities() {
 
     setExploreElapsed(
       Math.min(
-        data.player.explore
+        data.player
+          .explore
           .elapsedSeconds +
           clock,
-        data.player.explore
+        data.player
+          .explore
           .maxSeconds,
       ),
     );
-  }, [clock, data]);
+  }, [
+    clock,
+    data,
+  ]);
 
   useEffect(() => {
     if (!data) {
@@ -586,31 +658,45 @@ export default function Activities() {
     }
 
     const globalTimers = [
-      data.rotation.dailyShowdown
+      data.rotation
+        .dailyShowdown
         .remainingSeconds,
-      data.rotation.dailyDungeon
+      data.rotation
+        .dailyDungeon
         .remainingSeconds,
-      data.rotation.dailyRaid
+      data.rotation
+        .dailyRaid
         .remainingSeconds,
-      data.rotation.nightfall
+      data.rotation
+        .nightfall
         .remainingSeconds,
-      data.rotation.grandmaster
+      data.rotation
+        .grandmaster
         .remainingSeconds,
-      data.rotation.infiltration
+      data.rotation
+        .infiltration
         .remainingSeconds,
-      data.rotation.showdown
+      data.rotation
+        .showdown
         .remainingSeconds,
-      data.rotation.crawl
+      data.rotation
+        .crawl
         .remainingSeconds,
     ];
 
     const rotationExpired =
       globalTimers.some(
-        (remaining) =>
-          remaining - clock <= 0,
+        (
+          remaining,
+        ) =>
+          remaining -
+            clock <=
+          0,
       );
 
-    if (rotationExpired) {
+    if (
+      rotationExpired
+    ) {
       void loadActivities();
     }
   }, [
@@ -626,9 +712,13 @@ export default function Activities() {
       !data ||
       traveling ||
       destination ===
-        data.player.destination
+        data.player
+          .destination
     ) {
-      setTravelOpen(false);
+      setTravelOpen(
+        false,
+      );
+
       return;
     }
 
@@ -641,15 +731,21 @@ export default function Activities() {
         await fetch(
           "/api/game/travel",
           {
-            method: "POST",
-            credentials: "include",
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
             headers: {
               "Content-Type":
                 "application/json",
             },
-            body: JSON.stringify({
-              destination,
-            }),
+
+            body:
+              JSON.stringify({
+                destination,
+              }),
           },
         );
 
@@ -673,7 +769,8 @@ export default function Activities() {
       await loadActivities();
     } catch (err) {
       setError(
-        err instanceof Error
+        err instanceof
+          Error
           ? err.message
           : "Failed to travel.",
       );
@@ -688,7 +785,8 @@ export default function Activities() {
     return formatRotationTime(
       Math.max(
         0,
-        rotation.remainingSeconds -
+        rotation
+          .remainingSeconds -
           clock,
       ),
     );
@@ -710,14 +808,18 @@ export default function Activities() {
 
         <main className="activities-page">
           <div className="activities-loading">
-            Loading activities...
+            Loading
+            activities...
           </div>
         </main>
       </div>
     );
   }
 
-  if (error && !data) {
+  if (
+    error &&
+    !data
+  ) {
     return (
       <div className="activities-screen">
         <TopBar />
@@ -737,11 +839,13 @@ export default function Activities() {
 
   const destinationBanner =
     findDestinationImage(
-      data.player.destination,
+      data.player
+        .destination,
     );
 
   const exploreMax =
-    data.player.explore
+    data.player
+      .explore
       .maxSeconds;
 
   const explorePercentage =
@@ -772,10 +876,14 @@ export default function Activities() {
               DIRECTOR
             </span>
 
-            <h1>Activities</h1>
+            <h1>
+              Activities
+            </h1>
 
             <p>
-              Choose an activity to begin.
+              Choose an
+              activity to
+              begin.
             </p>
           </header>
 
@@ -790,14 +898,17 @@ export default function Activities() {
                 </span>
 
                 <h2>
-                  Daily Activities
+                  Daily
+                  Activities
                 </h2>
               </div>
 
               <p className="activities-heading-timer">
                 <AnimatedClock />
+
                 {rotationTimer(
-                  data.rotation.dailyRaid,
+                  data.rotation
+                    .dailyRaid,
                 )}
               </p>
             </div>
@@ -820,6 +931,15 @@ export default function Activities() {
                     .dailyDungeon
                     .activity
                 }
+                backgroundImage={
+                  getActivityBanner(
+                    data.rotation
+                      .dailyDungeon
+                      .activity,
+                  )
+                }
+                backgroundPosition="center"
+                backgroundSize="85% auto"
                 daily
               />
 
@@ -850,14 +970,18 @@ export default function Activities() {
           <section
             className={[
               "exploration-rewards",
+
               destinationBanner
                 ? "exploration-rewards-banner"
                 : "",
+
               travelOpen
                 ? "travel-menu-open"
                 : "",
             ]
-              .filter(Boolean)
+              .filter(
+                Boolean,
+              )
               .join(" ")}
             style={
               destinationBanner
@@ -895,7 +1019,8 @@ export default function Activities() {
             <div className="exploration-rewards-main">
               <div className="exploration-rewards-heading">
                 <span className="exploration-rewards-eyebrow">
-                  EXPLORATION REWARDS
+                  EXPLORATION
+                  REWARDS
                 </span>
 
                 <div className="exploration-title-row">
@@ -908,18 +1033,24 @@ export default function Activities() {
 
                   <div
                     className="activity-travel"
-                    ref={travelRef}
+                    ref={
+                      travelRef
+                    }
                   >
                     <button
                       type="button"
                       className="activity-travel-button"
-                      disabled={traveling}
+                      disabled={
+                        traveling
+                      }
                       aria-expanded={
                         travelOpen
                       }
                       onClick={() =>
                         setTravelOpen(
-                          (open) =>
+                          (
+                            open,
+                          ) =>
                             !open,
                         )
                       }
@@ -960,16 +1091,22 @@ export default function Activities() {
                                 type="button"
                                 className={[
                                   "activity-travel-option",
+
                                   active
                                     ? "active"
                                     : "",
+
                                   destination ===
                                   "Plaguelands"
                                     ? "plaguelands"
                                     : "",
                                 ]
-                                  .filter(Boolean)
-                                  .join(" ")}
+                                  .filter(
+                                    Boolean,
+                                  )
+                                  .join(
+                                    " ",
+                                  )}
                                 onClick={() =>
                                   void travel(
                                     destination,
@@ -997,9 +1134,13 @@ export default function Activities() {
                 </div>
 
                 <p>
-                  Rewards accumulate while
-                  exploring your current
-                  destination, up to 24
+                  Rewards
+                  accumulate
+                  while
+                  exploring
+                  your current
+                  destination,
+                  up to 24
                   hours.
                 </p>
               </div>
@@ -1083,7 +1224,8 @@ export default function Activities() {
                 </span>
 
                 <h2>
-                  Vanguard Operations
+                  Vanguard
+                  Operations
                 </h2>
               </div>
             </div>
@@ -1092,7 +1234,8 @@ export default function Activities() {
               <ActivityCard
                 label="STRIKE"
                 activity={
-                  data.current.strike
+                  data.current
+                    .strike
                 }
                 icon={
                   findGeneralImage(
@@ -1108,10 +1251,12 @@ export default function Activities() {
                     .nightfall
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .nightfall,
-                )}
+                timer={
+                  rotationTimer(
+                    data.rotation
+                      .nightfall,
+                  )
+                }
                 icon={
                   findGeneralImage(
                     "nightfall.png",
@@ -1126,10 +1271,12 @@ export default function Activities() {
                     .grandmaster
                     .activity
                 }
-                timer={rotationTimer(
-                  data.rotation
-                    .grandmaster,
-                )}
+                timer={
+                  rotationTimer(
+                    data.rotation
+                      .grandmaster,
+                  )
+                }
                 icon={
                   findGeneralImage(
                     "grandmaster.png",
@@ -1146,18 +1293,22 @@ export default function Activities() {
             <div className="activities-section-heading">
               <div>
                 <span>
-                  5 MINUTE ROTATION
+                  5 MINUTE
+                  ROTATION
                 </span>
 
                 <h2>
-                  Special Activities
+                  Special
+                  Activities
                 </h2>
               </div>
 
               <p className="activities-heading-timer">
                 <AnimatedClock />
+
                 {rotationTimer(
-                  data.rotation.infiltration,
+                  data.rotation
+                    .infiltration,
                 )}
               </p>
             </div>
@@ -1220,7 +1371,8 @@ export default function Activities() {
             <div className="activities-section-heading">
               <div>
                 <span>
-                  DESTINATION ACTIVITIES
+                  DESTINATION
+                  ACTIVITIES
                 </span>
 
                 <h2>
@@ -1236,24 +1388,33 @@ export default function Activities() {
               <ActivityCard
                 label="DUNGEON"
                 activity={
-                  data.current.dungeon
+                  data.current
+                    .dungeon
                 }
                 unavailableText={
                   `No Dungeon on ${data.player.destination}`
+                }
+                backgroundImage={
+                  getActivityBanner(
+                    data.current
+                      .dungeon,
+                  )
                 }
               />
 
               <ActivityCard
                 label="RAID"
                 activity={
-                  data.current.raid
+                  data.current
+                    .raid
                 }
                 unavailableText={
                   `No Raid on ${data.player.destination}`
                 }
                 backgroundImage={
                   getActivityBanner(
-                    data.current.raid,
+                    data.current
+                      .raid,
                   )
                 }
               />
