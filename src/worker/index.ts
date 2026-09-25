@@ -18,6 +18,14 @@ import {
   type EndgameActivity,
   type WeaponStats,
 } from "./game/endgame";
+import {
+  GM_MIN_LEVEL,
+  VANGUARD_COOLDOWNS,
+  makeVanguardResult,
+  rollVanguardRewards,
+  rollVanguardWeapon,
+  type VanguardActivity,
+} from "./game/vanguard";
 
 type WeaponRow = {
   weapon_name: string;
@@ -2262,8 +2270,9 @@ app.post("/api/game/cooldowns", async (c) => {
   }
 
   if (
-    body.activity.startsWith(
-      "__endgame_",
+    (
+      body.activity.startsWith("__endgame_") ||
+      body.activity.startsWith("__vanguard_")
     )
   ) {
     return c.json(
@@ -3661,6 +3670,10 @@ const ENDGAME_DUNGEON_COOLDOWN_KEY =
 const ENDGAME_RAID_COOLDOWN_KEY =
   "__endgame_raid";
 
+const VANGUARD_STRIKE_COOLDOWN_KEY = "__vanguard_strike";
+const VANGUARD_NIGHTFALL_COOLDOWN_KEY = "__vanguard_nightfall";
+const VANGUARD_GM_COOLDOWN_KEY = "__vanguard_gm";
+
 function getDailyEndgameChargeKey(
   type: "raid" | "dungeon",
   nowSeconds: number,
@@ -4091,7 +4104,7 @@ app.get("/api/game/activities", async (c) => {
            timestamp
          FROM player_cooldowns
          WHERE user_id = ?
-           AND activity IN (?, ?, ?, ?)`,
+           AND activity IN (?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         session.user_id,
@@ -4099,6 +4112,9 @@ app.get("/api/game/activities", async (c) => {
         ENDGAME_RAID_COOLDOWN_KEY,
         dailyDungeonChargeKey,
         dailyRaidChargeKey,
+        VANGUARD_STRIKE_COOLDOWN_KEY,
+        VANGUARD_NIGHTFALL_COOLDOWN_KEY,
+        VANGUARD_GM_COOLDOWN_KEY,
       )
       .all<{
         activity: string;
@@ -4150,6 +4166,10 @@ app.get("/api/game/activities", async (c) => {
       ),
     );
 
+  const vanguardStrikeReadyAt = endgameCooldownMap.get(VANGUARD_STRIKE_COOLDOWN_KEY) ?? 0;
+  const vanguardNightfallReadyAt = endgameCooldownMap.get(VANGUARD_NIGHTFALL_COOLDOWN_KEY) ?? 0;
+  const vanguardGmReadyAt = endgameCooldownMap.get(VANGUARD_GM_COOLDOWN_KEY) ?? 0;
+
   /* =======================================================
      RESPONSE
   ======================================================= */
@@ -4180,6 +4200,25 @@ app.get("/api/game/activities", async (c) => {
         capped:
           exploreElapsed >=
           EXPLORE_MAX_SECONDS,
+      },
+
+      vanguard: {
+        strike: {
+          cooldownSeconds: VANGUARD_COOLDOWNS.strike,
+          remainingSeconds: Math.max(0, vanguardStrikeReadyAt - nowSeconds),
+          readyAt: vanguardStrikeReadyAt,
+        },
+        nightfall: {
+          cooldownSeconds: VANGUARD_COOLDOWNS.nightfall,
+          remainingSeconds: Math.max(0, vanguardNightfallReadyAt - nowSeconds),
+          readyAt: vanguardNightfallReadyAt,
+        },
+        gm: {
+          cooldownSeconds: VANGUARD_COOLDOWNS.gm,
+          remainingSeconds: Math.max(0, vanguardGmReadyAt - nowSeconds),
+          readyAt: vanguardGmReadyAt,
+          minLevel: GM_MIN_LEVEL,
+        },
       },
 
       endgame: {
@@ -4622,6 +4661,174 @@ app.post("/api/game/activity/run", async (c) => {
 
   const nowSeconds =
     Math.floor(Date.now() / 1000);
+
+
+  /* =======================================================
+     VANGUARD EXECUTION
+  ======================================================= */
+
+  let vanguardActivity: VanguardActivity | null = null;
+
+  const requestedStrike = ACTIVITIES.strikes[activityId as keyof typeof ACTIVITIES.strikes];
+  if (requestedStrike && requestedStrike.destination === profile.zone) {
+    vanguardActivity = {
+      id: activityId,
+      name: requestedStrike.name,
+      type: "strike",
+      destination: requestedStrike.destination,
+      weapon_source: requestedStrike.weapon_source,
+      reward_table: requestedStrike.reward_table,
+    };
+  }
+
+  if (!vanguardActivity) {
+    const currentNightfall = getRotatingActivity(ACTIVITIES.nightfalls, NIGHTFALL_ROTATION_SECONDS, nowSeconds);
+    if (currentNightfall?.id === activityId) {
+      vanguardActivity = {
+        id: currentNightfall.id,
+        name: currentNightfall.name,
+        type: "nightfall",
+        weapon_source: currentNightfall.weapon_source ?? "nf",
+        reward_table: currentNightfall.reward_table ?? "nf",
+      };
+    }
+  }
+
+  if (!vanguardActivity) {
+    const currentGm = getRotatingActivity(ACTIVITIES.gms, GM_ROTATION_SECONDS, nowSeconds);
+    if (currentGm?.id === activityId) {
+      vanguardActivity = {
+        id: currentGm.id,
+        name: currentGm.name,
+        type: "gm",
+        weapon_source: currentGm.weapon_source ?? "gm",
+        reward_table: currentGm.reward_table ?? "gm",
+      };
+    }
+  }
+
+  if (vanguardActivity) {
+    const { getLevelProgress } = await import("./game/level");
+    const levelProgress = getLevelProgress(Number(profile.exp) || 0);
+
+    if (vanguardActivity.type === "gm" && levelProgress.level < GM_MIN_LEVEL) {
+      return c.json({ error: `Grandmaster Nightfalls require Level ${GM_MIN_LEVEL}.` }, 403);
+    }
+
+    const cooldownKey = vanguardActivity.type === "strike"
+      ? VANGUARD_STRIKE_COOLDOWN_KEY
+      : vanguardActivity.type === "nightfall"
+        ? VANGUARD_NIGHTFALL_COOLDOWN_KEY
+        : VANGUARD_GM_COOLDOWN_KEY;
+    const cooldownSeconds = VANGUARD_COOLDOWNS[vanguardActivity.type];
+
+    const cooldownRow = await c.env.DB.prepare(
+      `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
+    ).bind(session.user_id, cooldownKey).first<{ timestamp: number }>();
+    const readyAt = Math.max(0, Number(cooldownRow?.timestamp ?? 0));
+
+    if (nowSeconds < readyAt) {
+      return c.json({
+        error: "Activity cooldown is still active.",
+        limit: { kind: "cooldown", cooldownSeconds, remainingSeconds: readyAt - nowSeconds, readyAt },
+      }, 429);
+    }
+
+    const statsRow = await c.env.DB.prepare(
+      `SELECT stats FROM player_stats WHERE user_id = ? LIMIT 1`,
+    ).bind(session.user_id).first<{ stats: string }>();
+    let weaponStats: { exotic_chance?: number; legendary_chance?: number } = {};
+    if (statsRow?.stats) {
+      try {
+        const parsed = JSON.parse(statsRow.stats) as { weapons?: typeof weaponStats };
+        if (parsed.weapons && typeof parsed.weapons === "object") weaponStats = parsed.weapons;
+      } catch { weaponStats = {}; }
+    }
+
+    const weaponCatalog = await c.env.DB.prepare(
+      `SELECT name, rarity FROM weapons WHERE source = ? ORDER BY name`,
+    ).bind(vanguardActivity.weapon_source).all<{ name: string; rarity: string | null }>();
+    const ownedWeapons = await c.env.DB.prepare(
+      `SELECT weapon_name FROM player_weapons WHERE user_id = ?`,
+    ).bind(session.user_id).all<{ weapon_name: string }>();
+
+    const rewardRoll = rollVanguardRewards(vanguardActivity.type);
+    const weapon = rollVanguardWeapon(
+      weaponCatalog.results ?? [],
+      (ownedWeapons.results ?? []).map((row) => row.weapon_name),
+      weaponStats,
+    );
+    const result = makeVanguardResult(vanguardActivity, rewardRoll.rewards, rewardRoll.xp, weapon);
+    const writes: D1PreparedStatement[] = [];
+
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO player_cooldowns (user_id, activity, timestamp) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+    ).bind(session.user_id, cooldownKey, nowSeconds + cooldownSeconds));
+
+    const currencies = new Set(["Glimmer", "Lumia Leaves", "Armor Plating", "Synthweave", "Spoils of Conquest"]);
+    const upgrades = new Set(["Enhancement Core", "Enhancement Prism"]);
+    const dungeonMaterials = new Set(["avaricious treasure", "ahamkara bone", "haunted vestige", "corrupted sliver", "scarlet shaving", "anomalous data", "remnant wormspore", "ghost remains", "curious tablet"]);
+    const raidMaterials = new Set(["ebisu alloyment", "cabal gold", "wishing coin", "tethered radiolaria", "herealways piece", "resonant splinter", "shadow terminal", "dissipated entropy"]);
+
+    for (const [name, rawAmount] of Object.entries(result.rewards)) {
+      const amount = Math.trunc(rawAmount);
+      if (!Number.isFinite(amount) || amount <= 0) continue;
+      if (currencies.has(name)) {
+        writes.push(c.env.DB.prepare(
+          `INSERT INTO player_currencies (user_id, currency_name, amount) VALUES (?, ?, ?)
+           ON CONFLICT(user_id, currency_name) DO UPDATE SET amount = player_currencies.amount + excluded.amount`,
+        ).bind(session.user_id, name, amount));
+      } else if (upgrades.has(name)) {
+        writes.push(c.env.DB.prepare(
+          `INSERT INTO player_upgrade_materials (user_id, material_name, amount) VALUES (?, ?, ?)
+           ON CONFLICT(user_id, material_name) DO UPDATE SET amount = player_upgrade_materials.amount + excluded.amount`,
+        ).bind(session.user_id, name, amount));
+      } else if (dungeonMaterials.has(name)) {
+        writes.push(c.env.DB.prepare(
+          `INSERT INTO player_dungeon_materials (user_id, material_name, amount) VALUES (?, ?, ?)
+           ON CONFLICT(user_id, material_name) DO UPDATE SET amount = player_dungeon_materials.amount + excluded.amount`,
+        ).bind(session.user_id, name, amount));
+      } else if (raidMaterials.has(name)) {
+        writes.push(c.env.DB.prepare(
+          `INSERT INTO player_raid_materials (user_id, material_name, amount) VALUES (?, ?, ?)
+           ON CONFLICT(user_id, material_name) DO UPDATE SET amount = player_raid_materials.amount + excluded.amount`,
+        ).bind(session.user_id, name, amount));
+      }
+    }
+
+    writes.push(c.env.DB.prepare(
+      `UPDATE player_profiles SET exp = exp + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+    ).bind(result.xp, session.user_id));
+
+    if (result.weapon.dropped && result.weapon.name) {
+      writes.push(c.env.DB.prepare(
+        `INSERT INTO player_weapons (user_id, weapon_name, masterwork) VALUES (?, ?, 0)
+         ON CONFLICT(user_id, weapon_name) DO NOTHING`,
+      ).bind(session.user_id, result.weapon.name));
+    }
+
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO global_activity_feed
+       (user_id, activity_name, activity_type, result, weapon_name, weapon_adept)
+       VALUES (?, ?, ?, 'CLEAR', ?, 0)`,
+    ).bind(
+      session.user_id,
+      vanguardActivity.name,
+      vanguardActivity.type,
+      result.weapon.dropped ? result.weapon.name : null,
+    ));
+
+    await c.env.DB.batch(writes);
+
+    return c.json({
+      authenticated: true,
+      success: true,
+      player: { name: session.global_name || session.username, power: 0, level: levelProgress.level },
+      limit: { kind: "cooldown" as const, cooldownSeconds, remainingSeconds: cooldownSeconds, readyAt: nowSeconds + cooldownSeconds },
+      result,
+    });
+  }
 
   let activity:
     ActivityEntry | null = null;
