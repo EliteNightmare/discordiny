@@ -34,18 +34,43 @@
       0.985
     );
 
-  color: #edf4f7;
+  color:
+    #edf4f7;
 
   box-shadow:
     0 24px 80px
-    rgba(0, 0, 0, 0.7),
+    rgba(
+      0,
+      0,
+      0,
+      0.7
+    ),
     0 0 50px
-    rgba(49, 132, 187, 0.07);
+    rgba(
+      49,
+      132,
+      187,
+      0.07
+    );
+
+  pointer-events: auto;
+
+  transform-origin:
+    center center;
+
+  will-change:
+    transform,
+    opacity;
 
   animation:
     terminal-file-open
-    160ms
-    ease-out;
+    220ms
+    cubic-bezier(
+      0.16,
+      1,
+      0.3,
+      1
+    );
 }
 
 
@@ -54,12 +79,16 @@
    ========================================================= */
 
 .terminal-window-dragging {
-  user-select: none !important;
-  cursor: grabbing !important;
+  user-select:
+    none !important;
+
+  cursor:
+    grabbing !important;
 }
 
 .terminal-window-dragging * {
-  user-select: none !important;
+  user-select:
+    none !important;
 }
 
 
@@ -106,27 +135,38 @@
 .terminal-file-system {
   margin-bottom: 4px;
 
-  color: #4c8fb9;
+  color:
+    #4c8fb9;
 
-  font-size: 0.45rem;
+  font-size:
+    0.45rem;
+
   font-weight: 800;
 
-  letter-spacing: 0.2em;
+  letter-spacing:
+    0.2em;
 }
 
 .terminal-file-title-info
 strong {
   overflow: hidden;
 
-  color: #eef4f7;
+  color:
+    #eef4f7;
 
-  font-size: 0.68rem;
+  font-size:
+    0.68rem;
+
   font-weight: 700;
 
-  letter-spacing: 0.11em;
+  letter-spacing:
+    0.11em;
 
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
 }
 
 
@@ -161,68 +201,86 @@ strong {
     1px solid
     #344852;
 
-  border-radius: 50%;
+  border-radius:
+    50%;
 
   outline: 0;
 
   background:
     #0b1216;
 
-  color: #8499a5;
+  color:
+    #8499a5;
 
-  cursor: pointer;
+  cursor:
+    pointer;
 
   font-family:
     Arial,
     Helvetica,
     sans-serif;
 
-  font-size: 1rem;
-  font-weight: 400;
+  font-size:
+    1rem;
 
-  line-height: 1;
+  font-weight:
+    400;
+
+  line-height:
+    1;
 
   transition:
     color
-    140ms ease,
+    140ms
+    ease,
     border-color
-    140ms ease,
+    140ms
+    ease,
     background
-    140ms ease,
+    140ms
+    ease,
     transform
-    140ms ease;
+    140ms
+    ease;
 }
 
 .terminal-file-control:hover {
-  border-color: #559dca;
+  border-color:
+    #559dca;
 
   background:
     #13212a;
 
-  color: #ffffff;
+  color:
+    #ffffff;
 }
 
 .terminal-file-control:active {
-  transform: scale(0.9);
+  transform:
+    scale(0.9);
 }
 
 .terminal-file-minimize {
-  padding-bottom: 5px;
+  padding-bottom:
+    5px;
 
-  font-size: 1rem;
+  font-size:
+    1rem;
 }
 
 .terminal-file-expand {
-  font-size: 0.9rem;
+  font-size:
+    0.9rem;
 }
 
 .terminal-file-close {
-  font-size: 1.2rem;
+  font-size:
+    1.2rem;
 }
 
 
 /* =========================================================
-   BLUE DIVIDER
+   BLUE ACCENT LINE
    ========================================================= */
 
 .terminal-file-blue-line {
@@ -248,12 +306,25 @@ span {
 
   box-shadow:
     0 0 15px
-    rgba(66, 139, 185, 0.25);
+    rgba(
+      66,
+      139,
+      185,
+      0.25
+    );
+
+  transform-origin:
+    left center;
+
+  animation:
+    terminal-blue-line-in
+    300ms
+    ease-out;
 }
 
 
 /* =========================================================
-   BODY
+   FILE BODY
    ========================================================= */
 
 .terminal-file-body {
@@ -267,11 +338,16 @@ span {
   padding:
     20px
     22px;
+
+  animation:
+    terminal-file-content-in
+    260ms
+    ease-out;
 }
 
 
 /* =========================================================
-   METADATA
+   FILE METADATA
    ========================================================= */
 
 .terminal-file-metadata {
@@ -286,7 +362,8 @@ span {
 
   gap: 16px;
 
-  padding-bottom: 16px;
+  padding-bottom:
+    16px;
 
   border-bottom:
     1px solid
@@ -303,34 +380,49 @@ div {
 
 .terminal-file-metadata
 span {
-  margin-bottom: 5px;
+  margin-bottom:
+    5px;
 
-  color: #50636f;
+  color:
+    #50636f;
 
-  font-size: 0.43rem;
-  font-weight: 800;
+  font-size:
+    0.43rem;
 
-  letter-spacing: 0.17em;
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.17em;
 }
 
 .terminal-file-metadata
 strong {
-  overflow: hidden;
+  overflow:
+    hidden;
 
-  color: #6399ba;
+  color:
+    #6399ba;
 
-  font-size: 0.52rem;
-  font-weight: 700;
+  font-size:
+    0.52rem;
 
-  letter-spacing: 0.09em;
+  font-weight:
+    700;
 
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing:
+    0.09em;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
 }
 
 
 /* =========================================================
-   CONTENT
+   FILE CONTENT
    ========================================================= */
 
 .terminal-file-content {
@@ -338,13 +430,17 @@ strong {
 
   min-height: 0;
 
-  margin-top: 18px;
+  margin-top:
+    18px;
 
-  overflow-y: auto;
+  overflow-y:
+    auto;
 
-  padding-right: 10px;
+  padding-right:
+    10px;
 
-  scrollbar-width: thin;
+  scrollbar-width:
+    thin;
 
   scrollbar-color:
     #344d5c
@@ -358,19 +454,25 @@ p {
     0
     7px;
 
-  color: #9cabb4;
+  color:
+    #9cabb4;
 
   font-family:
     "Courier New",
     Courier,
     monospace;
 
-  font-size: 0.7rem;
+  font-size:
+    0.7rem;
 
-  line-height: 1.65;
+  line-height:
+    1.65;
 
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space:
+    pre-wrap;
+
+  word-break:
+    break-word;
 }
 
 
@@ -385,7 +487,8 @@ p {
 
   flex: 0 0 auto;
 
-  min-height: 34px;
+  min-height:
+    34px;
 
   padding:
     0
@@ -395,12 +498,17 @@ p {
     1px solid
     #24313a;
 
-  color: #455761;
+  color:
+    #455761;
 
-  font-size: 0.42rem;
-  font-weight: 700;
+  font-size:
+    0.42rem;
 
-  letter-spacing: 0.13em;
+  font-weight:
+    700;
+
+  letter-spacing:
+    0.13em;
 }
 
 
@@ -411,10 +519,14 @@ p {
 .terminal-file-window-minimized {
   display: block;
 
-  width: 330px;
-  height: auto;
+  width:
+    330px;
 
-  overflow: visible;
+  height:
+    auto;
+
+  overflow:
+    visible;
 
   border:
     1px solid
@@ -425,9 +537,32 @@ p {
 
   box-shadow:
     0 16px 50px
-    rgba(0, 0, 0, 0.6),
+    rgba(
+      0,
+      0,
+      0,
+      0.6
+    ),
     0 0 30px
-    rgba(49, 132, 187, 0.05);
+    rgba(
+      49,
+      132,
+      187,
+      0.05
+    );
+
+  transform-origin:
+    top left;
+
+  animation:
+    terminal-file-minimize
+    220ms
+    cubic-bezier(
+      0.16,
+      1,
+      0.3,
+      1
+    );
 }
 
 .terminal-file-minimized-bar {
@@ -435,7 +570,8 @@ p {
   align-items: center;
   justify-content: space-between;
 
-  min-height: 54px;
+  min-height:
+    54px;
 
   padding:
     0
@@ -443,7 +579,8 @@ p {
     0
     16px;
 
-  cursor: grab;
+  cursor:
+    grab;
 
   background:
     linear-gradient(
@@ -454,7 +591,8 @@ p {
 }
 
 .terminal-file-minimized-bar:active {
-  cursor: grabbing;
+  cursor:
+    grabbing;
 }
 
 .terminal-file-minimized-title {
@@ -466,29 +604,65 @@ p {
 
 .terminal-file-minimized-title
 span {
-  margin-bottom: 3px;
+  margin-bottom:
+    3px;
 
-  color: #4c8fb9;
+  color:
+    #4c8fb9;
 
-  font-size: 0.4rem;
-  font-weight: 800;
+  font-size:
+    0.4rem;
 
-  letter-spacing: 0.17em;
+  font-weight:
+    800;
+
+  letter-spacing:
+    0.17em;
 }
 
 .terminal-file-minimized-title
 strong {
-  overflow: hidden;
+  overflow:
+    hidden;
 
-  color: #dce7ec;
+  color:
+    #dce7ec;
 
-  font-size: 0.58rem;
-  font-weight: 700;
+  font-size:
+    0.58rem;
 
-  letter-spacing: 0.08em;
+  font-weight:
+    700;
 
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  letter-spacing:
+    0.08em;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+
+/* =========================================================
+   CLOSING STATE
+   ========================================================= */
+
+.terminal-file-window-closing {
+  pointer-events:
+    none;
+
+  animation:
+    terminal-file-close
+    180ms
+    cubic-bezier(
+      0.4,
+      0,
+      1,
+      1
+    )
+    forwards;
 }
 
 
@@ -497,16 +671,160 @@ strong {
    ========================================================= */
 
 @keyframes terminal-file-open {
+  0% {
+    opacity: 0;
+
+    transform:
+      translateY(12px)
+      scale(0.94);
+
+    filter:
+      brightness(1.3);
+  }
+
+  55% {
+    opacity: 1;
+
+    transform:
+      translateY(-2px)
+      scale(1.01);
+
+    filter:
+      brightness(1.08);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+
+    filter:
+      brightness(1);
+  }
+}
+
+
+/* =========================================================
+   CLOSE ANIMATION
+   ========================================================= */
+
+@keyframes terminal-file-close {
+  0% {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+
+    filter:
+      brightness(1);
+  }
+
+  35% {
+    opacity: 0.9;
+
+    transform:
+      translateY(1px)
+      scale(1.01);
+
+    filter:
+      brightness(1.15);
+  }
+
+  100% {
+    opacity: 0;
+
+    transform:
+      translateY(10px)
+      scale(0.93);
+
+    filter:
+      brightness(0.75);
+  }
+}
+
+
+/* =========================================================
+   MINIMIZE ANIMATION
+   ========================================================= */
+
+@keyframes terminal-file-minimize {
+  0% {
+    opacity: 0.35;
+
+    transform:
+      scaleX(1.08)
+      scaleY(0.72);
+
+    filter:
+      brightness(1.2);
+  }
+
+  60% {
+    opacity: 1;
+
+    transform:
+      scaleX(0.98)
+      scaleY(1.04);
+
+    filter:
+      brightness(1.05);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform:
+      scale(1);
+
+    filter:
+      brightness(1);
+  }
+}
+
+
+/* =========================================================
+   CONTENT APPEAR ANIMATION
+   ========================================================= */
+
+@keyframes terminal-file-content-in {
   from {
     opacity: 0;
 
-    scale: 0.97;
+    transform:
+      translateY(5px);
   }
 
   to {
     opacity: 1;
 
-    scale: 1;
+    transform:
+      translateY(0);
+  }
+}
+
+
+/* =========================================================
+   BLUE LINE ANIMATION
+   ========================================================= */
+
+@keyframes terminal-blue-line-in {
+  from {
+    opacity:
+      0.4;
+
+    transform:
+      scaleX(0);
+  }
+
+  to {
+    opacity:
+      1;
+
+    transform:
+      scaleX(1);
   }
 }
 
@@ -517,31 +835,54 @@ strong {
 
 @media (max-width: 700px) {
   .terminal-file-window {
-    position: fixed;
+    position:
+      fixed;
 
-    top: 10px !important;
-    right: 10px;
-    bottom: 10px;
-    left: 10px !important;
+    top:
+      10px !important;
 
-    width: auto;
-    height: auto;
+    right:
+      10px;
 
-    transform: none !important;
+    bottom:
+      10px;
+
+    left:
+      10px !important;
+
+    width:
+      auto;
+
+    height:
+      auto;
+
+    transform:
+      none;
   }
 
   .terminal-file-window-minimized {
-    top: auto !important;
-    right: 10px;
-    bottom: 14px;
-    left: 10px !important;
+    top:
+      auto !important;
 
-    width: auto;
-    height: 54px;
+    right:
+      10px;
+
+    bottom:
+      14px;
+
+    left:
+      10px !important;
+
+    width:
+      auto;
+
+    height:
+      54px;
   }
 
   .terminal-file-titlebar {
-    min-height: 56px;
+    min-height:
+      56px;
 
     padding:
       0
@@ -549,31 +890,40 @@ strong {
       0
       14px;
 
-    cursor: default;
+    cursor:
+      default;
   }
 
   .terminal-file-minimized-bar {
-    cursor: default;
+    cursor:
+      default;
   }
 
   .terminal-file-system {
-    font-size: 0.4rem;
+    font-size:
+      0.4rem;
   }
 
   .terminal-file-title-info
   strong {
-    font-size: 0.58rem;
+    font-size:
+      0.58rem;
   }
 
   .terminal-file-controls {
-    gap: 5px;
+    gap:
+      5px;
 
-    margin-left: 10px;
+    margin-left:
+      10px;
   }
 
   .terminal-file-control {
-    width: 36px;
-    height: 36px;
+    width:
+      36px;
+
+    height:
+      36px;
   }
 
   .terminal-file-body {
@@ -597,18 +947,22 @@ strong {
     grid-column:
       1 / -1;
 
-    grid-row: 2;
+    grid-row:
+      2;
   }
 
   .terminal-file-content {
-    margin-top: 17px;
+    margin-top:
+      17px;
 
-    padding-right: 5px;
+    padding-right:
+      5px;
   }
 
   .terminal-file-content
   p {
-    font-size: 0.68rem;
+    font-size:
+      0.68rem;
   }
 
   .terminal-file-footer {
@@ -616,14 +970,138 @@ strong {
       0
       14px;
 
-    font-size: 0.38rem;
+    font-size:
+      0.38rem;
   }
 
   .terminal-file-minimized-title
   strong {
     max-width:
       calc(
-        100vw - 145px
+        100vw -
+        145px
       );
+  }
+
+
+  /*
+   * Mobile positioning uses !important
+   * fixed coordinates, so the motion is
+   * kept to opacity/brightness instead of
+   * moving the whole window around.
+   */
+
+  .terminal-file-window {
+    animation:
+      terminal-file-open-mobile
+      200ms
+      ease-out;
+  }
+
+  .terminal-file-window-minimized {
+    animation:
+      terminal-file-minimize-mobile
+      180ms
+      ease-out;
+  }
+
+  .terminal-file-window-closing {
+    animation:
+      terminal-file-close-mobile
+      180ms
+      ease-in
+      forwards;
+  }
+}
+
+
+/* =========================================================
+   MOBILE OPEN
+   ========================================================= */
+
+@keyframes terminal-file-open-mobile {
+  from {
+    opacity:
+      0;
+
+    filter:
+      brightness(1.25);
+  }
+
+  to {
+    opacity:
+      1;
+
+    filter:
+      brightness(1);
+  }
+}
+
+
+/* =========================================================
+   MOBILE MINIMIZE / RESTORE
+   ========================================================= */
+
+@keyframes terminal-file-minimize-mobile {
+  from {
+    opacity:
+      0.4;
+
+    filter:
+      brightness(1.18);
+  }
+
+  to {
+    opacity:
+      1;
+
+    filter:
+      brightness(1);
+  }
+}
+
+
+/* =========================================================
+   MOBILE CLOSE
+   ========================================================= */
+
+@keyframes terminal-file-close-mobile {
+  from {
+    opacity:
+      1;
+
+    filter:
+      brightness(1);
+  }
+
+  to {
+    opacity:
+      0;
+
+    filter:
+      brightness(0.7);
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .terminal-file-window,
+  .terminal-file-window-minimized,
+  .terminal-file-window-closing,
+  .terminal-file-body,
+  .terminal-file-blue-line
+  span {
+    animation:
+      none !important;
+
+    transition:
+      none !important;
   }
 }
