@@ -5,6 +5,8 @@ import {
   useState,
 } from "react";
 
+import cbcLogo from "../assets/cbclogo.png";
+
 import "./Terminal.css";
 
 type TerminalState =
@@ -33,6 +35,39 @@ function makeLine(
     type,
     text,
   };
+}
+
+function getInitialLines(): TerminalLine[] {
+  return [
+    makeLine(
+      "system",
+      "CLOVIS BRAY CORPORATION",
+    ),
+    makeLine(
+      "system",
+      "EXOSCIENCE NETWORK TERMINAL",
+    ),
+    makeLine(
+      "system",
+      "REMOTE SESSION ESTABLISHED",
+    ),
+    makeLine(
+      "system",
+      "",
+    ),
+    makeLine(
+      "response",
+      "Authorization accepted.",
+    ),
+    makeLine(
+      "response",
+      "Terminal command interface online.",
+    ),
+    makeLine(
+      "response",
+      "Awaiting access code.",
+    ),
+  ];
 }
 
 export default function Terminal() {
@@ -69,12 +104,12 @@ export default function Terminal() {
     let cancelled = false;
 
     async function initialize() {
-      /*
-       * First check whether this browser
-       * already has a valid terminal
-       * session.
-       */
       try {
+        /*
+         * First check whether this
+         * browser already owns a valid
+         * terminal session.
+         */
         const sessionResponse =
           await fetch(
             "/api/terminal/session",
@@ -96,36 +131,13 @@ export default function Terminal() {
         ) {
           setState("connected");
 
-          setLines([
-            makeLine(
-              "system",
-              "SIVA://TERMINAL",
-            ),
-            makeLine(
-              "system",
-              "INSTANCE ESTABLISHED",
-            ),
-            makeLine(
-              "system",
-              "STATUS: CONNECTED",
-            ),
-            makeLine(
-              "system",
-              "",
-            ),
-            makeLine(
-              "response",
-              "PLACEHOLDER TERMINAL",
-            ),
-            makeLine(
-              "response",
-              "Command interface not yet initialized.",
-            ),
-          ]);
+          setLines(
+            getInitialLines(),
+          );
 
           /*
-           * Remove any old instance key
-           * from the address bar.
+           * Remove any old consumed
+           * instance key from the URL.
            */
           window.history.replaceState(
             {},
@@ -137,16 +149,13 @@ export default function Terminal() {
         }
 
         /*
-         * No existing session.
+         * No existing terminal session.
          *
-         * The first path component should
-         * be our one-time instance key.
+         * Attempt admission using the
+         * instance key in the URL.
          */
-        const path =
-          window.location.pathname;
-
         const instanceKey =
-          path
+          window.location.pathname
             .split("/")
             .filter(Boolean)[0];
 
@@ -157,10 +166,6 @@ export default function Terminal() {
 
         setState("connecting");
 
-        /*
-         * Attempt to consume the one-time
-         * instance key.
-         */
         const connectResponse =
           await fetch(
             "/api/terminal/connect",
@@ -197,10 +202,8 @@ export default function Terminal() {
         }
 
         /*
-         * Admission succeeded.
-         *
-         * Remove the secret instance key
-         * from the visible URL immediately.
+         * Instance successfully consumed.
+         * Hide the one-time key.
          */
         window.history.replaceState(
           {},
@@ -210,32 +213,9 @@ export default function Terminal() {
 
         setState("connected");
 
-        setLines([
-          makeLine(
-            "system",
-            "SIVA://TERMINAL",
-          ),
-          makeLine(
-            "system",
-            "INSTANCE ESTABLISHED",
-          ),
-          makeLine(
-            "system",
-            "STATUS: CONNECTED",
-          ),
-          makeLine(
-            "system",
-            "",
-          ),
-          makeLine(
-            "response",
-            "PLACEHOLDER TERMINAL",
-          ),
-          makeLine(
-            "response",
-            "Command interface not yet initialized.",
-          ),
-        ]);
+        setLines(
+          getInitialLines(),
+        );
       } catch {
         if (!cancelled) {
           setState("refused");
@@ -297,13 +277,17 @@ export default function Terminal() {
 
       makeLine(
         "response",
-        "PLACEHOLDER: COMMAND INTERFACE NOT YET INITIALIZED",
+        "ACCESS CODE NOT RECOGNIZED.",
       ),
     ]);
 
     setCommand("");
   }
 
+  /*
+   * Keep the existing loading state
+   * structurally unchanged.
+   */
   if (
     state === "checking" ||
     state === "connecting"
@@ -332,30 +316,82 @@ export default function Terminal() {
     );
   }
 
+  /*
+   * CLOVIS BRAY ACCESS DENIED SCREEN
+   */
   if (state === "refused") {
     return (
       <main className="terminal-page terminal-refused">
-        <div className="terminal-noise" />
+        <div className="cbc-background-grid" />
 
-        <section className="terminal-refused-content">
-          <div className="terminal-refused-code">
-            ERR://SIVA
+        <section className="cbc-refused-panel">
+          <header className="cbc-refused-header">
+            <img
+              src={cbcLogo}
+              alt="Clovis Bray Corporation"
+              className="cbc-refused-logo"
+            />
+
+            <div>
+              <span>
+                CLOVIS BRAY
+              </span>
+
+              <small>
+                CORPORATION
+              </small>
+            </div>
+          </header>
+
+          <div className="cbc-refused-rule" />
+
+          <div className="cbc-refused-code">
+            SECURITY PROTOCOL
+            // CB-401
           </div>
 
           <h1>
-            CONNECTION REFUSED
+            ACCESS
+            <br />
+            DENIED
           </h1>
 
-          <div className="terminal-refused-line" />
-
           <p>
-            No valid SIVA instance
-            detected.
+            The requested terminal
+            instance could not be
+            authenticated.
           </p>
 
-          <span>
-            CONNECTION TERMINATED
-          </span>
+          <div className="cbc-refused-details">
+            <span>
+              SESSION
+            </span>
+
+            <strong>
+              INVALID
+            </strong>
+
+            <span>
+              NETWORK
+            </span>
+
+            <strong>
+              RESTRICTED
+            </strong>
+
+            <span>
+              CLEARANCE
+            </span>
+
+            <strong>
+              UNVERIFIED
+            </strong>
+          </div>
+
+          <footer className="cbc-refused-footer">
+            CLOVIS BRAY CORPORATION
+            // EXOSCIENCE
+          </footer>
         </section>
       </main>
     );
@@ -368,80 +404,177 @@ export default function Terminal() {
         handleTerminalClick
       }
     >
-      <div className="terminal-noise" />
+      <div className="cbc-background-grid" />
 
-      <div className="terminal-scanline" />
-
-      <section className="terminal-shell">
-        <header className="terminal-header">
-          <div>
-            <span className="terminal-header-dot" />
-
-            <span>
-              SIVA://TERMINAL
-            </span>
-          </div>
-
-          <span className="terminal-status">
-            CONNECTED
-          </span>
-        </header>
-
-        <div
-          ref={outputRef}
-          className="terminal-output"
-        >
-          {lines.map((line) => (
-            <div
-              key={line.id}
-              className={
-                `terminal-line terminal-line-${line.type}`
-              }
-            >
-              {line.text || "\u00A0"}
-            </div>
-          ))}
-
-          <form
-            className="terminal-prompt"
-            onSubmit={
-              handleSubmit
-            }
-          >
-            <span className="terminal-prompt-symbol">
-              &gt;
-            </span>
-
-            <input
-              ref={inputRef}
-              value={command}
-              onChange={(event) =>
-                setCommand(
-                  event.target.value,
-                )
-              }
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
-              aria-label="Terminal command"
+      <div className="cbc-terminal-shell">
+        <header className="cbc-terminal-header">
+          <div className="cbc-brand">
+            <img
+              src={cbcLogo}
+              alt="Clovis Bray Corporation"
+              className="cbc-logo"
             />
 
-            <span className="terminal-cursor">
-              █
+            <div className="cbc-brand-copy">
+              <strong>
+                CLOVIS BRAY
+              </strong>
+
+              <span>
+                CORPORATION
+              </span>
+            </div>
+          </div>
+
+          <div className="cbc-header-data">
+            <span>
+              EXOSCIENCE NETWORK
             </span>
-          </form>
+
+            <strong>
+              ONLINE
+            </strong>
+          </div>
+        </header>
+
+        <div className="cbc-terminal-divider">
+          <span />
         </div>
 
-        <footer className="terminal-footer">
+        <section className="cbc-terminal-main">
+          <aside className="cbc-sidebar">
+            <div className="cbc-sidebar-label">
+              TERMINAL
+            </div>
+
+            <div className="cbc-terminal-number">
+              01
+            </div>
+
+            <div className="cbc-sidebar-data">
+              <span>
+                CONNECTION
+              </span>
+
+              <strong>
+                SECURE
+              </strong>
+
+              <span>
+                PROTOCOL
+              </span>
+
+              <strong>
+                CBX-7
+              </strong>
+
+              <span>
+                INSTANCE
+              </span>
+
+              <strong>
+                ACTIVE
+              </strong>
+            </div>
+          </aside>
+
+          <section className="cbc-console">
+            <div className="cbc-console-heading">
+              <div>
+                <span>
+                  REMOTE SYSTEM
+                </span>
+
+                <h1>
+                  COMMAND
+                  <br />
+                  TERMINAL
+                </h1>
+              </div>
+
+              <div className="cbc-console-status">
+                <span className="cbc-status-dot" />
+
+                AUTHORIZED
+              </div>
+            </div>
+
+            <div
+              ref={outputRef}
+              className="cbc-output"
+            >
+              {lines.map((line) => (
+                <div
+                  key={line.id}
+                  className={
+                    `cbc-line cbc-line-${line.type}`
+                  }
+                >
+                  {line.text ||
+                    "\u00A0"}
+                </div>
+              ))}
+            </div>
+
+            <form
+              className="cbc-prompt"
+              onSubmit={
+                handleSubmit
+              }
+            >
+              <div className="cbc-prompt-label">
+                ENTER TERMINAL CODE
+              </div>
+
+              <div className="cbc-prompt-box">
+                <span className="cbc-prompt-chevron">
+                  &gt;
+                </span>
+
+                <input
+                  ref={inputRef}
+                  value={command}
+                  onChange={(
+                    event,
+                  ) =>
+                    setCommand(
+                      event.target
+                        .value,
+                    )
+                  }
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  aria-label="Terminal code"
+                  placeholder="INPUT CODE"
+                />
+
+                <button
+                  type="submit"
+                  aria-label="Submit terminal code"
+                >
+                  EXECUTE
+                </button>
+              </div>
+            </form>
+          </section>
+        </section>
+
+        <footer className="cbc-terminal-footer">
           <span>
-            DISCORDINY NETWORK
+            CLOVIS BRAY CORPORATION
           </span>
 
           <span>
-            SIVA INSTANCE ACTIVE
+            EXOSCIENCE //
+            RESTRICTED NETWORK
+          </span>
+
+          <span>
+            CB.OS
           </span>
         </footer>
-      </section>
+      </div>
     </main>
   );
 }
