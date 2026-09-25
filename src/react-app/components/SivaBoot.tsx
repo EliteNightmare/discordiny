@@ -19,16 +19,38 @@ const REQUIRED_KEYS = [
   "a",
 ];
 
+/*
+ * Mobile puzzle:
+ *
+ * S -> I -> V -> A
+ *
+ * Each next letter must be pressed
+ * within this amount of time.
+ */
+const MOBILE_SEQUENCE = [
+  "S",
+  "I",
+  "V",
+  "A",
+];
+
+const MOBILE_SEQUENCE_TIMEOUT =
+  1600;
+
 export default function SivaBoot({
   onComplete,
 }: SivaBootProps) {
-  const [progress, setProgress] =
-    useState(0);
+  const [
+    progress,
+    setProgress,
+  ] = useState(0);
 
-  const [status, setStatus] =
-    useState(
-      "INITIALIZING DISCORDINY",
-    );
+  const [
+    status,
+    setStatus,
+  ] = useState(
+    "INITIALIZING DISCORDINY",
+  );
 
   const [
     terminalTriggered,
@@ -36,35 +58,68 @@ export default function SivaBoot({
   ] = useState(false);
 
   /*
-   * Desktop keyboard state.
+   * Which step of S-I-V-A the
+   * mobile player has reached.
+   *
+   * 0 = waiting for S
+   * 1 = waiting for I
+   * 2 = waiting for V
+   * 3 = waiting for A
    */
+  const [
+    mobileSequenceIndex,
+    setMobileSequenceIndex,
+  ] = useState(0);
+
   const heldKeys =
     useRef<Set<string>>(
       new Set(),
     );
 
-  /*
-   * Mobile hidden-button state.
-   */
-  const mobileHeld =
-    useRef<Set<number>>(
-      new Set(),
-    );
-
-  /*
-   * Prevent more than one terminal
-   * instance from being created.
-   */
   const triggered =
     useRef(false);
 
+  const mobileSequenceIndexRef =
+    useRef(0);
+
+  const mobileSequenceTimer =
+    useRef<
+      ReturnType<
+        typeof setTimeout
+      > | null
+    >(null);
+
   /*
-   * Shared terminal activation.
-   *
-   * Both the desktop keyboard shortcut
-   * and the mobile buttons use this
-   * exact same function.
+   * ========================================================
+   * RESET MOBILE SEQUENCE
+   * ========================================================
    */
+
+  const resetMobileSequence =
+    useCallback(() => {
+      if (
+        mobileSequenceTimer.current
+      ) {
+        clearTimeout(
+          mobileSequenceTimer.current,
+        );
+
+        mobileSequenceTimer.current =
+          null;
+      }
+
+      mobileSequenceIndexRef.current =
+        0;
+
+      setMobileSequenceIndex(0);
+    }, []);
+
+  /*
+   * ========================================================
+   * ACTIVATE TERMINAL
+   * ========================================================
+   */
+
   const activateTerminal =
     useCallback(async () => {
       if (triggered.current) {
@@ -73,13 +128,22 @@ export default function SivaBoot({
 
       triggered.current = true;
 
-      setTerminalTriggered(
-        true,
-      );
+      setTerminalTriggered(true);
 
       setStatus(
         "SIVA ACCESS VECTOR DETECTED",
       );
+
+      if (
+        mobileSequenceTimer.current
+      ) {
+        clearTimeout(
+          mobileSequenceTimer.current,
+        );
+
+        mobileSequenceTimer.current =
+          null;
+      }
 
       try {
         const response =
@@ -87,6 +151,11 @@ export default function SivaBoot({
             "/api/terminal/create",
             {
               method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
             },
           );
 
@@ -99,7 +168,7 @@ export default function SivaBoot({
           !data.instanceKey
         ) {
           throw new Error(
-            "Instance creation failed.",
+            "Unable to create terminal instance.",
           );
         }
 
@@ -112,20 +181,13 @@ export default function SivaBoot({
             data.instanceKey,
           )}`;
       } catch {
-        /*
-         * Terminal creation failed.
-         * Release the trigger and let
-         * Discordiny finish booting.
-         */
-        triggered.current =
-          false;
+        triggered.current = false;
 
-        setTerminalTriggered(
-          false,
-        );
+        setTerminalTriggered(false);
 
         heldKeys.current.clear();
-        mobileHeld.current.clear();
+
+        resetMobileSequence();
 
         setStatus(
           "SYSTEM READY",
@@ -138,36 +200,42 @@ export default function SivaBoot({
           500,
         );
       }
-    }, [onComplete]);
+    }, [
+      onComplete,
+      resetMobileSequence,
+    ]);
 
   /*
-   * Five-second boot sequence.
+   * ========================================================
+   * 5 SECOND BOOT SEQUENCE
+   * ========================================================
    */
+
   useEffect(() => {
-    const startedAt =
-      Date.now();
+    const startTime =
+      performance.now();
 
-    const duration = 5000;
+    let animationFrame = 0;
 
-    const progressTimer =
-      window.setInterval(() => {
-        const elapsed =
-          Date.now() -
-          startedAt;
+    function update() {
+      const elapsed =
+        performance.now() -
+        startTime;
 
-        const nextProgress =
-          Math.min(
+      const nextProgress =
+        Math.min(
+          100,
+          (elapsed / 5000) *
             100,
-            Math.floor(
-              (elapsed / duration) *
-                100,
-            ),
-          );
-
-        setProgress(
-          nextProgress,
         );
 
+      setProgress(
+        nextProgress,
+      );
+
+      if (
+        !triggered.current
+      ) {
         if (elapsed < 900) {
           setStatus(
             "INITIALIZING DISCORDINY",
@@ -201,49 +269,56 @@ export default function SivaBoot({
             "SYSTEM READY",
           );
         }
+      }
 
+      if (elapsed >= 5000) {
         if (
-          elapsed >= duration
+          !triggered.current
         ) {
-          window.clearInterval(
-            progressTimer,
-          );
-
-          /*
-           * Do not open Home if a
-           * terminal request is already
-           * being processed.
-           */
-          if (!triggered.current) {
-            onComplete();
-          }
+          onComplete();
         }
-      }, 40);
+
+        return;
+      }
+
+      animationFrame =
+        requestAnimationFrame(
+          update,
+        );
+    }
+
+    animationFrame =
+      requestAnimationFrame(
+        update,
+      );
 
     return () => {
-      window.clearInterval(
-        progressTimer,
+      cancelAnimationFrame(
+        animationFrame,
       );
     };
   }, [onComplete]);
 
   /*
-   * Desktop:
+   * ========================================================
+   * DESKTOP SECRET
    *
-   * Shift + S + I + V + A must all
-   * physically be held at once.
+   * SHIFT + S + I + V + A
+   * held simultaneously.
+   * ========================================================
    */
+
   useEffect(() => {
     function normalizeKey(
-      event: KeyboardEvent,
+      key: string,
     ) {
       if (
-        event.key === "Shift"
+        key === "Shift"
       ) {
         return "shift";
       }
 
-      return event.key.toLowerCase();
+      return key.toLowerCase();
     }
 
     function checkKeys() {
@@ -256,7 +331,7 @@ export default function SivaBoot({
         );
 
       if (allHeld) {
-        void activateTerminal();
+        activateTerminal();
       }
     }
 
@@ -264,7 +339,9 @@ export default function SivaBoot({
       event: KeyboardEvent,
     ) {
       const key =
-        normalizeKey(event);
+        normalizeKey(
+          event.key,
+        );
 
       heldKeys.current.add(
         key,
@@ -277,7 +354,9 @@ export default function SivaBoot({
       event: KeyboardEvent,
     ) {
       const key =
-        normalizeKey(event);
+        normalizeKey(
+          event.key,
+        );
 
       heldKeys.current.delete(
         key,
@@ -286,7 +365,8 @@ export default function SivaBoot({
 
     function handleBlur() {
       heldKeys.current.clear();
-      mobileHeld.current.clear();
+
+      resetMobileSequence();
     }
 
     window.addEventListener(
@@ -320,213 +400,325 @@ export default function SivaBoot({
         handleBlur,
       );
     };
-  }, [activateTerminal]);
+  }, [
+    activateTerminal,
+    resetMobileSequence,
+  ]);
 
   /*
-   * Mobile:
-   *
-   * All three obscure controls must
-   * physically be held simultaneously.
+   * ========================================================
+   * MOBILE S-I-V-A PUZZLE
+   * ========================================================
    */
-  function handleMobileDown(
-    button: number,
-  ) {
-    mobileHeld.current.add(
-      button,
-    );
 
+  function handleMobileLetter(
+    letter: string,
+  ) {
     if (
-      mobileHeld.current.has(1) &&
-      mobileHeld.current.has(2) &&
-      mobileHeld.current.has(3)
+      triggered.current
     ) {
-      void activateTerminal();
+      return;
     }
+
+    const currentIndex =
+      mobileSequenceIndexRef.current;
+
+    const expectedLetter =
+      MOBILE_SEQUENCE[
+        currentIndex
+      ];
+
+    /*
+     * Wrong letter:
+     *
+     * Reset everything.
+     *
+     * If they happened to press S,
+     * however, immediately treat that
+     * as the beginning of a new
+     * sequence.
+     */
+    if (
+      letter !==
+      expectedLetter
+    ) {
+      resetMobileSequence();
+
+      if (letter === "S") {
+        mobileSequenceIndexRef.current =
+          1;
+
+        setMobileSequenceIndex(
+          1,
+        );
+
+        mobileSequenceTimer.current =
+          setTimeout(
+            resetMobileSequence,
+            MOBILE_SEQUENCE_TIMEOUT,
+          );
+      }
+
+      return;
+    }
+
+    /*
+     * Correct letter.
+     */
+    const nextIndex =
+      currentIndex + 1;
+
+    /*
+     * A completed the sequence.
+     */
+    if (
+      nextIndex >=
+      MOBILE_SEQUENCE.length
+    ) {
+      resetMobileSequence();
+
+      activateTerminal();
+
+      return;
+    }
+
+    mobileSequenceIndexRef.current =
+      nextIndex;
+
+    setMobileSequenceIndex(
+      nextIndex,
+    );
+
+    /*
+     * Restart the timer every time
+     * they successfully press the
+     * next letter.
+     */
+    if (
+      mobileSequenceTimer.current
+    ) {
+      clearTimeout(
+        mobileSequenceTimer.current,
+      );
+    }
+
+    mobileSequenceTimer.current =
+      setTimeout(
+        resetMobileSequence,
+        MOBILE_SEQUENCE_TIMEOUT,
+      );
   }
 
-  function handleMobileUp(
-    button: number,
-  ) {
-    mobileHeld.current.delete(
-      button,
-    );
-  }
+  /*
+   * Clean up sequence timer if the
+   * component disappears.
+   */
+  useEffect(() => {
+    return () => {
+      if (
+        mobileSequenceTimer.current
+      ) {
+        clearTimeout(
+          mobileSequenceTimer.current,
+        );
+      }
+    };
+  }, []);
 
   return (
     <main
       className={
         terminalTriggered
-          ? "siva-boot siva-boot-triggered"
+          ? "siva-boot siva-terminal-triggered"
           : "siva-boot"
       }
     >
-      <div className="siva-boot-grid" />
+      <div className="siva-grid" />
 
-      <div className="siva-boot-scanlines" />
+      <div className="siva-scanlines" />
 
-      <div className="siva-boot-glitch siva-boot-glitch-one" />
+      <div className="siva-glitch-bar siva-glitch-bar-one" />
 
-      <div className="siva-boot-glitch siva-boot-glitch-two" />
+      <div className="siva-glitch-bar siva-glitch-bar-two" />
 
-      <div className="siva-boot-glitch siva-boot-glitch-three" />
+      <div className="siva-glitch-bar siva-glitch-bar-three" />
 
-      <section className="siva-boot-content">
-        <div className="siva-boot-code siva-boot-code-left">
-          <span>
-            0x001 // LINK
-          </span>
+      {/*
+       * Decorative system text
+       */}
 
-          <span>
-            0x004 // MEMORY
-          </span>
-
-          <span>
-            0x00A // NETWORK
-          </span>
-
-          <span>
-            0x00F // PROTOCOL
-          </span>
-        </div>
-
-        <div className="siva-boot-center">
-          <div className="siva-boot-symbol">
-            <span>
-              ◆
-            </span>
-          </div>
-
-          <div className="siva-boot-name">
-            DISCORDINY
-          </div>
-
-          <div className="siva-boot-status">
-            {status}
-          </div>
-
-          <div className="siva-boot-progress">
-            <div
-              className="siva-boot-progress-fill"
-              style={{
-                width:
-                  `${progress}%`,
-              }}
-            />
-          </div>
-
-          <div className="siva-boot-progress-data">
-            <span>
-              SYS://BOOT
-            </span>
-
-            <span>
-              {String(
-                progress,
-              ).padStart(
-                3,
-                "0",
-              )}
-              %
-            </span>
-          </div>
-        </div>
-
-        <div className="siva-boot-code siva-boot-code-right">
-          <span>
-            [OK] CORE
-          </span>
-
-          <span>
-            [OK] D1
-          </span>
-
-          <span>
-            [OK] AUTH
-          </span>
-
-          <span>
-            [..] SIVA
-          </span>
-        </div>
-      </section>
-
-      <div className="siva-boot-footer">
+      <div className="siva-code siva-code-left">
         <span>
-          DISCORDINY SYSTEM
+          SYS//DISCORDINY
         </span>
 
         <span>
-          BUILD://ACTIVE
+          MEM_CHECK: OK
+        </span>
+
+        <span>
+          LINK: ACTIVE
+        </span>
+
+        <span>
+          PROTOCOL: INIT
+        </span>
+      </div>
+
+      <div className="siva-code siva-code-right">
+        <span>
+          0x0007F3A
+        </span>
+
+        <span>
+          NODE//ACTIVE
+        </span>
+
+        <span>
+          SIVA_NET
+        </span>
+
+        <span>
+          AUTH//WAIT
         </span>
       </div>
 
       {/*
-       * Hidden mobile access controls.
-       *
-       * CSS only reveals these on
-       * coarse-pointer/touch devices.
+       * Main boot content
        */}
-      <div
-        className="siva-mobile-access"
-        aria-label="System diagnostics"
+
+      <section className="siva-boot-content">
+        <div className="siva-diamond">
+          <span />
+        </div>
+
+        <h1>
+          DISCORDINY
+        </h1>
+
+        <p className="siva-status">
+          {status}
+        </p>
+
+        <div className="siva-progress-track">
+          <div
+            className="siva-progress-fill"
+            style={{
+              width:
+                `${progress}%`,
+            }}
+          />
+        </div>
+
+        <div className="siva-progress-number">
+          {Math.floor(
+            progress,
+          )
+            .toString()
+            .padStart(
+              3,
+              "0",
+            )}
+          %
+        </div>
+      </section>
+
+      <footer className="siva-footer">
+        DISCORDINY SYSTEM
+        // BOOT
+      </footer>
+
+      {/*
+       * ====================================================
+       * MOBILE SECRET BUTTONS
+       *
+       * Deliberately scattered across
+       * four separate areas.
+       *
+       * They only appear on coarse
+       * pointer/touch devices via CSS.
+       * ====================================================
+       */}
+
+      <button
+        type="button"
+        className={[
+          "siva-sequence-key",
+          "siva-sequence-s",
+          mobileSequenceIndex >
+          0
+            ? "siva-sequence-complete"
+            : "",
+        ].join(" ")}
+        onClick={() =>
+          handleMobileLetter(
+            "S",
+          )
+        }
+        aria-label="S"
       >
-        <button
-          type="button"
-          aria-label="Diagnostic control one"
-          onPointerDown={() =>
-            handleMobileDown(1)
-          }
-          onPointerUp={() =>
-            handleMobileUp(1)
-          }
-          onPointerCancel={() =>
-            handleMobileUp(1)
-          }
-          onPointerLeave={() =>
-            handleMobileUp(1)
-          }
-        >
-          ◈
-        </button>
+        S
+      </button>
 
-        <button
-          type="button"
-          aria-label="Diagnostic control two"
-          onPointerDown={() =>
-            handleMobileDown(2)
-          }
-          onPointerUp={() =>
-            handleMobileUp(2)
-          }
-          onPointerCancel={() =>
-            handleMobileUp(2)
-          }
-          onPointerLeave={() =>
-            handleMobileUp(2)
-          }
-        >
-          ∴
-        </button>
+      <button
+        type="button"
+        className={[
+          "siva-sequence-key",
+          "siva-sequence-i",
+          mobileSequenceIndex >
+          1
+            ? "siva-sequence-complete"
+            : "",
+        ].join(" ")}
+        onClick={() =>
+          handleMobileLetter(
+            "I",
+          )
+        }
+        aria-label="I"
+      >
+        I
+      </button>
 
-        <button
-          type="button"
-          aria-label="Diagnostic control three"
-          onPointerDown={() =>
-            handleMobileDown(3)
-          }
-          onPointerUp={() =>
-            handleMobileUp(3)
-          }
-          onPointerCancel={() =>
-            handleMobileUp(3)
-          }
-          onPointerLeave={() =>
-            handleMobileUp(3)
-          }
-        >
-          //
-        </button>
-      </div>
+      <button
+        type="button"
+        className={[
+          "siva-sequence-key",
+          "siva-sequence-v",
+          mobileSequenceIndex >
+          2
+            ? "siva-sequence-complete"
+            : "",
+        ].join(" ")}
+        onClick={() =>
+          handleMobileLetter(
+            "V",
+          )
+        }
+        aria-label="V"
+      >
+        V
+      </button>
+
+      <button
+        type="button"
+        className={[
+          "siva-sequence-key",
+          "siva-sequence-a",
+          mobileSequenceIndex >
+          3
+            ? "siva-sequence-complete"
+            : "",
+        ].join(" ")}
+        onClick={() =>
+          handleMobileLetter(
+            "A",
+          )
+        }
+        aria-label="A"
+      >
+        A
+      </button>
     </main>
   );
 }
