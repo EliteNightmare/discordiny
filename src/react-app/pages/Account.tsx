@@ -20,14 +20,21 @@ type BungieAccount = {
 
 export default function Account() {
   const [user, setUser] = useState<User | null>(null);
+
   const [bungieAccount, setBungieAccount] =
     useState<BungieAccount | null>(null);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
+
   const [bungieLoading, setBungieLoading] =
     useState(true);
+
   const [unlinking, setUnlinking] =
     useState(false);
+
+  const [bungieError, setBungieError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     async function loadAccount() {
@@ -83,6 +90,37 @@ export default function Account() {
       }
     }
 
+    /*
+     * Check whether Bungie OAuth redirected
+     * back with a linking error.
+     */
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    if (
+      params.get("bungie_error") ===
+      "already_linked"
+    ) {
+      setBungieError(
+        "This Bungie account is already linked to another Discordiny account."
+      );
+
+      /*
+       * Remove the error query parameter from
+       * the URL after reading it.
+       *
+       * This prevents the same message from
+       * appearing again after a page refresh.
+       */
+      window.history.replaceState(
+        {},
+        "",
+        "/account"
+      );
+    }
+
     loadAccount();
   }, []);
 
@@ -117,6 +155,12 @@ export default function Account() {
     : discordIcon;
 
   function linkBungieAccount() {
+    /*
+     * Clear any previous error before starting
+     * a new Bungie linking attempt.
+     */
+    setBungieError(null);
+
     window.location.href =
       "/api/bungie/link";
   }
@@ -135,6 +179,7 @@ export default function Account() {
     }
 
     setUnlinking(true);
+    setBungieError(null);
 
     try {
       const response = await fetch(
@@ -192,10 +237,24 @@ export default function Account() {
 
           <div className="account-divider" />
 
+          {bungieError && (
+            <div className="account-bungie-error">
+              <strong>
+                Bungie account already linked
+              </strong>
+
+              <span>
+                {bungieError}
+              </span>
+            </div>
+          )}
+
           <div className="account-information">
             <div className="account-information-item">
               <div className="account-information-text">
-                <span>Bungie Account</span>
+                <span>
+                  Bungie Account
+                </span>
 
                 {bungieLoading ? (
                   <strong>
@@ -203,7 +262,9 @@ export default function Account() {
                   </strong>
                 ) : bungieAccount ? (
                   <strong>
-                    {bungieAccount.bungie_name}
+                    {
+                      bungieAccount.bungie_name
+                    }
                   </strong>
                 ) : (
                   <strong>
@@ -217,7 +278,9 @@ export default function Account() {
                   <button
                     className="account-link-button"
                     type="button"
-                    onClick={unlinkBungieAccount}
+                    onClick={
+                      unlinkBungieAccount
+                    }
                     disabled={unlinking}
                   >
                     {unlinking
@@ -228,7 +291,9 @@ export default function Account() {
                   <button
                     className="account-link-button"
                     type="button"
-                    onClick={linkBungieAccount}
+                    onClick={
+                      linkBungieAccount
+                    }
                   >
                     Link
                   </button>
@@ -237,8 +302,13 @@ export default function Account() {
 
             <div className="account-information-item">
               <div className="account-information-text">
-                <span>Patreon Account</span>
-                <strong>Not linked</strong>
+                <span>
+                  Patreon Account
+                </span>
+
+                <strong>
+                  Not linked
+                </strong>
               </div>
 
               <button
