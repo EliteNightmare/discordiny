@@ -1,0 +1,486 @@
+/* =========================================================
+   TERMINAL FILE WINDOW
+   ========================================================= */
+
+.terminal-file-window {
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+
+  display: flex;
+  flex-direction: column;
+
+  width:
+    min(
+      720px,
+      calc(100vw - 80px)
+    );
+
+  height:
+    min(
+      520px,
+      calc(100dvh - 100px)
+    );
+
+  margin-top:
+    min(
+      -260px,
+      calc(
+        (100dvh - 100px) /
+        -2
+      )
+    );
+
+  margin-left:
+    min(
+      -360px,
+      calc(
+        (100vw - 80px) /
+        -2
+      )
+    );
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    #344a58;
+
+  background:
+    rgba(
+      9,
+      15,
+      19,
+      0.985
+    );
+
+  color: #edf4f7;
+
+  box-shadow:
+    0 30px 100px
+    rgba(0, 0, 0, 0.72),
+    0 0 60px
+    rgba(49, 132, 187, 0.08);
+
+  animation:
+    terminal-file-open
+    180ms
+    ease-out;
+}
+
+
+/* =========================================================
+   TITLE BAR
+   ========================================================= */
+
+.terminal-file-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 auto;
+
+  min-height: 68px;
+
+  padding:
+    0
+    12px
+    0
+    22px;
+
+  background:
+    #111a20;
+
+  border-bottom:
+    1px solid
+    #263640;
+}
+
+.terminal-file-title-info {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+}
+
+.terminal-file-system {
+  margin-bottom: 5px;
+
+  color: #4c8fb9;
+
+  font-size: 0.5rem;
+  font-weight: 800;
+
+  letter-spacing: 0.2em;
+}
+
+.terminal-file-title-info
+strong {
+  overflow: hidden;
+
+  color: #eef4f7;
+
+  font-size: 0.75rem;
+  font-weight: 700;
+
+  letter-spacing: 0.12em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+   ========================================================= */
+
+.terminal-file-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  width: 42px;
+  height: 42px;
+
+  margin-left: 20px;
+
+  padding: 0;
+
+  border:
+    1px solid
+    #344852;
+
+  border-radius: 50%;
+
+  outline: 0;
+
+  background:
+    #0b1216;
+
+  color: #8ba0ac;
+
+  cursor: pointer;
+
+  font-size: 1.35rem;
+  font-weight: 300;
+
+  line-height: 1;
+
+  transition:
+    color
+    140ms ease,
+    border-color
+    140ms ease,
+    background
+    140ms ease,
+    transform
+    140ms ease;
+}
+
+.terminal-file-close:hover {
+  border-color: #559dca;
+
+  background: #13212a;
+
+  color: #ffffff;
+}
+
+.terminal-file-close:active {
+  transform: scale(0.92);
+}
+
+
+/* =========================================================
+   BLUE DIVIDER
+   ========================================================= */
+
+.terminal-file-blue-line {
+  display: flex;
+
+  flex: 0 0 auto;
+
+  width: 100%;
+  height: 3px;
+
+  background: #1e2a32;
+}
+
+.terminal-file-blue-line
+span {
+  display: block;
+
+  width: 32%;
+
+  background: #428bb9;
+
+  box-shadow:
+    0 0 15px
+    rgba(66, 139, 185, 0.25);
+}
+
+
+/* =========================================================
+   BODY
+   ========================================================= */
+
+.terminal-file-body {
+  display: flex;
+  flex-direction: column;
+
+  flex: 1;
+
+  min-height: 0;
+
+  padding:
+    24px
+    26px;
+}
+
+
+/* =========================================================
+   METADATA
+   ========================================================= */
+
+.terminal-file-metadata {
+  display: grid;
+
+  grid-template-columns:
+    1fr
+    1.5fr
+    1fr;
+
+  flex: 0 0 auto;
+
+  gap: 18px;
+
+  padding-bottom: 20px;
+
+  border-bottom:
+    1px solid
+    #24313a;
+}
+
+.terminal-file-metadata
+div {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+}
+
+.terminal-file-metadata
+span {
+  margin-bottom: 6px;
+
+  color: #50636f;
+
+  font-size: 0.47rem;
+  font-weight: 800;
+
+  letter-spacing: 0.18em;
+}
+
+.terminal-file-metadata
+strong {
+  overflow: hidden;
+
+  color: #6399ba;
+
+  font-size: 0.57rem;
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   FILE CONTENT
+   ========================================================= */
+
+.terminal-file-content {
+  flex: 1;
+
+  min-height: 0;
+
+  margin-top: 22px;
+
+  overflow-y: auto;
+
+  padding-right: 12px;
+
+  scrollbar-width: thin;
+
+  scrollbar-color:
+    #344d5c
+    transparent;
+}
+
+.terminal-file-content
+p {
+  margin:
+    0
+    0
+    8px;
+
+  color: #9cabb4;
+
+  font-family:
+    "Courier New",
+    Courier,
+    monospace;
+
+  font-size: 0.76rem;
+
+  line-height: 1.7;
+
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.terminal-file-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 auto;
+
+  min-height: 38px;
+
+  padding:
+    0
+    22px;
+
+  border-top:
+    1px solid
+    #24313a;
+
+  color: #455761;
+
+  font-size: 0.46rem;
+  font-weight: 700;
+
+  letter-spacing: 0.14em;
+}
+
+
+/* =========================================================
+   OPEN ANIMATION
+   ========================================================= */
+
+@keyframes terminal-file-open {
+  from {
+    opacity: 0;
+
+    scale: 0.97;
+  }
+
+  to {
+    opacity: 1;
+
+    scale: 1;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .terminal-file-window {
+    position: fixed;
+
+    top: 10px;
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+
+    width: auto;
+    height: auto;
+
+    margin: 0;
+
+    transform:
+      none !important;
+  }
+
+  .terminal-file-titlebar {
+    min-height: 62px;
+
+    padding:
+      0
+      9px
+      0
+      16px;
+  }
+
+  .terminal-file-system {
+    font-size: 0.43rem;
+  }
+
+  .terminal-file-title-info
+  strong {
+    font-size: 0.62rem;
+  }
+
+  .terminal-file-close {
+    width: 40px;
+    height: 40px;
+
+    margin-left: 12px;
+  }
+
+  .terminal-file-body {
+    padding:
+      18px
+      16px;
+  }
+
+  .terminal-file-metadata {
+    grid-template-columns:
+      1fr
+      1fr;
+
+    gap:
+      14px
+      10px;
+  }
+
+  .terminal-file-metadata
+  div:nth-child(2) {
+    grid-column:
+      1 / -1;
+
+    grid-row: 2;
+  }
+
+  .terminal-file-content {
+    margin-top: 18px;
+
+    padding-right: 5px;
+  }
+
+  .terminal-file-content
+  p {
+    font-size: 0.7rem;
+  }
+
+  .terminal-file-footer {
+    padding:
+      0
+      14px;
+
+    font-size: 0.4rem;
+  }
+}
