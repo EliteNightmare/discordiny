@@ -285,6 +285,52 @@
   flex: 0 0 15px;
 }
 
+.activity-dashboard-charges {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.activity-charge-pips {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.activity-charge-pips i {
+  width: 7px;
+  height: 7px;
+  border: 1px solid rgba(255, 221, 130, 0.55);
+  border-radius: 50%;
+  background: transparent;
+}
+
+.activity-charge-pips i.filled {
+  background: rgba(255, 221, 130, 0.95);
+  box-shadow:
+    0 0 8px rgba(255, 211, 95, 0.35);
+}
+
+.activity-dashboard-charges strong,
+.activity-dashboard-status {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.activity-dashboard-status {
+  display: block;
+  margin-top: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-dashboard-card-disabled
+.activity-dashboard-status {
+  color: rgba(255, 255, 255, 0.52);
+}
+
 /* =========================================================
    DAILY ROTATION HIGHLIGHT
 ========================================================= */
@@ -1022,7 +1068,10 @@
 .global-activity-feed {
   position: relative;
   min-width: 0;
-  align-self: stretch;
+  height: var(--global-feed-max-height, 0px);
+  max-height: var(--global-feed-max-height, 0px);
+  align-self: start;
+  overflow: hidden;
   border-left:
     1px solid rgba(255, 255, 255, 0.1);
 }
@@ -1030,8 +1079,17 @@
 .global-activity-feed-inner {
   position: sticky;
   top: 104px;
-  min-height: 560px;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   padding: 4px 0 28px 26px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.global-activity-feed-events {
+  max-height: calc(100% - 64px);
+  overflow: hidden;
 }
 
 .global-activity-feed-heading {
@@ -1125,13 +1183,40 @@
   border-top: 0;
 }
 
+.global-activity-event-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.global-activity-event-player-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.global-activity-event-avatar {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .global-activity-event-player {
   display: block;
-  margin-bottom: 5px;
-  color: rgba(255, 255, 255, 0.42);
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.55);
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .global-activity-event-activity {
@@ -1161,10 +1246,21 @@
 }
 
 .global-activity-event-weapon {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   margin-top: 10px;
   padding-left: 10px;
   border-left:
     2px solid rgba(226, 195, 108, 0.48);
+}
+
+.global-activity-event-weapon-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 4px;
+  object-fit: contain;
 }
 
 .global-activity-event-weapon span {
@@ -1185,7 +1281,8 @@
 
 .global-activity-event-time {
   display: block;
-  margin-top: 8px;
+  flex: 0 0 auto;
+  margin-top: 0;
   color: rgba(255, 255, 255, 0.22);
   font-size: 0.58rem;
 }
@@ -1201,6 +1298,9 @@
   }
 
   .global-activity-feed {
+    height: auto;
+    max-height: none;
+    overflow: visible;
     border-top:
       1px solid rgba(255, 255, 255, 0.1);
     border-left: 0;
@@ -1209,8 +1309,16 @@
   .global-activity-feed-inner {
     position: relative;
     top: auto;
+    height: auto;
+    max-height: none;
     min-height: 220px;
     padding: 28px 0 0;
+    overflow: visible;
+  }
+
+  .global-activity-feed-events {
+    max-height: none;
+    overflow: visible;
   }
 }
 

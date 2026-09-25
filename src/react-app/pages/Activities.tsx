@@ -38,6 +38,28 @@ type ActivitiesResponse = {
       percentage: number;
       capped: boolean;
     };
+    endgame: {
+      dungeon: {
+        cooldownSeconds: number;
+        remainingSeconds: number;
+        readyAt: number;
+      };
+      raid: {
+        cooldownSeconds: number;
+        remainingSeconds: number;
+        readyAt: number;
+      };
+      dailyDungeon: {
+        maxCharges: number;
+        usedCharges: number;
+        remainingCharges: number;
+      };
+      dailyRaid: {
+        maxCharges: number;
+        usedCharges: number;
+        remainingCharges: number;
+      };
+    };
   };
   rotation: {
     dailyShowdown: Rotation;
@@ -59,6 +81,7 @@ type ActivitiesResponse = {
 type GlobalActivityFeedEvent = {
   id: number;
   player: string;
+  avatarUrl?: string;
   activity: string;
   activityType: string;
   result: "CLEAR" | "WIPE" | string;
@@ -84,6 +107,12 @@ type ActivityCardProps = {
   backgroundPosition?: string;
   backgroundSize?: string;
   daily?: boolean;
+  disabled?: boolean;
+  status?: string;
+  charges?: {
+    remaining: number;
+    max: number;
+  };
   onClick?: () => void;
 };
 
@@ -111,6 +140,15 @@ const generalImages = import.meta.glob(
 
 const activityBanners = import.meta.glob(
   "../assets/activitybanners/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const weaponImages = import.meta.glob(
+  "../assets/weapons/**/*.png",
   {
     eager: true,
     import: "default",
@@ -360,6 +398,46 @@ function getActivityBanner(
   )?.[1];
 }
 
+function getWeaponImage(
+  weaponName: string,
+): string | undefined {
+  const baseName = weaponName
+    .replace(/\s*\(Adept\)\s*$/i, "")
+    .trim();
+
+  const normalizedWeapon =
+    normalizeAssetName(baseName);
+
+  return Object.entries(
+    weaponImages,
+  ).find(([path]) => {
+    const filename =
+      path.split("/").pop() ?? "";
+
+    const filenameWithoutExtension =
+      filename.replace(/\.png$/i, "");
+
+    return (
+      normalizeAssetName(
+        filenameWithoutExtension,
+      ) === normalizedWeapon
+    );
+  })?.[1];
+}
+
+function formatCooldownTime(
+  seconds: number,
+): string {
+  const safeSeconds = Math.max(
+    0,
+    Math.ceil(seconds),
+  );
+
+  return `0:${safeSeconds
+    .toString()
+    .padStart(2, "0")}`;
+}
+
 function formatRotationTime(
   seconds: number,
 ): string {
@@ -481,11 +559,14 @@ function ActivityCard({
   backgroundPosition,
   backgroundSize,
   daily = false,
+  disabled = false,
+  status,
+  charges,
   onClick,
 }: ActivityCardProps) {
   const className = [
     "activity-dashboard-card",
-    activity
+    activity && !disabled
       ? "activity-dashboard-card-active"
       : "activity-dashboard-card-disabled",
     backgroundImage
@@ -502,8 +583,12 @@ function ActivityCard({
     <button
       type="button"
       className={className}
-      disabled={!activity}
-      onClick={activity ? onClick : undefined}
+      disabled={!activity || disabled}
+      onClick={
+        activity && !disabled
+          ? onClick
+          : undefined
+      }
       style={
         backgroundImage
           ? {
@@ -566,6 +651,36 @@ function ActivityCard({
             {activity.destination}
           </span>
         )}
+
+        {charges && (
+          <div className="activity-dashboard-charges">
+            <span className="activity-charge-pips" aria-hidden="true">
+              {Array.from(
+                { length: charges.max },
+                (_, index) => (
+                  <i
+                    key={index}
+                    className={
+                      index < charges.remaining
+                        ? "filled"
+                        : ""
+                    }
+                  />
+                ),
+              )}
+            </span>
+
+            <strong>
+              {charges.remaining} / {charges.max} CHARGES
+            </strong>
+          </div>
+        )}
+
+        {status && (
+          <span className="activity-dashboard-status">
+            {status}
+          </span>
+        )}
       </div>
     </button>
   );
@@ -621,6 +736,12 @@ export default function Activities() {
 
   const feedRefreshingRef =
     useRef(false);
+
+  const activitiesMainRef =
+    useRef<HTMLDivElement | null>(null);
+
+  const globalFeedRef =
+    useRef<HTMLElement | null>(null);
 
   const loadedAtRef =
     useRef(Date.now());
@@ -777,6 +898,48 @@ export default function Activities() {
       );
     };
   }, [loadGlobalActivityFeed]);
+
+  useEffect(() => {
+    const main = activitiesMainRef.current;
+    const feed = globalFeedRef.current;
+
+    if (!main || !feed) {
+      return;
+    }
+
+    const syncFeedHeight = () => {
+      const height = Math.max(
+        0,
+        Math.floor(main.getBoundingClientRect().height),
+      );
+
+      feed.style.setProperty(
+        "--global-feed-max-height",
+        `${height}px`,
+      );
+    };
+
+    syncFeedHeight();
+
+    const observer =
+      new ResizeObserver(syncFeedHeight);
+
+    observer.observe(main);
+
+    window.addEventListener(
+      "resize",
+      syncFeedHeight,
+    );
+
+    return () => {
+      observer.disconnect();
+
+      window.removeEventListener(
+        "resize",
+        syncFeedHeight,
+      );
+    };
+  }, [data]);
 
   useEffect(() => {
     function handleOutsideClick(
@@ -1025,6 +1188,26 @@ export default function Activities() {
     exploreElapsed >=
     exploreMax;
 
+  const dungeonCooldownRemaining =
+    Math.max(
+      0,
+      data.player.endgame.dungeon
+        .remainingSeconds - clock,
+    );
+
+  const raidCooldownRemaining =
+    Math.max(
+      0,
+      data.player.endgame.raid
+        .remainingSeconds - clock,
+    );
+
+  const dailyDungeonCharges =
+    data.player.endgame.dailyDungeon;
+
+  const dailyRaidCharges =
+    data.player.endgame.dailyRaid;
+
   return (
     <div className="activities-screen">
       <TopBar />
@@ -1032,7 +1215,7 @@ export default function Activities() {
       <main className="activities-page">
         <div className="activities-container">
           <div className="activities-layout">
-            <div className="activities-main">
+            <div className="activities-main" ref={activitiesMainRef}>
 
           <header className="activities-header">
             <span className="activities-eyebrow">
@@ -1103,6 +1286,20 @@ export default function Activities() {
                 }
                 backgroundPosition="center"
                 backgroundSize="85% auto"
+                charges={{
+                  remaining:
+                    dailyDungeonCharges.remainingCharges,
+                  max:
+                    dailyDungeonCharges.maxCharges,
+                }}
+                disabled={
+                  dailyDungeonCharges.remainingCharges <= 0
+                }
+                status={
+                  dailyDungeonCharges.remainingCharges <= 0
+                    ? "DAILY LIMIT REACHED"
+                    : undefined
+                }
                 onClick={() => openEndgameActivity(data.rotation.dailyDungeon.activity)}
                 daily
               />
@@ -1123,6 +1320,20 @@ export default function Activities() {
                 }
                 backgroundPosition="center"
                 backgroundSize="85% auto"
+                charges={{
+                  remaining:
+                    dailyRaidCharges.remainingCharges,
+                  max:
+                    dailyRaidCharges.maxCharges,
+                }}
+                disabled={
+                  dailyRaidCharges.remainingCharges <= 0
+                }
+                status={
+                  dailyRaidCharges.remainingCharges <= 0
+                    ? "DAILY LIMIT REACHED"
+                    : undefined
+                }
                 onClick={() => openEndgameActivity(data.rotation.dailyRaid.activity)}
                 daily
               />
@@ -1550,6 +1761,18 @@ export default function Activities() {
                     data.current.dungeon,
                   )
                 }
+                disabled={
+                  dungeonCooldownRemaining > 0
+                }
+                status={
+                  dungeonCooldownRemaining > 0
+                    ? `COOLDOWN ${formatCooldownTime(
+                        dungeonCooldownRemaining,
+                      )}`
+                    : data.current.dungeon
+                      ? "READY"
+                      : undefined
+                }
                 onClick={() => openEndgameActivity(data.current.dungeon)}
               />
 
@@ -1566,6 +1789,18 @@ export default function Activities() {
                     data.current.raid,
                   )
                 }
+                disabled={
+                  raidCooldownRemaining > 0
+                }
+                status={
+                  raidCooldownRemaining > 0
+                    ? `COOLDOWN ${formatCooldownTime(
+                        raidCooldownRemaining,
+                      )}`
+                    : data.current.raid
+                      ? "READY"
+                      : undefined
+                }
                 onClick={() => openEndgameActivity(data.current.raid)}
               />
             </div>
@@ -1579,6 +1814,7 @@ export default function Activities() {
             </div>
 
             <aside
+              ref={globalFeedRef}
               className="global-activity-feed"
               aria-label="Global activity feed"
             >
@@ -1597,9 +1833,20 @@ export default function Activities() {
                           key={event.id}
                         >
                           <div className="global-activity-event-top">
-                            <strong className="global-activity-event-player">
-                              {event.player}
-                            </strong>
+                            <div className="global-activity-event-player-row">
+                              {event.avatarUrl && (
+                                <img
+                                  className="global-activity-event-avatar"
+                                  src={event.avatarUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                />
+                              )}
+
+                              <strong className="global-activity-event-player">
+                                {event.player}
+                              </strong>
+                            </div>
 
                             <span className="global-activity-event-time">
                               {formatFeedTime(
@@ -1624,19 +1871,34 @@ export default function Activities() {
 
                           {event.weapon && (
                             <div className="global-activity-event-weapon">
-                              <span>
-                                WEAPON DROP
-                              </span>
+                              {getWeaponImage(
+                                event.weapon.name,
+                              ) && (
+                                <img
+                                  className="global-activity-event-weapon-icon"
+                                  src={getWeaponImage(
+                                    event.weapon.name,
+                                  )}
+                                  alt=""
+                                  aria-hidden="true"
+                                />
+                              )}
 
-                              <strong>
-                                {event.weapon.name}
-                                {event.weapon.adept &&
-                                !event.weapon.name
-                                  .toLowerCase()
-                                  .includes("(adept)")
-                                  ? " (Adept)"
-                                  : ""}
-                              </strong>
+                              <div>
+                                <span>
+                                  WEAPON DROP
+                                </span>
+
+                                <strong>
+                                  {event.weapon.name}
+                                  {event.weapon.adept &&
+                                  !event.weapon.name
+                                    .toLowerCase()
+                                    .includes("(adept)")
+                                    ? " (Adept)"
+                                    : ""}
+                                </strong>
+                              </div>
                             </div>
                           )}
                         </article>
