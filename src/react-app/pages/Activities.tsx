@@ -56,6 +56,24 @@ type ActivitiesResponse = {
   };
 };
 
+type GlobalActivityFeedEvent = {
+  id: number;
+  player: string;
+  activity: string;
+  activityType: string;
+  result: "CLEAR" | "WIPE" | string;
+  weapon: {
+    name: string;
+    adept: boolean;
+  } | null;
+  createdAt: string;
+};
+
+type GlobalActivityFeedResponse = {
+  authenticated: boolean;
+  events: GlobalActivityFeedEvent[];
+};
+
 type ActivityCardProps = {
   label: string;
   activity: Activity | null;
@@ -391,6 +409,55 @@ function formatExploreTime(
     .padStart(2, "0")}m`;
 }
 
+function formatFeedTime(
+  createdAt: string,
+  now: number,
+): string {
+  const parsed = Date.parse(
+    createdAt.includes("T")
+      ? createdAt
+      : `${createdAt.replace(" ", "T")}Z`,
+  );
+
+  if (!Number.isFinite(parsed)) {
+    return "";
+  }
+
+  const seconds = Math.max(
+    0,
+    Math.floor((now - parsed) / 1000),
+  );
+
+  if (seconds < 60) {
+    return "JUST NOW";
+  }
+
+  const minutes = Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}M AGO`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours}H AGO`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  if (days < 7) {
+    return `${days}D AGO`;
+  }
+
+  return new Date(parsed)
+    .toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    })
+    .toUpperCase();
+}
+
 function AnimatedClock() {
   return (
     <span
@@ -539,6 +606,22 @@ export default function Activities() {
     setSelectedEndgameActivity,
   ] = useState<Activity | null>(null);
 
+  const [
+    globalActivityEvents,
+    setGlobalActivityEvents,
+  ] = useState<GlobalActivityFeedEvent[]>([]);
+
+  const [
+    globalFeedLoading,
+    setGlobalFeedLoading,
+  ] = useState(true);
+
+  const [feedClock, setFeedClock] =
+    useState(Date.now());
+
+  const feedRefreshingRef =
+    useRef(false);
+
   const loadedAtRef =
     useRef(Date.now());
 
@@ -623,9 +706,77 @@ export default function Activities() {
       [],
     );
 
+  const loadGlobalActivityFeed =
+    useCallback(async () => {
+      if (feedRefreshingRef.current) {
+        return;
+      }
+
+      feedRefreshingRef.current = true;
+
+      try {
+        const response = await fetch(
+          "/api/game/activity/feed",
+          {
+            credentials: "include",
+          },
+        );
+
+        const result =
+          (await response.json()) as
+            GlobalActivityFeedResponse;
+
+        if (
+          !response.ok ||
+          !result.authenticated
+        ) {
+          return;
+        }
+
+        setGlobalActivityEvents(
+          Array.isArray(result.events)
+            ? result.events
+            : [],
+        );
+      } catch {
+        /*
+         * The feed is supplemental UI, so a temporary
+         * refresh failure should not replace the Director
+         * page with an error state.
+         */
+      } finally {
+        feedRefreshingRef.current = false;
+        setGlobalFeedLoading(false);
+      }
+    }, []);
+
   useEffect(() => {
     void loadActivities(true);
   }, [loadActivities]);
+
+  useEffect(() => {
+    void loadGlobalActivityFeed();
+
+    const refreshInterval =
+      window.setInterval(() => {
+        void loadGlobalActivityFeed();
+      }, 15000);
+
+    const clockInterval =
+      window.setInterval(() => {
+        setFeedClock(Date.now());
+      }, 30000);
+
+    return () => {
+      window.clearInterval(
+        refreshInterval,
+      );
+
+      window.clearInterval(
+        clockInterval,
+      );
+    };
+  }, [loadGlobalActivityFeed]);
 
   useEffect(() => {
     function handleOutsideClick(
@@ -1437,22 +1588,81 @@ export default function Activities() {
                   <h2>Global Activity</h2>
                 </div>
 
-                <div className="global-activity-feed-empty">
-                  <span
-                    className="global-activity-feed-pulse"
-                    aria-hidden="true"
-                  />
+                {globalActivityEvents.length > 0 ? (
+                  <div className="global-activity-feed-events">
+                    {globalActivityEvents.map(
+                      (event) => (
+                        <article
+                          className="global-activity-event"
+                          key={event.id}
+                        >
+                          <div className="global-activity-event-top">
+                            <strong className="global-activity-event-player">
+                              {event.player}
+                            </strong>
 
-                  <strong>
-                    WAITING FOR ACTIVITY
-                  </strong>
+                            <span className="global-activity-event-time">
+                              {formatFeedTime(
+                                event.createdAt,
+                                feedClock,
+                              )}
+                            </span>
+                          </div>
 
-                  <p>
-                    Clears, wipes and weapon
-                    drops from all players
-                    will appear here.
-                  </p>
-                </div>
+                          <span className="global-activity-event-activity">
+                            {event.activity}
+                          </span>
+
+                          <span
+                            className={[
+                              "global-activity-event-result",
+                              event.result.toLowerCase(),
+                            ].join(" ")}
+                          >
+                            {event.result}
+                          </span>
+
+                          {event.weapon && (
+                            <div className="global-activity-event-weapon">
+                              <span>
+                                WEAPON DROP
+                              </span>
+
+                              <strong>
+                                {event.weapon.name}
+                                {event.weapon.adept &&
+                                !event.weapon.name
+                                  .toLowerCase()
+                                  .includes("(adept)")
+                                  ? " (Adept)"
+                                  : ""}
+                              </strong>
+                            </div>
+                          )}
+                        </article>
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <div className="global-activity-feed-empty">
+                    <span
+                      className="global-activity-feed-pulse"
+                      aria-hidden="true"
+                    />
+
+                    <strong>
+                      {globalFeedLoading
+                        ? "CONNECTING TO FEED"
+                        : "WAITING FOR ACTIVITY"}
+                    </strong>
+
+                    <p>
+                      Clears, wipes and weapon
+                      drops from all players
+                      will appear here.
+                    </p>
+                  </div>
+                )}
               </div>
             </aside>
           </div>
@@ -1464,7 +1674,10 @@ export default function Activities() {
           activity={selectedEndgameActivity}
           backgroundImage={getActivityBanner(selectedEndgameActivity)}
           onClose={() => setSelectedEndgameActivity(null)}
-          onFinished={() => void loadActivities()}
+          onFinished={() => {
+            void loadActivities();
+            void loadGlobalActivityFeed();
+          }}
         />
       )}
     </div>
