@@ -224,6 +224,58 @@ function getGeneralActivityBanner(
   );
 }
 
+/*
+ * Daily Showdown artwork is stored in:
+ *
+ * src/react-app/assets/general/
+ *
+ * and uses the activity weapon_source:
+ *
+ * cos -> cos.png
+ * sos -> sos.png
+ * eow -> eow.png
+ */
+function getDailyShowdownBanner(
+  activity: Activity | null,
+): string | undefined {
+  if (
+    !activity?.weapon_source
+  ) {
+    return undefined;
+  }
+
+  const source =
+    activity.weapon_source
+      .trim()
+      .toLowerCase();
+
+  const allowedSources =
+    new Set([
+      "cos",
+      "sos",
+      "eow",
+    ]);
+
+  if (
+    !allowedSources.has(
+      source,
+    )
+  ) {
+    return undefined;
+  }
+
+  return findGeneralImage(
+    `${source}.png`,
+  );
+}
+
+/*
+ * Raid and Dungeon artwork is stored in:
+ *
+ * src/react-app/assets/activitybanners/
+ *
+ * The filename is the activity's weapon_source.
+ */
 function getActivityBanner(
   activity: Activity | null,
 ): string | undefined {
@@ -234,7 +286,9 @@ function getActivityBanner(
   }
 
   const filename =
-    `${activity.weapon_source.toLowerCase()}.png`;
+    `${activity.weapon_source
+      .trim()
+      .toLowerCase()}.png`;
 
   return Object.entries(
     activityBanners,
@@ -920,6 +974,13 @@ export default function Activities() {
                   data.rotation
                     .dailyShowdown
                     .activity
+                }
+                backgroundImage={
+                  getDailyShowdownBanner(
+                    data.rotation
+                      .dailyShowdown
+                      .activity,
+                  )
                 }
                 daily
               />
