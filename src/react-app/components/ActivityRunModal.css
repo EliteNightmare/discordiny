@@ -688,3 +688,149 @@ to {
   }
 
 }
+
+/* =========================================================
+   VANGUARD SUMMARY
+========================================================= */
+
+.activity-run-vanguard-ready {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 18px;
+  padding: 28px;
+}
+
+.activity-run-vanguard-intro,
+.activity-run-vanguard-preview {
+  display: grid;
+  gap: 8px;
+}
+
+.activity-run-vanguard-intro > span,
+.activity-run-vanguard-preview > span,
+.activity-run-vanguard-weapon-preview > span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  opacity: 0.7;
+}
+
+.activity-run-vanguard-intro > strong {
+  font-size: clamp(1.25rem, 2.2vw, 1.8rem);
+  text-transform: uppercase;
+}
+
+.activity-run-vanguard-intro > p {
+  max-width: 660px;
+  margin: 0;
+  line-height: 1.55;
+  opacity: 0.78;
+}
+
+.activity-run-vanguard-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.activity-run-vanguard-reward-grid article {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 10, 17, 0.7);
+}
+
+.activity-run-vanguard-reward-grid article > img {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.32));
+}
+
+.activity-run-vanguard-reward-grid article > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.activity-run-vanguard-reward-grid small {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  opacity: 0.68;
+}
+
+.activity-run-vanguard-reward-grid strong {
+  font-size: 0.98rem;
+}
+
+.activity-run-vanguard-reward-grid em {
+  font-size: 0.67rem;
+  font-style: normal;
+  line-height: 1.25;
+  opacity: 0.55;
+}
+
+.activity-run-vanguard-weapon-preview {
+  display: grid;
+  gap: 3px;
+  padding: 13px 15px;
+  border-left: 3px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.activity-run-vanguard-weapon-preview > strong {
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+}
+
+.activity-run-vanguard-weapon-preview > small {
+  opacity: 0.62;
+}
+
+.activity-run-vanguard-ready > button {
+  justify-self: start;
+}
+
+.activity-run-vanguard-result {
+  display: grid;
+  gap: 14px;
+}
+
+.activity-run-vanguard-result > span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  opacity: 0.7;
+}
+
+.activity-run-vanguard-result > h3 {
+  margin: 0;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .activity-run-vanguard-ready {
+    padding: 20px;
+  }
+
+  .activity-run-vanguard-reward-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-run-vanguard-reward-grid article {
+    min-height: 58px;
+  }
+
+  .activity-run-vanguard-reward-grid article > img {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+}
