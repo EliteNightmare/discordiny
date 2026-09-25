@@ -1,5 +1,6 @@
 import {
   useRef,
+  useState,
 } from "react";
 
 import type {
@@ -62,6 +63,11 @@ export default function TerminalWindow({
   const dragging =
     useRef(false);
 
+  const [
+    closing,
+    setClosing,
+  ] = useState(false);
+
   const dragStart =
     useRef({
       mouseX: 0,
@@ -70,41 +76,88 @@ export default function TerminalWindow({
       windowY: 0,
     });
 
+  /*
+   * ========================================================
+   * CLOSE
+   * ========================================================
+   *
+   * We delay the actual React removal
+   * slightly so the CSS closing animation
+   * has time to finish.
+   */
+
   function handleClose(
     event: ReactMouseEvent<HTMLButtonElement>,
   ) {
     event.stopPropagation();
 
-    onClose(file.id);
+    if (closing) {
+      return;
+    }
+
+    setClosing(true);
+
+    window.setTimeout(
+      () => {
+        onClose(file.id);
+      },
+      180,
+    );
   }
+
+  /*
+   * ========================================================
+   * MINIMIZE
+   * ========================================================
+   */
 
   function handleMinimize(
     event: ReactMouseEvent<HTMLButtonElement>,
   ) {
     event.stopPropagation();
 
+    if (closing) {
+      return;
+    }
+
     onFocus(file.id);
 
     onMinimize(file.id);
   }
+
+  /*
+   * ========================================================
+   * RESTORE
+   * ========================================================
+   */
 
   function handleRestore(
     event: ReactMouseEvent<HTMLButtonElement>,
   ) {
     event.stopPropagation();
 
+    if (closing) {
+      return;
+    }
+
     onFocus(file.id);
 
     onRestore(file.id);
   }
 
+  /*
+   * ========================================================
+   * DRAGGING
+   * ========================================================
+   */
+
   function startDragging(
     event: ReactMouseEvent<HTMLElement>,
   ) {
     /*
-     * Don't begin dragging if the user
-     * clicked one of the titlebar
-     * buttons.
+     * Never begin dragging when one of
+     * the window control buttons was
+     * clicked.
      */
     if (
       (
@@ -115,7 +168,17 @@ export default function TerminalWindow({
     }
 
     /*
-     * Mobile windows stay fixed.
+     * Ignore dragging while the window
+     * is closing.
+     */
+    if (closing) {
+      return;
+    }
+
+    /*
+     * Mobile windows use the responsive
+     * fixed layout instead of desktop
+     * dragging.
      */
     if (
       window.matchMedia(
@@ -127,26 +190,37 @@ export default function TerminalWindow({
 
     event.preventDefault();
 
+    /*
+     * Bring the window to the front.
+     */
     onFocus(file.id);
 
     dragging.current = true;
 
     dragStart.current = {
-      mouseX: event.clientX,
-      mouseY: event.clientY,
+      mouseX:
+        event.clientX,
 
-      windowX: position.x,
-      windowY: position.y,
+      mouseY:
+        event.clientY,
+
+      windowX:
+        position.x,
+
+      windowY:
+        position.y,
     };
 
     document.body.classList.add(
       "terminal-window-dragging",
     );
 
-    const handleMouseMove = (
+    function handleMouseMove(
       moveEvent: MouseEvent,
-    ) => {
-      if (!dragging.current) {
+    ) {
+      if (
+        !dragging.current
+      ) {
         return;
       }
 
@@ -167,9 +241,11 @@ export default function TerminalWindow({
         deltaY;
 
       /*
-       * Keep at least part of the
-       * window visible.
+       * Keep enough of the window visible
+       * that the player can always recover
+       * it.
        */
+
       const visibleWidth =
         minimized
           ? 220
@@ -181,11 +257,9 @@ export default function TerminalWindow({
           : 90;
 
       const minX =
-        -(
-          minimized
-            ? 220
-            : 500
-        );
+        minimized
+          ? -220
+          : -500;
 
       const maxX =
         window.innerWidth -
@@ -222,9 +296,9 @@ export default function TerminalWindow({
           y: nextY,
         },
       );
-    };
+    }
 
-    const handleMouseUp = () => {
+    function handleMouseUp() {
       dragging.current = false;
 
       document.body.classList.remove(
@@ -240,7 +314,7 @@ export default function TerminalWindow({
         "mouseup",
         handleMouseUp,
       );
-    };
+    }
 
     window.addEventListener(
       "mousemove",
@@ -254,21 +328,34 @@ export default function TerminalWindow({
   }
 
   /*
+   * ========================================================
    * MINIMIZED WINDOW
+   * ========================================================
    */
+
   if (minimized) {
     return (
       <article
-        className="terminal-file-window terminal-file-window-minimized"
+        className={[
+          "terminal-file-window",
+          "terminal-file-window-minimized",
+
+          closing
+            ? "terminal-file-window-closing"
+            : "",
+        ].join(" ")}
         style={{
           zIndex,
-
           left: position.x,
           top: position.y,
         }}
-        onMouseDown={() =>
-          onFocus(file.id)
-        }
+        onMouseDown={() => {
+          if (!closing) {
+            onFocus(
+              file.id,
+            );
+          }
+        }}
       >
         <header
           className="terminal-file-minimized-bar"
@@ -293,9 +380,7 @@ export default function TerminalWindow({
               onClick={
                 handleRestore
               }
-              aria-label={
-                `Restore ${file.title}`
-              }
+              aria-label={`Restore ${file.title}`}
               title="Restore"
             >
               □
@@ -307,9 +392,7 @@ export default function TerminalWindow({
               onClick={
                 handleClose
               }
-              aria-label={
-                `Close ${file.title}`
-              }
+              aria-label={`Close ${file.title}`}
               title="Close"
             >
               ×
@@ -321,21 +404,39 @@ export default function TerminalWindow({
   }
 
   /*
-   * NORMAL WINDOW
+   * ========================================================
+   * FULL WINDOW
+   * ========================================================
    */
+
   return (
     <article
-      className="terminal-file-window"
+      className={[
+        "terminal-file-window",
+
+        closing
+          ? "terminal-file-window-closing"
+          : "",
+      ].join(" ")}
       style={{
         zIndex,
-
         left: position.x,
         top: position.y,
       }}
-      onMouseDown={() =>
-        onFocus(file.id)
-      }
+      onMouseDown={() => {
+        if (!closing) {
+          onFocus(
+            file.id,
+          );
+        }
+      }}
     >
+      {/*
+       * ====================================================
+       * TITLE BAR
+       * ====================================================
+       */}
+
       <header
         className="terminal-file-titlebar"
         onMouseDown={
@@ -360,9 +461,7 @@ export default function TerminalWindow({
             onClick={
               handleMinimize
             }
-            aria-label={
-              `Minimize ${file.title}`
-            }
+            aria-label={`Minimize ${file.title}`}
             title="Minimize"
           >
             —
@@ -374,9 +473,7 @@ export default function TerminalWindow({
             onClick={
               handleClose
             }
-            aria-label={
-              `Close ${file.title}`
-            }
+            aria-label={`Close ${file.title}`}
             title="Close"
           >
             ×
@@ -384,9 +481,21 @@ export default function TerminalWindow({
         </div>
       </header>
 
+      {/*
+       * ====================================================
+       * BLUE ACCENT
+       * ====================================================
+       */}
+
       <div className="terminal-file-blue-line">
         <span />
       </div>
+
+      {/*
+       * ====================================================
+       * FILE CONTENT
+       * ====================================================
+       */}
 
       <section className="terminal-file-body">
         <header className="terminal-file-metadata">
@@ -416,18 +525,21 @@ export default function TerminalWindow({
             </span>
 
             <strong>
-              {file.classification}
+              {
+                file.classification
+              }
             </strong>
           </div>
         </header>
 
         <div className="terminal-file-content">
           {file.content.map(
-            (line, index) => (
+            (
+              line,
+              index,
+            ) => (
               <p
-                key={
-                  `${file.id}-${index}`
-                }
+                key={`${file.id}-${index}`}
               >
                 {line ||
                   "\u00A0"}
@@ -436,6 +548,12 @@ export default function TerminalWindow({
           )}
         </div>
       </section>
+
+      {/*
+       * ====================================================
+       * FOOTER
+       * ====================================================
+       */}
 
       <footer className="terminal-file-footer">
         <span>
