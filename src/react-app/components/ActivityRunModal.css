@@ -834,3 +834,124 @@ to {
     flex-basis: 34px;
   }
 }
+
+
+/* =========================================================
+   COMPACT POSSIBLE-REWARD ICON LISTS
+========================================================= */
+
+.activity-run-vanguard-reward-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.activity-run-vanguard-reward-grid article {
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+}
+
+.activity-run-vanguard-reward-grid article > img {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+}
+
+.activity-run-vanguard-reward-grid article > small {
+  font-size: 0.58rem;
+  line-height: 1.15;
+}
+
+.activity-run-endgame-preview {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.activity-run-endgame-preview > span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  opacity: 0.68;
+}
+
+.activity-run-endgame-reward-icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.activity-run-endgame-reward-icons article {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 10, 17, 0.7);
+}
+
+.activity-run-endgame-reward-icons img {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.32));
+}
+
+.activity-run-endgame-reward-icons small {
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.07em;
+  opacity: 0.72;
+}
+
+@media (max-width: 720px) {
+  .activity-run-vanguard-ready {
+    gap: 12px;
+    padding: 16px 18px 18px;
+  }
+
+  .activity-run-vanguard-intro {
+    gap: 5px;
+  }
+
+  .activity-run-vanguard-intro > p {
+    font-size: 0.78rem;
+    line-height: 1.35;
+  }
+
+  .activity-run-vanguard-reward-grid,
+  .activity-run-endgame-reward-icons {
+    gap: 6px;
+  }
+
+  .activity-run-vanguard-reward-grid article,
+  .activity-run-endgame-reward-icons article {
+    min-height: 0;
+    gap: 5px;
+    padding: 6px 7px;
+  }
+
+  .activity-run-vanguard-reward-grid article > img,
+  .activity-run-endgame-reward-icons img {
+    width: 25px;
+    height: 25px;
+    flex-basis: 25px;
+  }
+
+  .activity-run-vanguard-reward-grid article > small,
+  .activity-run-endgame-reward-icons small {
+    font-size: 0.5rem;
+  }
+
+  .activity-run-vanguard-weapon-preview {
+    padding: 9px 11px;
+  }
+}

@@ -161,43 +161,62 @@ function number(value: number) {
   ).format(Math.trunc(value));
 }
 
-type VanguardRewardPreview = {
-  name: string;
-  amount: string;
-  note?: string;
-};
-
 function getVanguardRewardPreview(
   type: string,
-): VanguardRewardPreview[] {
+): string[] {
   if (type === "strike") {
     return [
-      { name: "Glimmer", amount: "5,000 – 15,000" },
-      { name: "Lumia Leaves", amount: "1" },
-      { name: "Enhancement Core", amount: "10 – 25" },
-      { name: "Enhancement Prism", amount: "5 – 10" },
-      { name: "XP", amount: "10,000" },
+      "Glimmer",
+      "Lumia Leaves",
+      "Enhancement Core",
+      "Enhancement Prism",
     ];
   }
 
   if (type === "nightfall") {
     return [
-      { name: "Glimmer", amount: "5,000 – 15,000" },
-      { name: "Lumia Leaves", amount: "1" },
-      { name: "Armor Plating", amount: "250 – 500" },
-      { name: "Enhancement Core", amount: "10 – 25" },
-      { name: "Enhancement Prism", amount: "5 – 10" },
-      { name: "XP", amount: "10,000" },
+      "Glimmer",
+      "Lumia Leaves",
+      "Armor Plating",
+      "Enhancement Core",
+      "Enhancement Prism",
     ];
   }
 
   if (type === "gm") {
     return [
-      { name: "Dungeon Materials", amount: "3 RANDOM × 250", note: "Three different dungeon materials" },
-      { name: "Raid Materials", amount: "3 RANDOM × 150", note: "Three different raid materials" },
-      { name: "Synthweave", amount: "1,500" },
-      { name: "Spoils of Conquest", amount: "1,250" },
-      { name: "XP", amount: "50,000" },
+      "Synthweave",
+      "Spoils of Conquest",
+      "Dungeon Materials",
+      "Raid Materials",
+    ];
+  }
+
+  return [];
+}
+
+function getEndgameRewardPreview(
+  type: string,
+): string[] {
+  if (type === "raid") {
+    return [
+      "Glimmer",
+      "Lumia Leaves",
+      "Spoils of Conquest",
+      "Enhancement Core",
+      "Enhancement Prism",
+      "Ascendant Shard",
+    ];
+  }
+
+  if (type === "dungeon") {
+    return [
+      "Glimmer",
+      "Lumia Leaves",
+      "Synthweave",
+      "Enhancement Core",
+      "Enhancement Prism",
+      "Ascendant Shard",
     ];
   }
 
@@ -238,6 +257,11 @@ export default function ActivityRunModal({
 
   const vanguardRewardPreview =
     getVanguardRewardPreview(
+      activity.type,
+    );
+
+  const endgameRewardPreview =
+    getEndgameRewardPreview(
       activity.type,
     );
 
@@ -521,15 +545,12 @@ export default function ActivityRunModal({
                 <span>POSSIBLE REWARDS</span>
 
                 <div className="activity-run-vanguard-reward-grid">
-                  {vanguardRewardPreview.map((reward) => {
+                  {vanguardRewardPreview.map((name) => {
                     const icon =
-                      getMaterialImage(reward.name);
+                      getMaterialImage(name);
 
                     return (
-                      <article
-                        key={reward.name}
-                        className={icon ? "has-icon" : undefined}
-                      >
+                      <article key={name}>
                         {icon && (
                           <img
                             src={icon}
@@ -537,12 +558,7 @@ export default function ActivityRunModal({
                             aria-hidden="true"
                           />
                         )}
-
-                        <div>
-                          <small>{reward.name.toUpperCase()}</small>
-                          <strong>{reward.amount}</strong>
-                          {reward.note && <em>{reward.note}</em>}
-                        </div>
+                        <small>{name.toUpperCase()}</small>
                       </article>
                     );
                   })}
@@ -575,6 +591,30 @@ export default function ActivityRunModal({
               <strong>
                 {activity.encounters?.length ?? 0} ENCOUNTERS
               </strong>
+
+              <div className="activity-run-endgame-preview">
+                <span>POSSIBLE REWARDS</span>
+
+                <div className="activity-run-endgame-reward-icons">
+                  {endgameRewardPreview.map((name) => {
+                    const icon =
+                      getMaterialImage(name);
+
+                    return (
+                      <article key={name}>
+                        {icon && (
+                          <img
+                            src={icon}
+                            alt=""
+                            aria-hidden="true"
+                          />
+                        )}
+                        <small>{name.toUpperCase()}</small>
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
 
               <p>
                 The server decides the entire run when you begin.
