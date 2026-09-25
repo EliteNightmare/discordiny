@@ -1,237 +1,449 @@
+/* =========================================================
+   SIVA BOOT
+   ========================================================= */
+
 .siva-boot {
   position: fixed;
   inset: 0;
-  z-index: 999998;
+
+  z-index: 999999;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
 
   overflow: hidden;
 
-  background: #020203;
-  color: #d6d6d6;
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      #111111 0%,
+      #070707 45%,
+      #020202 100%
+    );
+
+  color: #e7e7e7;
 
   font-family:
     "Courier New",
     Courier,
     monospace;
+
+  user-select: none;
+
+  -webkit-user-select: none;
 }
 
-.siva-boot::before {
-  content: "";
 
+/* =========================================================
+   BACKGROUND GRID
+   ========================================================= */
+
+.siva-grid {
   position: absolute;
   inset: 0;
 
-  background:
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(170, 0, 0, 0.11),
-      transparent 36%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      transparent 20%,
-      rgba(0, 0, 0, 0.8) 100%
-    );
+  z-index: 0;
 
   pointer-events: none;
-}
 
-.siva-boot-grid {
-  position: absolute;
-  inset: -50%;
-
-  opacity: 0.09;
+  opacity: 0.18;
 
   background-image:
     linear-gradient(
-      rgba(255, 0, 0, 0.18)
+      rgba(180, 20, 20, 0.08)
       1px,
       transparent 1px
     ),
     linear-gradient(
       90deg,
-      rgba(255, 0, 0, 0.18)
+      rgba(180, 20, 20, 0.08)
       1px,
       transparent 1px
     );
 
   background-size:
-    45px
-    45px;
+    48px
+    48px;
 
-  transform:
-    perspective(500px)
-    rotateX(62deg)
-    translateY(25%);
+  mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 82%
+    );
 
-  animation:
-    siva-grid-move
-    3s
-    linear
-    infinite;
+  -webkit-mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 82%
+    );
 }
 
-.siva-boot-scanlines {
+
+/* =========================================================
+   SCANLINES
+   ========================================================= */
+
+.siva-scanlines {
   position: absolute;
   inset: 0;
 
-  z-index: 5;
+  z-index: 1;
 
   pointer-events: none;
 
-  opacity: 0.17;
+  opacity: 0.13;
 
   background:
     repeating-linear-gradient(
       to bottom,
       transparent 0,
       transparent 3px,
-      rgba(255, 255, 255, 0.035) 4px
+      rgba(255, 255, 255, 0.025) 4px
     );
+
+  animation:
+    siva-scanline-move
+    7s
+    linear
+    infinite;
 }
+
+
+/* =========================================================
+   GLITCH BARS
+   ========================================================= */
+
+.siva-glitch-bar {
+  position: absolute;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  height: 2px;
+
+  opacity: 0;
+
+  background:
+    #b10f16;
+
+  box-shadow:
+    0 0 12px
+    rgba(190, 10, 20, 0.5);
+}
+
+.siva-glitch-bar-one {
+  top: 24%;
+  left: 7%;
+
+  width: 26%;
+
+  animation:
+    siva-glitch-one
+    2.8s
+    steps(1)
+    infinite;
+}
+
+.siva-glitch-bar-two {
+  top: 62%;
+  right: 5%;
+
+  width: 18%;
+
+  animation:
+    siva-glitch-two
+    3.4s
+    steps(1)
+    infinite;
+}
+
+.siva-glitch-bar-three {
+  bottom: 18%;
+  left: 22%;
+
+  width: 12%;
+
+  animation:
+    siva-glitch-three
+    4.1s
+    steps(1)
+    infinite;
+}
+
+
+/* =========================================================
+   SIDE SYSTEM CODE
+   ========================================================= */
+
+.siva-code {
+  position: absolute;
+
+  z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  pointer-events: none;
+
+  color:
+    rgba(
+      150,
+      150,
+      150,
+      0.32
+    );
+
+  font-size: 0.52rem;
+  font-weight: 700;
+
+  line-height: 1.4;
+
+  letter-spacing: 0.16em;
+}
+
+.siva-code-left {
+  top: 50%;
+
+  left: 32px;
+
+  transform:
+    translateY(-50%);
+}
+
+.siva-code-right {
+  top: 50%;
+
+  right: 32px;
+
+  align-items: flex-end;
+
+  transform:
+    translateY(-50%);
+
+  text-align: right;
+}
+
+
+/* =========================================================
+   MAIN BOOT CONTENT
+   ========================================================= */
 
 .siva-boot-content {
   position: relative;
-  z-index: 3;
 
-  display: grid;
+  z-index: 10;
 
-  grid-template-columns:
-    minmax(120px, 1fr)
-    minmax(300px, 560px)
-    minmax(120px, 1fr);
-
+  display: flex;
+  flex-direction: column;
   align-items: center;
 
   width:
     min(
-      1200px,
-      calc(100% - 60px)
+      580px,
+      calc(100% - 48px)
     );
 
-  gap: 50px;
-}
-
-.siva-boot-center {
   text-align: center;
 }
 
-.siva-boot-symbol {
+
+/* =========================================================
+   SIVA DIAMOND
+   ========================================================= */
+
+.siva-diamond {
   position: relative;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 90px;
-  height: 90px;
+  width: 62px;
+  height: 62px;
 
-  margin:
-    0 auto
-    30px;
+  margin-bottom: 34px;
+
+  transform:
+    rotate(45deg);
 
   border:
     1px solid
-    rgba(220, 20, 20, 0.4);
+    rgba(
+      184,
+      22,
+      28,
+      0.72
+    );
 
-  transform: rotate(45deg);
+  background:
+    rgba(
+      105,
+      8,
+      12,
+      0.08
+    );
+
+  box-shadow:
+    0 0 30px
+    rgba(
+      185,
+      15,
+      22,
+      0.08
+    );
 
   animation:
-    siva-symbol-pulse
-    1.1s
+    siva-diamond-pulse
+    1.6s
     ease-in-out
     infinite alternate;
 }
 
-.siva-boot-symbol::before,
-.siva-boot-symbol::after {
+.siva-diamond::before {
   content: "";
 
   position: absolute;
 
-  width: 130%;
-  height: 1px;
+  inset: 8px;
 
-  background:
-    rgba(185, 15, 15, 0.24);
+  border:
+    1px solid
+    rgba(
+      177,
+      18,
+      24,
+      0.28
+    );
 }
 
-.siva-boot-symbol::after {
-  transform:
-    rotate(90deg);
+.siva-diamond span {
+  display: block;
+
+  width: 12px;
+  height: 12px;
+
+  background: #a70f15;
+
+  box-shadow:
+    0 0 18px
+    rgba(
+      190,
+      12,
+      20,
+      0.5
+    );
 }
 
-.siva-boot-symbol span {
-  color: #c91616;
 
-  font-size: 2rem;
+/* =========================================================
+   DISCORDINY TITLE
+   ========================================================= */
 
-  transform:
-    rotate(-45deg);
-}
+.siva-boot-content h1 {
+  margin: 0;
 
-.siva-boot-name {
-  color: #efefef;
+  color: #e8e8e8;
 
   font-size:
     clamp(
       2rem,
       6vw,
-      4.8rem
+      4.3rem
     );
 
+  font-weight: 400;
+
+  line-height: 1;
+
+  letter-spacing: 0.3em;
+
+  text-indent: 0.3em;
+
+  text-shadow:
+    0 0 20px
+    rgba(
+      255,
+      255,
+      255,
+      0.04
+    );
+}
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.siva-status {
+  min-height: 16px;
+
+  margin:
+    24px
+    0
+    0;
+
+  color: #9c2024;
+
+  font-size: 0.58rem;
   font-weight: 700;
 
   letter-spacing: 0.22em;
 
-  text-indent: 0.22em;
-
-  text-shadow:
-    3px 0
-    rgba(255, 0, 0, 0.16);
+  animation:
+    siva-status-flicker
+    2.4s
+    steps(1)
+    infinite;
 }
 
-.siva-boot-status {
-  min-height: 18px;
 
-  margin-top: 22px;
+/* =========================================================
+   PROGRESS BAR
+   ========================================================= */
 
-  color: #8f1818;
-
-  font-size: 0.66rem;
-  font-weight: 700;
-
-  letter-spacing: 0.24em;
-}
-
-.siva-boot-progress {
+.siva-progress-track {
   position: relative;
 
   width: 100%;
-  height: 2px;
+  height: 3px;
 
-  margin-top: 32px;
+  margin-top: 30px;
 
   overflow: hidden;
 
   background:
-    rgba(255, 255, 255, 0.07);
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
 }
 
-.siva-boot-progress-fill {
+.siva-progress-fill {
   height: 100%;
 
-  background: #b91616;
+  background:
+    #a20e14;
 
   box-shadow:
-    0 0 14px
-    rgba(215, 20, 20, 0.6);
+    0 0 12px
+    rgba(
+      190,
+      15,
+      22,
+      0.4
+    );
 
   transition:
     width
@@ -239,424 +451,767 @@
     linear;
 }
 
-.siva-boot-progress-data {
-  display: flex;
-  justify-content: space-between;
+.siva-progress-number {
+  align-self: flex-end;
 
-  margin-top: 9px;
-
-  color: #4d4d4d;
-
-  font-size: 0.56rem;
-  font-weight: 700;
-
-  letter-spacing: 0.16em;
-}
-
-.siva-boot-code {
-  display: flex;
-  flex-direction: column;
-
-  gap: 13px;
+  margin-top: 10px;
 
   color:
     rgba(
-      160,
-      160,
-      160,
-      0.28
+      190,
+      190,
+      190,
+      0.45
     );
 
-  font-size: 0.58rem;
+  font-size: 0.5rem;
+  font-weight: 700;
 
   letter-spacing: 0.12em;
 }
 
-.siva-boot-code-right {
-  text-align: right;
-}
 
-.siva-boot-footer {
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.siva-footer {
   position: absolute;
 
-  z-index: 3;
+  right: 26px;
+  bottom: 22px;
 
-  right: 24px;
-  bottom: 20px;
-  left: 24px;
-
-  display: flex;
-  justify-content: space-between;
-
-  color: #363636;
-
-  font-size: 0.52rem;
-  font-weight: 700;
-
-  letter-spacing: 0.15em;
-}
-
-
-/* RANDOM RED CORRUPTION */
-
-.siva-boot-glitch {
-  position: absolute;
-
-  z-index: 2;
-
-  left: -10%;
-
-  width: 120%;
+  z-index: 5;
 
   pointer-events: none;
 
-  opacity: 0;
+  color:
+    rgba(
+      150,
+      150,
+      150,
+      0.25
+    );
+
+  font-size: 0.47rem;
+  font-weight: 700;
+
+  letter-spacing: 0.18em;
+}
+
+
+/* =========================================================
+   TERMINAL ACTIVATION STATE
+   ========================================================= */
+
+.siva-terminal-triggered
+.siva-diamond {
+  border-color:
+    rgba(
+      255,
+      30,
+      30,
+      0.95
+    );
 
   background:
-    rgba(210, 0, 0, 0.15);
-}
+    rgba(
+      150,
+      0,
+      0,
+      0.18
+    );
 
-.siva-boot-glitch-one {
-  top: 18%;
-
-  height: 3px;
-
-  animation:
-    siva-glitch-one
-    1.7s
-    steps(1)
-    infinite;
-}
-
-.siva-boot-glitch-two {
-  top: 62%;
-
-  height: 12px;
+  box-shadow:
+    0 0 45px
+    rgba(
+      220,
+      15,
+      20,
+      0.22
+    );
 
   animation:
-    siva-glitch-two
-    2.3s
-    steps(1)
-    infinite;
-}
-
-.siva-boot-glitch-three {
-  top: 81%;
-
-  height: 2px;
-
-  animation:
-    siva-glitch-three
-    1.1s
-    steps(1)
-    infinite;
-}
-
-
-/* SECRET TRIGGER */
-
-.siva-boot-triggered {
-  animation:
-    siva-terminal-trigger
-    0.14s
+    siva-terminal-diamond
+    0.15s
     steps(2)
     infinite;
 }
 
-.siva-boot-triggered
-.siva-boot-name {
-  color: #ff2020;
-
-  text-shadow:
-    5px 0 #5d0000,
-    -4px 0 rgba(255, 255, 255, 0.15);
-}
-
-.siva-boot-triggered
-.siva-boot-symbol {
-  border-color: #ff2020;
+.siva-terminal-triggered
+.siva-diamond span {
+  background:
+    #e01c24;
 
   box-shadow:
-    0 0 40px
-    rgba(255, 0, 0, 0.25);
+    0 0 25px
+    rgba(
+      240,
+      20,
+      30,
+      0.75
+    );
 }
 
-.siva-boot-triggered
-.siva-boot-status {
-  color: #ff2525;
+.siva-terminal-triggered
+.siva-status {
+  color:
+    #d3262d;
 }
 
 
 /* =========================================================
-   SECRET MOBILE ACCESS
+   MOBILE S-I-V-A ACCESS KEYS
    ========================================================= */
 
-.siva-mobile-access {
+/*
+ * Desktop:
+ *
+ * Completely hidden.
+ *
+ * Desktop continues using the
+ * Shift + S + I + V + A shortcut.
+ */
+
+.siva-sequence-key {
   display: none;
 }
 
 
-/* ANIMATIONS */
-
-@keyframes siva-grid-move {
-  from {
-    background-position:
-      0
-      0;
-  }
-
-  to {
-    background-position:
-      0
-      45px;
-  }
-}
-
-@keyframes siva-symbol-pulse {
-  from {
-    opacity: 0.45;
-
-    box-shadow:
-      0 0 0
-      rgba(255, 0, 0, 0);
-  }
-
-  to {
-    opacity: 1;
-
-    box-shadow:
-      0 0 28px
-      rgba(255, 0, 0, 0.09);
-  }
-}
-
-@keyframes siva-glitch-one {
-  0%,
-  88%,
-  100% {
-    opacity: 0;
-
-    transform:
-      translateX(0);
-  }
-
-  89% {
-    opacity: 1;
-
-    transform:
-      translateX(-30px);
-  }
-
-  91% {
-    opacity: 0.35;
-
-    transform:
-      translateX(45px);
-  }
-
-  93% {
-    opacity: 0;
-  }
-}
-
-@keyframes siva-glitch-two {
-  0%,
-  92%,
-  100% {
-    opacity: 0;
-  }
-
-  93% {
-    opacity: 0.45;
-
-    transform:
-      translateX(70px);
-  }
-
-  95% {
-    opacity: 0.1;
-
-    transform:
-      translateX(-50px);
-  }
-
-  97% {
-    opacity: 0;
-  }
-}
-
-@keyframes siva-glitch-three {
-  0%,
-  82%,
-  100% {
-    opacity: 0;
-  }
-
-  83% {
-    opacity: 0.7;
-  }
-
-  85% {
-    opacity: 0;
-  }
-}
-
-@keyframes siva-terminal-trigger {
-  0% {
-    transform:
-      translate(0);
-  }
-
-  50% {
-    transform:
-      translate(2px, -1px);
-  }
-
-  100% {
-    transform:
-      translate(-2px, 1px);
-  }
-}
-
-
 /* =========================================================
-   MOBILE
+   TOUCH DEVICE SECRET
    ========================================================= */
 
-@media (max-width: 800px) {
-  .siva-boot-content {
-    display: block;
+@media (hover: none) and (pointer: coarse) {
+  .siva-sequence-key {
+    position: fixed;
 
-    width:
-      calc(100% - 36px);
-  }
+    z-index: 50;
 
-  .siva-boot-code {
-    display: none;
-  }
-
-  .siva-boot-name {
-    font-size:
-      clamp(
-        1.7rem,
-        9vw,
-        3rem
-      );
-
-    letter-spacing: 0.14em;
-
-    text-indent: 0.14em;
-  }
-
-  .siva-boot-symbol {
-    width: 65px;
-    height: 65px;
-  }
-}
-
-
-/*
- * Only reveal the three obscure
- * controls on touch/coarse-pointer
- * devices.
- */
-
-@media (
-  hover: none
-) and (
-  pointer: coarse
-) {
-  .siva-mobile-access {
-    position: absolute;
-
-    z-index: 20;
-
-    right: 16px;
-    bottom: 16px;
-
-    display: flex;
-
-    gap: 7px;
-
-    opacity: 0.24;
-  }
-
-  .siva-mobile-access button {
     display: flex;
     align-items: center;
     justify-content: center;
 
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
 
     padding: 0;
 
     border:
       1px solid
       rgba(
-        150,
-        150,
-        150,
-        0.28
+        145,
+        151,
+        157,
+        0.2
       );
 
     border-radius: 3px;
 
+    outline: 0;
+
     background:
       rgba(
-        10,
-        10,
-        10,
-        0.28
+        12,
+        14,
+        16,
+        0.18
       );
 
     color:
       rgba(
-        210,
-        210,
-        210,
-        0.55
+        170,
+        175,
+        180,
+        0.3
       );
+
+    box-shadow:
+      inset
+      0 0 10px
+      rgba(
+        255,
+        255,
+        255,
+        0.01
+      );
+
+    cursor: pointer;
 
     font-family:
       "Courier New",
+      Courier,
       monospace;
 
-    font-size: 0.65rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+
+    line-height: 1;
+
+    letter-spacing: 0;
 
     user-select: none;
-    -webkit-user-select: none;
 
-    touch-action: none;
+    -webkit-user-select: none;
 
     -webkit-tap-highlight-color:
       transparent;
+
+    touch-action:
+      manipulation;
+
+    transition:
+      color
+      100ms ease,
+      border-color
+      100ms ease,
+      background
+      100ms ease,
+      box-shadow
+      100ms ease,
+      opacity
+      100ms ease,
+      transform
+      100ms ease;
   }
 
-  .siva-mobile-access
-  button:active {
+
+  /* =======================================================
+     S
+
+     Upper-left region.
+     ======================================================= */
+
+  .siva-sequence-s {
+    top: 13%;
+    left: 7%;
+  }
+
+
+  /* =======================================================
+     I
+
+     Upper-right region.
+     ======================================================= */
+
+  .siva-sequence-i {
+    top: 26%;
+    right: 8%;
+  }
+
+
+  /* =======================================================
+     V
+
+     Lower-left region.
+     ======================================================= */
+
+  .siva-sequence-v {
+    bottom: 20%;
+    left: 11%;
+  }
+
+
+  /* =======================================================
+     A
+
+     Lower-right region.
+     ======================================================= */
+
+  .siva-sequence-a {
+    right: 9%;
+    bottom: 9%;
+  }
+
+
+  /* =======================================================
+     TAP FEEDBACK
+     ======================================================= */
+
+  .siva-sequence-key:active {
+    transform:
+      scale(0.88);
+
     border-color:
       rgba(
-        190,
+        201,
+        34,
+        34,
+        0.8
+      );
+
+    background:
+      rgba(
+        150,
+        10,
+        10,
+        0.18
+      );
+
+    color:
+      rgba(
+        224,
+        56,
+        56,
+        0.95
+      );
+
+    box-shadow:
+      0 0 18px
+      rgba(
+        180,
         20,
+        25,
+        0.12
+      );
+  }
+
+
+  /* =======================================================
+     CORRECT SEQUENCE FEEDBACK
+     ======================================================= */
+
+  .siva-sequence-complete {
+    border-color:
+      rgba(
+        176,
+        27,
+        27,
+        0.4
+      );
+
+    background:
+      rgba(
+        108,
+        10,
+        10,
+        0.09
+      );
+
+    color:
+      rgba(
+        202,
+        47,
+        47,
+        0.6
+      );
+
+    box-shadow:
+      0 0 14px
+      rgba(
+        170,
+        15,
         20,
+        0.06
+      );
+  }
+
+
+  /*
+   * Once terminal activation begins,
+   * make all four letters react.
+   */
+
+  .siva-terminal-triggered
+  .siva-sequence-key {
+    border-color:
+      rgba(
+        210,
+        25,
+        30,
         0.55
       );
 
     color:
       rgba(
-        210,
-        35,
-        35,
-        0.75
+        230,
+        40,
+        45,
+        0.8
       );
 
     background:
       rgba(
-        90,
-        0,
-        0,
-        0.25
+        120,
+        5,
+        10,
+        0.14
       );
+
+    animation:
+      siva-key-triggered
+      0.3s
+      steps(2)
+      infinite;
+  }
+}
+
+
+/* =========================================================
+   SMALLER MOBILE SCREENS
+   ========================================================= */
+
+@media (max-width: 800px) {
+  .siva-code {
+    font-size: 0.42rem;
+
+    opacity: 0.65;
+  }
+
+  .siva-code-left {
+    top: 18%;
+
+    left: 16px;
+
+    transform: none;
+  }
+
+  .siva-code-right {
+    top: auto;
+
+    right: 16px;
+    bottom: 15%;
+
+    transform: none;
+  }
+
+  .siva-boot-content {
+    width:
+      min(
+        440px,
+        calc(100% - 42px)
+      );
+  }
+
+  .siva-diamond {
+    width: 52px;
+    height: 52px;
+
+    margin-bottom: 28px;
+  }
+
+  .siva-boot-content h1 {
+    font-size:
+      clamp(
+        1.65rem,
+        9vw,
+        3rem
+      );
+
+    letter-spacing: 0.22em;
+
+    text-indent: 0.22em;
+  }
+
+  .siva-status {
+    margin-top: 20px;
+
+    font-size: 0.5rem;
+
+    letter-spacing: 0.17em;
+  }
+
+  .siva-progress-track {
+    margin-top: 25px;
+  }
+
+  .siva-footer {
+    right: 15px;
+    bottom: 14px;
+
+    font-size: 0.4rem;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE SCREENS
+   ========================================================= */
+
+@media (max-width: 480px) {
+  .siva-grid {
+    background-size:
+      38px
+      38px;
+  }
+
+  .siva-code-left {
+    top: 10%;
+
+    left: 12px;
+  }
+
+  .siva-code-right {
+    right: 12px;
+    bottom: 11%;
+  }
+
+  .siva-code {
+    gap: 5px;
+
+    font-size: 0.36rem;
+
+    letter-spacing: 0.11em;
+  }
+
+  .siva-boot-content {
+    width:
+      calc(100% - 36px);
+  }
+
+  .siva-diamond {
+    width: 46px;
+    height: 46px;
+
+    margin-bottom: 25px;
+  }
+
+  .siva-diamond::before {
+    inset: 6px;
+  }
+
+  .siva-diamond span {
+    width: 10px;
+    height: 10px;
+  }
+
+  .siva-boot-content h1 {
+    font-size: 1.55rem;
+
+    letter-spacing: 0.18em;
+
+    text-indent: 0.18em;
+  }
+
+  .siva-status {
+    font-size: 0.44rem;
+
+    letter-spacing: 0.13em;
+  }
+
+  .siva-progress-number {
+    font-size: 0.44rem;
+  }
+
+
+  /*
+   * Slightly smaller secret keys
+   * on narrow phones.
+   */
+
+  .siva-sequence-key {
+    width: 32px;
+    height: 32px;
+
+    font-size: 0.62rem;
+  }
+
+  .siva-sequence-s {
+    top: 15%;
+    left: 6%;
+  }
+
+  .siva-sequence-i {
+    top: 29%;
+    right: 6%;
+  }
+
+  .siva-sequence-v {
+    bottom: 22%;
+    left: 8%;
+  }
+
+  .siva-sequence-a {
+    right: 7%;
+    bottom: 7%;
+  }
+}
+
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes siva-scanline-move {
+  from {
+    transform:
+      translateY(0);
+  }
+
+  to {
+    transform:
+      translateY(16px);
+  }
+}
+
+@keyframes siva-diamond-pulse {
+  from {
+    opacity: 0.58;
+
+    box-shadow:
+      0 0 18px
+      rgba(
+        185,
+        15,
+        22,
+        0.04
+      );
+  }
+
+  to {
+    opacity: 1;
+
+    box-shadow:
+      0 0 34px
+      rgba(
+        185,
+        15,
+        22,
+        0.13
+      );
+  }
+}
+
+@keyframes siva-status-flicker {
+  0%,
+  91%,
+  94%,
+  100% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 0.35;
+  }
+
+  93% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes siva-glitch-one {
+  0%,
+  79%,
+  82%,
+  100% {
+    opacity: 0;
+  }
+
+  80% {
+    opacity: 0.55;
+
+    transform:
+      translateX(0);
+  }
+
+  81% {
+    opacity: 0.2;
+
+    transform:
+      translateX(22px);
+  }
+}
+
+@keyframes siva-glitch-two {
+  0%,
+  62%,
+  65%,
+  100% {
+    opacity: 0;
+  }
+
+  63% {
+    opacity: 0.45;
+
+    transform:
+      translateX(0);
+  }
+
+  64% {
+    opacity: 0.18;
+
+    transform:
+      translateX(-28px);
+  }
+}
+
+@keyframes siva-glitch-three {
+  0%,
+  87%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+
+  88% {
+    opacity: 0.38;
+
+    transform:
+      translateX(0);
+  }
+
+  89% {
+    opacity: 0.12;
+
+    transform:
+      translateX(35px);
+  }
+}
+
+@keyframes siva-terminal-diamond {
+  0% {
+    transform:
+      rotate(45deg)
+      translate(0, 0);
+  }
+
+  50% {
+    transform:
+      rotate(45deg)
+      translate(2px, -1px);
+  }
+
+  100% {
+    transform:
+      rotate(45deg)
+      translate(-1px, 1px);
+  }
+}
+
+@keyframes siva-key-triggered {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+
+  100% {
+    opacity: 0.8;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .siva-scanlines,
+  .siva-glitch-bar,
+  .siva-diamond,
+  .siva-status,
+  .siva-terminal-triggered
+  .siva-sequence-key {
+    animation: none;
+  }
+
+  .siva-progress-fill,
+  .siva-sequence-key {
+    transition: none;
   }
 }
