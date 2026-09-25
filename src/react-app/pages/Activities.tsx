@@ -99,7 +99,7 @@ const activityBanners = import.meta.glob(
 ) as Record<string, string>;
 
 const strikeBanners = import.meta.glob(
-  "../assets/activitybanners/strikes/*.png",
+  "../assets/general/strikes/*.png",
   {
     eager: true,
     import: "default",
@@ -108,7 +108,7 @@ const strikeBanners = import.meta.glob(
 ) as Record<string, string>;
 
 const nightfallBanners = import.meta.glob(
-  "../assets/activitybanners/nightfalls/*.png",
+  "../assets/general/nightfalls/*.png",
   {
     eager: true,
     import: "default",
@@ -117,7 +117,7 @@ const nightfallBanners = import.meta.glob(
 ) as Record<string, string>;
 
 const grandmasterBanners = import.meta.glob(
-  "../assets/activitybanners/gms/*.png",
+  "../assets/general/gms/*.png",
   {
     eager: true,
     import: "default",
