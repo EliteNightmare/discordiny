@@ -10,6 +10,9 @@
  *     +1 percentage point per 5,000 Power.
  * - The final clear chance is still capped at 95%.
  * - A full clear always PERFORMS a weapon roll.
+ * - Activity weapon rolls use the universal:
+ *     25% weapon drop chance
+ *     10% Adept chance after a successful drop
  *
  * This module is deliberately database-agnostic.
  * The Worker route should:
@@ -42,17 +45,16 @@ export type WeaponCatalogEntry = {
   emoji_id?: string | null;
 };
 
+/*
+ * Kept for compatibility with the existing Worker.
+ *
+ * These stats no longer control activity weapon drops.
+ * Discordiny activities now use the universal
+ * 25% weapon / 10% Adept rule.
+ */
 export type WeaponStats = {
   exotic_chance?: number;
   legendary_chance?: number;
-
-  /*
-   * The old raid.py / weapon_drops.py source does not
-   * contain an Adept probability.
-   *
-   * Keep this optional so the web game can add the
-   * real stat later without inventing an old formula.
-   */
   adept_chance?: number;
 };
 
@@ -301,7 +303,7 @@ function safeNumber(
  *   60 + (level * 0.3)
  * )
  *
- * Web addition agreed for the new game:
+ * Web addition:
  *
  * +1 percentage point for every 5,000 Power.
  *
@@ -343,7 +345,7 @@ export function getEndgameSuccessChance(
  *
  * 1 + (min(power, 100000) / 10000)
  *
- * Power therefore scales generated encounter rewards
+ * Power scales generated encounter rewards
  * up to an 11x multiplier at 100,000 Power.
  */
 export function getEndgamePowerMultiplier(
@@ -485,6 +487,13 @@ function getWipeRewards(
    WEAPON HELPERS
 ========================================================= */
 
+export const ACTIVITY_WEAPON_DROP_CHANCE =
+  0.25;
+
+export const ACTIVITY_ADEPT_CHANCE =
+  0.10;
+
+
 function normalizeOwnedName(
   value: string,
 ): string {
@@ -497,10 +506,10 @@ function normalizeOwnedName(
 function isAdeptName(
   value: string,
 ): boolean {
-  return normalizeOwnedName(
-    value,
-  ).endsWith(
-    "(adept)",
+  return (
+    /\s*\(adept\)\s*$/i.test(
+      value,
+    )
   );
 }
 
@@ -508,10 +517,12 @@ function isAdeptName(
 function getNormalWeaponName(
   value: string,
 ): string {
-  return value.replace(
-    /\s*\(adept\)\s*$/i,
-    "",
-  );
+  return value
+    .replace(
+      /\s*\(adept\)\s*$/i,
+      "",
+    )
+    .trim();
 }
 
 
@@ -528,39 +539,38 @@ function hasOwnedWeapon(
 
 
 /*
- * Port of weapon_drops.py.
+ * Universal Discordiny activity weapon rule.
  *
- * Defaults from stats_defaults.py:
+ * Every time an activity performs a weapon roll:
  *
- * exotic_chance    = 0.05
- * legendary_chance = 0.15
+ *   25% chance to receive a weapon.
  *
- * One random roll is used:
+ * If that succeeds:
  *
- * Exotic:
- *   roll < exoticChance
+ *   10% chance for that weapon to be Adept.
  *
- * Legendary:
- *   roll < exoticChance + legendaryChance
+ * Normal and Adept ownership are separate:
  *
- * Otherwise:
- *   no weapon
+ *   Weapon Name
+ *   Weapon Name (Adept)
  *
- * Already-owned weapons cannot drop.
- *
- * IMPORTANT:
- * The Python source has no Adept probability.
- * We therefore do NOT invent one here.
- *
- * If the caller later provides a real adept_chance stat,
- * it is applied only after a normal weapon drop succeeds.
+ * The old exotic_chance / legendary_chance stats
+ * no longer control activity weapon drops.
  */
 export function rollEndgameWeapon(
   weaponPool:
     readonly WeaponCatalogEntry[],
+
   ownedWeapons:
     readonly string[] = [],
-  stats:
+
+  /*
+   * Retained only so existing Worker calls that still
+   * pass player.weaponStats remain source-compatible.
+   *
+   * These values are intentionally ignored.
+   */
+  _stats:
     WeaponStats = {},
 ): EndgameWeaponResult {
   const result:
@@ -573,6 +583,27 @@ export function rollEndgameWeapon(
       adept: false,
     };
 
+  /*
+   * First roll:
+   *
+   * Does any weapon drop?
+   */
+  if (
+    Math.random()
+    >= ACTIVITY_WEAPON_DROP_CHANCE
+  ) {
+    return result;
+  }
+
+  /*
+   * Second roll:
+   *
+   * If a weapon drops, is it Adept?
+   */
+  const adept =
+    Math.random()
+    < ACTIVITY_ADEPT_CHANCE;
+
   const owned =
     new Set(
       ownedWeapons.map(
@@ -581,163 +612,114 @@ export function rollEndgameWeapon(
     );
 
   /*
-   * Work from normal catalog entries.
+   * Build the available base-weapon pool.
    *
-   * The current web catalog may also contain explicit
-   * "Weapon Name (Adept)" rows. Those are not part of
-   * the old Python drop pool, so they are excluded from
-   * the initial rarity roll.
+   * Explicit "(Adept)" rows are not treated as
+   * separate base weapons.
+   *
+   * Ownership is checked against whichever variant
+   * was rolled.
    */
-  const normalPool =
+  const availablePool =
     weaponPool.filter(
-      (weapon) =>
-        !isAdeptName(
-          weapon.name,
-        )
-        && !hasOwnedWeapon(
+      (weapon) => {
+        if (
+          isAdeptName(
+            weapon.name,
+          )
+        ) {
+          return false;
+        }
+
+        const baseName =
+          getNormalWeaponName(
+            weapon.name,
+          );
+
+        const finalName =
+          adept
+            ? `${baseName} (Adept)`
+            : baseName;
+
+        return !hasOwnedWeapon(
           owned,
-          weapon.name,
-        ),
+          finalName,
+        );
+      },
     );
 
+  /*
+   * Player owns every available weapon for the
+   * variant that was rolled.
+   */
   if (
-    normalPool.length === 0
+    availablePool.length === 0
   ) {
     return result;
   }
 
-  const exoticChance =
-    clamp(
-      stats.exotic_chance
-        ?? 0.05,
-      0,
-      1,
+  const drop =
+    randomChoice(
+      availablePool,
     );
-
-  const legendaryChance =
-    clamp(
-      stats.legendary_chance
-        ?? 0.15,
-      0,
-      1,
-    );
-
-  const exoticPool =
-    normalPool.filter(
-      (weapon) =>
-        weapon.rarity
-        === "Exotic",
-    );
-
-  const legendaryPool =
-    normalPool.filter(
-      (weapon) =>
-        weapon.rarity
-        === "Legendary",
-    );
-
-  const roll =
-    Math.random();
-
-  let drop:
-    WeaponCatalogEntry
-    | null = null;
-
-  if (
-    exoticPool.length > 0
-    && roll < exoticChance
-  ) {
-    drop =
-      randomChoice(
-        exoticPool,
-      );
-  } else if (
-    legendaryPool.length > 0
-    && roll
-      < exoticChance
-        + legendaryChance
-  ) {
-    drop =
-      randomChoice(
-        legendaryPool,
-      );
-  }
 
   if (!drop) {
     return result;
   }
 
-  let finalName =
-    drop.name;
-
-  let adept = false;
-
-  /*
-   * There is NO adept_chance in the supplied Python
-   * raid/weapon source.
-   *
-   * This branch exists only for when Discordiny's web
-   * stats later contains a real adept_chance value.
-   * Undefined means 0%, so current behavior remains a
-   * faithful port instead of inventing a percentage.
-   */
-  const adeptChance =
-    clamp(
-      stats.adept_chance
-        ?? 0,
-      0,
-      1,
+  const baseName =
+    getNormalWeaponName(
+      drop.name,
     );
 
-  if (
-    adeptChance > 0
-    && Math.random()
-      < adeptChance
-  ) {
-    const baseName =
-      getNormalWeaponName(
-        drop.name,
-      );
+  const finalName =
+    adept
+      ? `${baseName} (Adept)`
+      : baseName;
 
-    const adeptName =
-      `${baseName} (Adept)`;
+  /*
+   * If the master weapon catalog happens to contain
+   * an explicit Adept entry, use its metadata.
+   *
+   * If not, use the base weapon's rarity / emoji
+   * while storing the weapon as:
+   *
+   * Weapon Name (Adept)
+   */
+  const explicitAdeptEntry =
+    adept
+      ? weaponPool.find(
+          (weapon) =>
+            normalizeOwnedName(
+              weapon.name,
+            )
+            === normalizeOwnedName(
+              finalName,
+            ),
+        )
+      : undefined;
 
-    const adeptEntry =
-      weaponPool.find(
-        (weapon) =>
-          normalizeOwnedName(
-            weapon.name,
-          )
-          === normalizeOwnedName(
-            adeptName,
-          ),
-      );
-
-    if (
-      adeptEntry
-      && !hasOwnedWeapon(
-        owned,
-        adeptEntry.name,
-      )
-    ) {
-      finalName =
-        adeptEntry.name;
-
-      drop =
-        adeptEntry;
-
-      adept = true;
-    }
-  }
+  const finalEntry =
+    explicitAdeptEntry
+    ?? drop;
 
   return {
     rolled: true,
     dropped: true,
-    name: finalName,
+
+    name:
+      finalName,
+
     rarity:
-      drop.rarity ?? null,
+      finalEntry.rarity
+      ?? drop.rarity
+      ?? null,
+
     emojiId:
-      drop.emoji_id ?? null,
+      finalEntry.emoji_id
+      ?? drop.emoji_id
+      ?? null,
+
     adept,
   };
 }
@@ -865,12 +847,19 @@ export function runEndgameActivity(
 
       encounterResults.push({
         index,
-        name: encounter,
+
+        name:
+          encounter,
+
         cleared: false,
+
         roll,
+
         successChance,
+
         rewards:
           partialRewards,
+
         partialRewards: true,
       });
 
@@ -884,23 +873,28 @@ export function runEndgameActivity(
 
     /*
      * Old raid.py:
-     *   raid unique material    +50
-     *   dungeon unique material +75
      *
-     * It was gated by Acclaim >= 1.
+     * Raid unique material:
+     *   +50
+     *
+     * Dungeon unique material:
+     *   +75
+     *
+     * It was previously gated by Acclaim >= 1.
+     *
      * Acclaim was removed from the web game, so the
-     * material is now granted directly on a clear.
+     * unique material is granted directly.
      *
-     * Unique materials are NOT multiplied by Power in
-     * the Python source because they are added after
-     * reward multiplication.
+     * Unique materials are not multiplied by Power.
      */
     if (
       activity.unique_material
     ) {
       addReward(
         generatedRewards,
+
         activity.unique_material,
+
         table.uniqueMaterialAmount,
       );
     }
@@ -912,12 +906,19 @@ export function runEndgameActivity(
 
     encounterResults.push({
       index,
-      name: encounter,
+
+      name:
+        encounter,
+
       cleared: true,
+
       roll,
+
       successChance,
+
       rewards:
         generatedRewards,
+
       partialRewards: false,
     });
   }
@@ -927,17 +928,25 @@ export function runEndgameActivity(
     === activity.encounters.length;
 
   /*
-   * Web rule:
+   * Every full Raid/Dungeon clear performs exactly
+   * one weapon roll.
    *
-   * Every full clear ALWAYS performs the weapon roll.
-   * The roll can still return no weapon.
+   * The weapon roll itself now has:
+   *
+   * 25% weapon chance
+   * 10% Adept chance if the weapon roll succeeds
+   *
+   * A wipe does not perform the weapon roll.
    */
-  const weapon =
+  const weapon:
+    EndgameWeaponResult =
     fullClear
       ? rollEndgameWeapon(
           weaponPool,
+
           player.ownedWeapons
             ?? [],
+
           player.weaponStats
             ?? {},
         )
@@ -957,10 +966,11 @@ export function runEndgameActivity(
    * complete run.
    *
    * The old raid.py placed raid XP outside its
-   * `if complete` weapon block, which meant a raid wipe
-   * could still receive 25,000 XP. For the web activity
-   * system we use the intended full-clear behavior for
-   * both activity types.
+   * `if complete` weapon block, which meant a raid
+   * wipe could still receive 25,000 XP.
+   *
+   * The web activity system uses the intended
+   * full-clear behavior for both activity types.
    */
   const xp =
     fullClear
@@ -979,14 +989,17 @@ export function runEndgameActivity(
 
     destination:
       activity.destination
-        ?? null,
+      ?? null,
 
     weaponSource:
       activity.weapon_source,
 
     level,
+
     power,
+
     successChance,
+
     rewardMultiplier,
 
     encounters:
