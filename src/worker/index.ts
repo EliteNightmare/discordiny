@@ -27,6 +27,11 @@ import {
   type VanguardActivity,
 } from "./game/vanguard";
 
+import {
+  INFILTRATION_COOLDOWN_SECONDS,
+  runInfiltration,
+} from "./game/infiltration";
+
 type WeaponRow = {
   weapon_name: string;
   masterwork: number;
