@@ -1152,6 +1152,48 @@ app.get("/api/bungie/callback", async (c) => {
 
 
   /* -------------------------------------------------------
+     Make sure this Bungie membership is not already
+     linked to another Discordiny account.
+  ------------------------------------------------------- */
+
+  const existingBungieOwner =
+    await c.env.DB
+      .prepare(
+        `SELECT user_id
+         FROM bungie_accounts
+         WHERE membership_type = ?
+           AND membership_id = ?
+         LIMIT 1`
+      )
+      .bind(
+        membershipType,
+        membershipId
+      )
+      .first<{
+        user_id: number;
+      }>();
+
+  if (
+    existingBungieOwner &&
+    existingBungieOwner.user_id !==
+      session.user_id
+  ) {
+    deleteCookie(
+      c,
+      BUNGIE_STATE_COOKIE,
+      {
+        path: "/",
+        secure: true,
+        prefix: "host",
+      }
+    );
+
+    return c.redirect(
+      "/account?bungie_error=already_linked"
+    );
+  }
+  
+  /* -------------------------------------------------------
      Save Bungie account
      
      If this Discordiny user already has a Bungie
