@@ -4344,6 +4344,32 @@ app.get("/api/game/activities", async (c) => {
           infiltrationReadyAt,
       },
 
+      showdown: {
+        cooldownSeconds:
+          SHOWDOWN_COOLDOWN_SECONDS,
+
+        remainingSeconds:
+          Math.max(
+            0,
+            showdownReadyAt - nowSeconds,
+          ),
+
+        readyAt:
+          showdownReadyAt,
+
+        daily: {
+          maxCharges:
+            DAILY_SHOWDOWN_MAX_CHARGES,
+
+          usedCharges:
+            dailyShowdownUsed,
+
+          remainingCharges:
+            DAILY_SHOWDOWN_MAX_CHARGES -
+            dailyShowdownUsed,
+        },
+      },
+
       endgame: {
         dungeon: {
           cooldownSeconds:
