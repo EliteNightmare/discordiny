@@ -354,8 +354,12 @@ export default function ActivityRunModal({
     activity.type === "gm";
 
   const isInfiltration =
-    activity.type ===
-    "infiltration";
+    activity.reward_table === "pinnacle" &&
+    ["bgs", "emph", "nigh"].includes(
+      activity.weapon_source
+        ?.trim()
+        .toLowerCase() ?? "",
+    );
 
   const vanguardRewardPreview =
     getVanguardRewardPreview(
