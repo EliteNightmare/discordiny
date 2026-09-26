@@ -1192,6 +1192,7 @@ export default function Activities() {
     if (!activity) return;
   
     setSelectedEndgameActivity(activity);
+  }
 
   if (loading) {
     return (
