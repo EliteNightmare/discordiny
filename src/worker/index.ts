@@ -32,6 +32,13 @@ import {
   runInfiltration,
 } from "./game/infiltration";
 
+import {
+  SHOWDOWN_COOLDOWN_SECONDS,
+  runShowdownActivity,
+  type ShowdownActivity,
+  type ShowdownWeaponSource,
+} from "./game/showdown";
+
 type WeaponRow = {
   weapon_name: string;
   masterwork: number;
