@@ -4949,13 +4949,14 @@ app.post("/api/game/activity/run", async (c) => {
     const infiltrationActivity = {
       id:
         currentInfiltration.id,
-
+    
       name:
         currentInfiltration.name,
-
+    
       weaponSource:
-        infiltrationWeaponSource,
-
+        infiltrationWeaponSource as
+          "bgs" | "emph" | "nigh",
+    
       encounters:
         infiltrationEncounters,
     };
