@@ -4258,6 +4258,27 @@ app.get("/api/game/activities", async (c) => {
   const vanguardGmReadyAt = endgameCooldownMap.get(VANGUARD_GM_COOLDOWN_KEY) ?? 0;
   const infiltrationReadyAt = endgameCooldownMap.get(INFILTRATION_COOLDOWN_KEY) ?? 0;
 
+  const showdownReadyAt =
+    endgameCooldownMap.get(
+      SHOWDOWN_COOLDOWN_KEY,
+    ) ?? 0;
+  
+  const dailyShowdownChargeKey =
+    getDailyShowdownChargeKey(
+      nowSeconds,
+    );
+  
+  const dailyShowdownUsed =
+    Math.max(
+      0,
+      Math.min(
+        DAILY_SHOWDOWN_MAX_CHARGES,
+        endgameCooldownMap.get(
+          dailyShowdownChargeKey,
+        ) ?? 0,
+      ),
+    );
+
   /* =======================================================
      RESPONSE
   ======================================================= */
