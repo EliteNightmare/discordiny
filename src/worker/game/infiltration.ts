@@ -1,23 +1,32 @@
 /*
  * Discordiny Infiltration activity engine
  *
- * An Infiltration run executes all three operation types:
+ * An Infiltration run executes the THREE encounters belonging
+ * to the ONE currently rotated Pinnacle Infiltration.
  *
- *   1. Battleground
- *   2. Empire Hunt
- *   3. Nightmare Hunt
+ * Examples:
  *
- * Each operation grants the existing Infiltration reward package.
+ * Battlegrounds:
+ *   Battleground: Delve
+ *   Battleground: Conduit
+ *   Battleground: Core
+ *   Weapon source: bgs
  *
- * Weapon sources:
+ * Empire Hunt:
+ *   Empire Hunt: The Warrior
+ *   Empire Hunt: The Priest
+ *   Empire Hunt: The Technocrat
+ *   Weapon source: emph
  *
- *   Battleground  -> bgs
- *   Empire Hunt   -> emph
- *   Nightmare Hunt -> nigh
+ * Nightmare Hunt:
+ *   Nightmare Hunt: Skolas
+ *   Nightmare Hunt: Fikrul
+ *   Nightmare Hunt: Dominus Ghaul
+ *   Weapon source: nigh
  *
  * Universal activity weapon rule:
  *
- *   25% chance for a weapon
+ *   25% chance for a weapon per encounter
  *   10% chance for that weapon to be Adept
  *
  * A complete Infiltration can award at most TWO weapons.
@@ -47,21 +56,22 @@ export const INFILTRATION_XP =
    TYPES
 ========================================================= */
 
-export type InfiltrationOperationType =
-  | "battleground"
-  | "empire_hunt"
-  | "nightmare_hunt";
+export type InfiltrationWeaponSource =
+  | "bgs"
+  | "emph"
+  | "nigh";
 
 
-export type InfiltrationOperation = {
-  type: InfiltrationOperationType;
+export type InfiltrationActivity = {
+  id: string;
 
   name: string;
 
   weaponSource:
-    | "bgs"
-    | "emph"
-    | "nigh";
+    InfiltrationWeaponSource;
+
+  encounters:
+    readonly string[];
 };
 
 
@@ -69,17 +79,6 @@ export type InfiltrationWeaponCatalogEntry = {
   name: string;
   rarity: string | null;
   emoji_id?: string | null;
-};
-
-
-export type InfiltrationWeaponPool = {
-  source:
-    | "bgs"
-    | "emph"
-    | "nigh";
-
-  weapons:
-    readonly InfiltrationWeaponCatalogEntry[];
 };
 
 
@@ -101,10 +100,8 @@ export type InfiltrationRewardMap =
   Record<string, number>;
 
 
-export type InfiltrationOperationResult = {
+export type InfiltrationEncounterResult = {
   index: number;
-
-  type: InfiltrationOperationType;
 
   name: string;
 
@@ -114,6 +111,8 @@ export type InfiltrationOperationResult = {
 
   rewards:
     InfiltrationRewardMap;
+
+  partialRewards: false;
 
   weapon:
     InfiltrationWeaponResult;
@@ -127,12 +126,14 @@ export type InfiltrationRunResult = {
 
   activityType: "infiltration";
 
+  weaponSource: string;
+
   encounters:
-    InfiltrationOperationResult[];
+    InfiltrationEncounterResult[];
 
-  totalEncounters: 3;
+  totalEncounters: number;
 
-  clearedEncounters: 3;
+  clearedEncounters: number;
 
   fullClear: true;
 
@@ -146,55 +147,24 @@ export type InfiltrationRunResult = {
   xp: number;
 
   /*
-   * New multi-drop representation.
+   * Contains only actual weapon drops.
    *
-   * This contains only actual weapon drops.
    * Maximum length = 2.
    */
   weapons:
     InfiltrationWeaponResult[];
 
   /*
-   * Compatibility field for the current activity modal/feed.
+   * Compatibility field for the current modal/feed.
    *
-   * Until the frontend supports multiple weapon drops,
-   * this exposes the first successful weapon.
+   * Prefer the first successful weapon drop.
    *
-   * If no weapon dropped, it exposes the first performed
-   * weapon roll instead.
+   * If no weapon dropped, expose the first
+   * performed weapon roll instead.
    */
   weapon:
     InfiltrationWeaponResult;
 };
-
-
-/* =========================================================
-   OPERATION POOLS
-========================================================= */
-
-/*
- * The run uses one operation from each category.
- *
- * These names are kept separate from the reward logic so
- * we can expand/adjust the rotation pools without touching
- * the rest of the engine.
- *
- * The existing server-side activity rotation can also pass
- * its selected names into runInfiltration() instead.
- */
-export const BATTLEGROUNDS = [
-  "Battleground",
-] as const;
-
-
-export const EMPIRE_HUNTS = [
-  "Empire Hunt",
-] as const;
-
-
-export const NIGHTMARE_HUNTS = [
-  "Nightmare Hunt",
-] as const;
 
 
 /* =========================================================
@@ -287,7 +257,7 @@ function getBaseWeaponName(
 ========================================================= */
 
 /*
- * Existing Infiltration reward package PER OPERATION:
+ * Existing Infiltration reward package PER ENCOUNTER:
  *
  * Glimmer:
  *   5,000 - 8,000
@@ -461,6 +431,10 @@ export function rollInfiltrationWeapon(
             ? `${baseName} (Adept)`
             : baseName;
 
+        /*
+         * Normal and Adept ownership are checked
+         * separately.
+         */
         return !owned.has(
           normalizeWeaponName(
             finalName,
@@ -553,105 +527,31 @@ export function rollInfiltrationWeapon(
     adept,
   };
 }
-
-
-/* =========================================================
-   OPERATION SELECTION
-========================================================= */
-
-export function createInfiltrationOperations(
-  names?: {
-    battleground?: string;
-    empireHunt?: string;
-    nightmareHunt?: string;
-  },
-): [
-  InfiltrationOperation,
-  InfiltrationOperation,
-  InfiltrationOperation,
-] {
-  const battleground =
-    names?.battleground
-    ?? randomChoice(
-      BATTLEGROUNDS,
-    )
-    ?? "Battleground";
-
-
-  const empireHunt =
-    names?.empireHunt
-    ?? randomChoice(
-      EMPIRE_HUNTS,
-    )
-    ?? "Empire Hunt";
-
-
-  const nightmareHunt =
-    names?.nightmareHunt
-    ?? randomChoice(
-      NIGHTMARE_HUNTS,
-    )
-    ?? "Nightmare Hunt";
-
-
-  return [
-    {
-      type:
-        "battleground",
-
-      name:
-        battleground,
-
-      weaponSource:
-        "bgs",
-    },
-
-    {
-      type:
-        "empire_hunt",
-
-      name:
-        empireHunt,
-
-      weaponSource:
-        "emph",
-    },
-
-    {
-      type:
-        "nightmare_hunt",
-
-      name:
-        nightmareHunt,
-
-      weaponSource:
-        "nigh",
-    },
-  ];
-}
-
-
 /* =========================================================
    COMPLETE INFILTRATION RUN
 ========================================================= */
 
 export function runInfiltration(
-  weaponPools:
-    readonly InfiltrationWeaponPool[],
+  activity:
+    InfiltrationActivity,
+
+  weaponCatalog:
+    readonly InfiltrationWeaponCatalogEntry[],
 
   ownedWeapons:
     readonly string[] = [],
-
-  names?: {
-    battleground?: string;
-    empireHunt?: string;
-    nightmareHunt?: string;
-  },
 ): InfiltrationRunResult {
-  const operations =
-    createInfiltrationOperations(
-      names,
-    );
+  /*
+   * The Worker passes the ONE currently rotated
+   * Infiltration activity.
+   *
+   * We run that activity's encounters only.
+   *
+   * We NEVER mix Battlegrounds, Empire Hunt and
+   * Nightmare Hunt together in one run.
+   */
+  const encounters =
+    [...activity.encounters];
 
 
   const totalRewards:
@@ -659,7 +559,7 @@ export function runInfiltration(
 
 
   const encounterResults:
-    InfiltrationOperationResult[] = [];
+    InfiltrationEncounterResult[] = [];
 
 
   const droppedWeapons:
@@ -673,9 +573,10 @@ export function runInfiltration(
   /*
    * Keep a local ownership list for this run.
    *
-   * If operation #1 awards a weapon, operation #2
-   * must immediately consider it owned even though
-   * D1 has not been updated yet.
+   * If encounter #1 awards a weapon, encounter #2
+   * immediately considers that exact Normal/Adept
+   * variant owned even though D1 has not been
+   * updated yet.
    */
   const runOwnedWeapons =
     [...ownedWeapons];
@@ -683,13 +584,17 @@ export function runInfiltration(
 
   for (
     let index = 0;
-    index < operations.length;
+    index < encounters.length;
     index += 1
   ) {
-    const operation =
-      operations[index];
+    const encounterName =
+      encounters[index];
 
 
+    /*
+     * Every encounter receives the existing
+     * Infiltration reward package.
+     */
     const rewards =
       rollInfiltrationRewards();
 
@@ -700,24 +605,16 @@ export function runInfiltration(
     );
 
 
-    const pool =
-      weaponPools.find(
-        (entry) =>
-          entry.source
-          === operation.weaponSource,
-      );
-
-
     let weapon:
       InfiltrationWeaponResult;
 
 
     /*
-     * Hard cap:
+     * HARD CAP:
      *
-     * Once two actual weapons have dropped,
-     * remaining operations do not perform another
-     * weapon roll.
+     * Once TWO actual weapons have dropped,
+     * remaining encounters do not perform
+     * another weapon roll.
      */
     if (
       droppedWeapons.length
@@ -729,7 +626,7 @@ export function runInfiltration(
         dropped: false,
 
         source:
-          operation.weaponSource,
+          activity.weaponSource,
 
         name: null,
 
@@ -740,12 +637,35 @@ export function runInfiltration(
         adept: false,
       };
     } else {
+      /*
+       * Every encounter uses the SAME weapon
+       * source and SAME weapon catalog.
+       *
+       * That source belongs to the ONE currently
+       * rotated Infiltration activity.
+       *
+       * Battlegrounds:
+       *   bgs
+       *
+       * Empire Hunt:
+       *   emph
+       *
+       * Nightmare Hunt:
+       *   nigh
+       *
+       * Each eligible encounter independently:
+       *
+       *   25% chance for weapon
+       *
+       * If successful:
+       *
+       *   10% chance for Adept
+       */
       weapon =
         rollInfiltrationWeapon(
-          operation.weaponSource,
+          activity.weaponSource,
 
-          pool?.weapons
-            ?? [],
+          weaponCatalog,
 
           runOwnedWeapons,
         );
@@ -756,6 +676,10 @@ export function runInfiltration(
       );
 
 
+      /*
+       * Only successful drops count toward
+       * the maximum of two.
+       */
       if (
         weapon.dropped
         && weapon.name
@@ -764,6 +688,11 @@ export function runInfiltration(
           weapon,
         );
 
+
+        /*
+         * Immediately mark the weapon as owned
+         * for subsequent rolls in this run.
+         */
         runOwnedWeapons.push(
           weapon.name,
         );
@@ -771,21 +700,25 @@ export function runInfiltration(
     }
 
 
+    /*
+     * Build the encounter result expected by
+     * ActivityRunModal.
+     */
     encounterResults.push({
       index,
 
-      type:
-        operation.type,
-
       name:
-        operation.name,
+        encounterName,
 
       weaponSource:
-        operation.weaponSource,
+        activity.weaponSource,
 
       cleared: true,
 
       rewards,
+
+      partialRewards:
+        false,
 
       weapon,
     });
@@ -795,11 +728,16 @@ export function runInfiltration(
   /*
    * Compatibility weapon.
    *
-   * Existing Raid/Dungeon/Vanguard result shapes expose
-   * one `weapon` object.
+   * Raid/Dungeon/Vanguard currently expose one
+   * `weapon` object.
    *
-   * We retain that field while also exposing the new
-   * `weapons` array for Infiltration.
+   * Infiltration additionally exposes `weapons`
+   * because it can drop up to TWO.
+   *
+   * Prefer the first successful drop for the
+   * compatibility field.
+   *
+   * If no weapon dropped, expose the first roll.
    */
   const compatibilityWeapon =
     droppedWeapons[0]
@@ -809,7 +747,8 @@ export function runInfiltration(
 
       dropped: false,
 
-      source: "bgs",
+      source:
+        activity.weaponSource,
 
       name: null,
 
@@ -822,24 +761,41 @@ export function runInfiltration(
 
 
   return {
+    /*
+     * Unlike the old implementation, these now
+     * identify the ACTUAL rotated activity.
+     */
     activityId:
-      "infiltration",
+      activity.id,
 
     activityName:
-      "Infiltration",
+      activity.name,
 
     activityType:
       "infiltration",
 
+    weaponSource:
+      activity.weaponSource,
+
+
+    /*
+     * These are the three encounters belonging
+     * to the currently rotated activity.
+     */
     encounters:
       encounterResults,
 
     totalEncounters:
-      3,
+      encounterResults.length,
 
     clearedEncounters:
-      3,
+      encounterResults.length,
 
+
+    /*
+     * Current Infiltration behavior always
+     * completes all three encounters.
+     */
     fullClear:
       true,
 
@@ -849,15 +805,33 @@ export function runInfiltration(
     wipedAt:
       null,
 
+
+    /*
+     * Combined rewards from all three encounters.
+     */
     rewards:
       totalRewards,
 
+
+    /*
+     * Existing full-run Infiltration XP.
+     */
     xp:
       INFILTRATION_XP,
 
+
+    /*
+     * Actual successful drops only.
+     *
+     * Maximum length = 2.
+     */
     weapons:
       droppedWeapons,
 
+
+    /*
+     * Compatibility with existing frontend/feed.
+     */
     weapon:
       compatibilityWeapon,
   };
