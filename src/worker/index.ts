@@ -5715,6 +5715,442 @@ app.post("/api/game/activity/run", async (c) => {
     };
   }
 
+  /* =======================================================
+  SHOWDOWN - RUN ACTIVITY
+  ======================================================= */
+
+  if (showdownActivity) {
+    const {
+      calculateWeaponPower,
+      calculateArmorPower,
+      calculateArtifactPower,
+      calculateLevelPower,
+    } = await import("./game/power");
+
+    const {
+      getLevelProgress,
+    } = await import("./game/level");
+
+
+    /* =====================================================
+       CURRENT LEVEL + POWER
+    ===================================================== */
+
+    const showdownWeapons =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             player_weapons.weapon_name,
+             player_weapons.masterwork,
+             weapons.rarity
+           FROM player_weapons
+           LEFT JOIN weapons
+             ON weapons.name =
+                player_weapons.weapon_name
+           WHERE player_weapons.user_id = ?`,
+        )
+        .bind(session.user_id)
+        .all<WeaponRow>();
+
+    const showdownWeaponRows =
+      showdownWeapons.results ?? [];
+
+    const showdownArmor =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             helmet,
+             arms,
+             chest,
+             legs
+           FROM player_armor
+           WHERE user_id = ?
+           LIMIT 1`,
+        )
+        .bind(session.user_id)
+        .first<ArmorRow>();
+
+    const showdownArtifacts =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             artifact_name,
+             level
+           FROM player_artifacts
+           WHERE user_id = ?`,
+        )
+        .bind(session.user_id)
+        .all<ArtifactRow>();
+
+    const showdownArtifactRows =
+      showdownArtifacts.results ?? [];
+
+    const showdownLevelProgress =
+      getLevelProgress(
+        Number(profile.exp) || 0,
+      );
+
+    const showdownPower =
+      calculateWeaponPower(
+        showdownWeaponRows,
+      ) +
+      calculateArmorPower(
+        showdownArmor ?? null,
+      ) +
+      calculateArtifactPower(
+        showdownArtifactRows,
+      ) +
+      calculateLevelPower(
+        showdownLevelProgress.level,
+      );
+
+
+    /* =====================================================
+       WEAPON POOL
+    ===================================================== */
+
+    const showdownWeaponCatalog =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             name,
+             rarity
+           FROM weapons
+           WHERE source = ?
+           ORDER BY name`,
+        )
+        .bind(
+          showdownActivity.weapon_source,
+        )
+        .all<{
+          name: string;
+          rarity: string | null;
+        }>();
+
+    const showdownOwnedWeaponNames =
+      showdownWeaponRows.map(
+        (weapon) =>
+          weapon.weapon_name,
+      );
+
+
+    /* =====================================================
+       RUN SHOWDOWN
+
+       RNG happens exactly once here.
+    ===================================================== */
+
+    const showdownResult =
+      runShowdownActivity(
+        showdownActivity,
+        showdownLevelProgress.level,
+        showdownPower,
+        showdownWeaponCatalog.results ?? [],
+        showdownOwnedWeaponNames,
+      );
+
+
+    /* =====================================================
+       DATABASE WRITES
+    ===================================================== */
+
+    const showdownWrites:
+      D1PreparedStatement[] = [];
+
+        /* =====================================================
+       CONSUME SHOWDOWN LIMIT
+
+       Daily:
+         consume 1 of 3 charges for this daily rotation.
+
+       Regular:
+         start the 30-second personal cooldown.
+
+       The attempt is consumed whether the result is
+       a CLEAR or a WIPE.
+    ===================================================== */
+
+    if (isDailyShowdown) {
+      const showdownDailyChargeKey =
+        getDailyShowdownChargeKey(
+          nowSeconds,
+        );
+
+      showdownWrites.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_cooldowns
+              (
+                user_id,
+                activity,
+                timestamp
+              )
+             VALUES (?, ?, 1)
+             ON CONFLICT(user_id, activity)
+             DO UPDATE SET
+               timestamp =
+                 player_cooldowns.timestamp + 1`,
+          )
+          .bind(
+            session.user_id,
+            showdownDailyChargeKey,
+          ),
+      );
+    } else {
+      const showdownNextReadyAt =
+        nowSeconds +
+        SHOWDOWN_COOLDOWN_SECONDS;
+
+      showdownWrites.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_cooldowns
+              (
+                user_id,
+                activity,
+                timestamp
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(user_id, activity)
+             DO UPDATE SET
+               timestamp =
+                 excluded.timestamp`,
+          )
+          .bind(
+            session.user_id,
+            SHOWDOWN_COOLDOWN_KEY,
+            showdownNextReadyAt,
+          ),
+      );
+    }
+
+        /* =====================================================
+       SHOWDOWN REWARDS
+    ===================================================== */
+
+    const showdownCurrencies =
+      new Set([
+        "Glimmer",
+        "Lumia Leaves",
+      ]);
+
+    const showdownUpgradeMaterials =
+      new Set([
+        "Pinnacle Cipher",
+        "Enhancement Prism",
+        "Ascendant Shard",
+      ]);
+
+    for (
+      const [
+        rewardName,
+        rawAmount,
+      ] of Object.entries(
+        showdownResult.rewards,
+      )
+    ) {
+      const amount =
+        Math.trunc(
+          rawAmount,
+        );
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        continue;
+      }
+
+
+      /* -------------------------------
+         CURRENCIES
+      -------------------------------- */
+
+      if (
+        showdownCurrencies.has(
+          rewardName,
+        )
+      ) {
+        showdownWrites.push(
+          c.env.DB
+            .prepare(
+              `INSERT INTO player_currencies
+                (
+                  user_id,
+                  currency_name,
+                  amount
+                )
+               VALUES (?, ?, ?)
+               ON CONFLICT(
+                 user_id,
+                 currency_name
+               )
+               DO UPDATE SET
+                 amount =
+                   player_currencies.amount
+                   + excluded.amount`,
+            )
+            .bind(
+              session.user_id,
+              rewardName,
+              amount,
+            ),
+        );
+
+        continue;
+      }
+
+
+      /* -------------------------------
+         UPGRADE MATERIALS
+      -------------------------------- */
+
+      if (
+        showdownUpgradeMaterials.has(
+          rewardName,
+        )
+      ) {
+        showdownWrites.push(
+          c.env.DB
+            .prepare(
+              `INSERT INTO player_upgrade_materials
+                (
+                  user_id,
+                  material_name,
+                  amount
+                )
+               VALUES (?, ?, ?)
+               ON CONFLICT(
+                 user_id,
+                 material_name
+               )
+               DO UPDATE SET
+                 amount =
+                   player_upgrade_materials.amount
+                   + excluded.amount`,
+            )
+            .bind(
+              session.user_id,
+              rewardName,
+              amount,
+            ),
+        );
+      }
+    }
+
+        /* =====================================================
+       SHOWDOWN XP
+
+       showdown.ts awards XP only when the entire
+       Showdown is cleared. On a wipe, result.xp is 0.
+    ===================================================== */
+
+    if (showdownResult.xp > 0) {
+      showdownWrites.push(
+        c.env.DB
+          .prepare(
+            `UPDATE player_profiles
+             SET
+               exp = exp + ?,
+               updated_at =
+                 CURRENT_TIMESTAMP
+             WHERE user_id = ?`,
+          )
+          .bind(
+            showdownResult.xp,
+            session.user_id,
+          ),
+      );
+    }
+
+        /* =====================================================
+       SHOWDOWN WEAPON
+
+       The Showdown engine already decided:
+         - whether a weapon dropped
+         - which weapon dropped
+         - whether it is Adept
+
+       Do not reroll anything here.
+    ===================================================== */
+
+    if (
+      showdownResult.weapon.dropped &&
+      showdownResult.weapon.name
+    ) {
+      showdownWrites.push(
+        c.env.DB
+          .prepare(
+            `INSERT INTO player_weapons
+              (
+                user_id,
+                weapon_name,
+                masterwork
+              )
+             VALUES (?, ?, 0)
+             ON CONFLICT(
+               user_id,
+               weapon_name
+             )
+             DO NOTHING`,
+          )
+          .bind(
+            session.user_id,
+            showdownResult.weapon.name,
+          ),
+      );
+    }
+
+        /* =====================================================
+       GLOBAL ACTIVITY FEED
+
+       Public feed stores:
+         - activity
+         - CLEAR / WIPE
+         - optional weapon
+         - whether the weapon is Adept
+
+       Private rewards remain in showdownResult.
+    ===================================================== */
+
+    showdownWrites.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO global_activity_feed
+            (
+              user_id,
+              activity_name,
+              activity_type,
+              result,
+              weapon_name,
+              weapon_adept
+            )
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .bind(
+          session.user_id,
+
+          showdownActivity.name,
+
+          isDailyShowdown
+            ? "daily_showdown"
+            : "showdown",
+
+          showdownResult.fullClear
+            ? "CLEAR"
+            : "WIPE",
+
+          showdownResult.weapon.dropped
+            ? showdownResult.weapon.name
+            : null,
+
+          showdownResult.weapon.dropped &&
+          showdownResult.weapon.adept
+            ? 1
+            : 0,
+        ),
+    );
+
   let activity:
     ActivityEntry | null = null;
 
