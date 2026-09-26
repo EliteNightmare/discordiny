@@ -5559,6 +5559,120 @@ app.post("/api/game/activity/run", async (c) => {
     isRegularShowdown || isDailyShowdown;
 
   /* =======================================================
+  SHOWDOWN - ENFORCE COOLDOWN / DAILY CHARGES
+  ======================================================= */
+
+  if (showdownActivity) {
+    const showdownDailyChargeKey =
+      getDailyShowdownChargeKey(
+        nowSeconds,
+      );
+
+    if (isDailyShowdown) {
+      const chargeRow =
+        await c.env.DB
+          .prepare(
+            `SELECT timestamp
+             FROM player_cooldowns
+             WHERE user_id = ?
+               AND activity = ?
+             LIMIT 1`,
+          )
+          .bind(
+            session.user_id,
+            showdownDailyChargeKey,
+          )
+          .first<{
+            timestamp: number;
+          }>();
+
+      const usedCharges =
+        Math.max(
+          0,
+          Math.min(
+            DAILY_SHOWDOWN_MAX_CHARGES,
+            Number(
+              chargeRow?.timestamp ?? 0,
+            ) || 0,
+          ),
+        );
+
+      if (
+        usedCharges >=
+        DAILY_SHOWDOWN_MAX_CHARGES
+      ) {
+        return c.json(
+          {
+            authenticated: true,
+            success: false,
+
+            error:
+              "No Daily Showdown charges remain.",
+
+            limit: {
+              kind: "charges",
+              maxCharges:
+                DAILY_SHOWDOWN_MAX_CHARGES,
+              usedCharges,
+              remainingCharges: 0,
+            },
+          },
+          429,
+        );
+      }
+    } else {
+      const cooldownRow =
+        await c.env.DB
+          .prepare(
+            `SELECT timestamp
+             FROM player_cooldowns
+             WHERE user_id = ?
+               AND activity = ?
+             LIMIT 1`,
+          )
+          .bind(
+            session.user_id,
+            SHOWDOWN_COOLDOWN_KEY,
+          )
+          .first<{
+            timestamp: number;
+          }>();
+
+      const readyAt =
+        Number(
+          cooldownRow?.timestamp ?? 0,
+        ) || 0;
+
+      if (readyAt > nowSeconds) {
+        return c.json(
+          {
+            authenticated: true,
+            success: false,
+
+            error:
+              "Showdown is still on cooldown.",
+
+            limit: {
+              kind: "cooldown",
+              cooldownSeconds:
+                SHOWDOWN_COOLDOWN_SECONDS,
+
+              remainingSeconds:
+                Math.max(
+                  0,
+                  readyAt - nowSeconds,
+                ),
+
+              readyAt,
+            },
+          },
+          429,
+        );
+      }
+    }
+  }
+
+  /* =======================================================
      SHOWDOWN CONFIGURATION
   ======================================================= */
 
