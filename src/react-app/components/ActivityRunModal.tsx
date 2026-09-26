@@ -849,11 +849,12 @@ export default function ActivityRunModal({
 
               <button
                 type="button"
+                className="activity-run-ready-button"
                 onClick={() =>
                   void begin()
                 }
               >
-                BEGIN INFILTRATION
+                BEGIN ACTIVITY
               </button>
             </div>
           ) : isVanguard ? (
@@ -937,6 +938,7 @@ export default function ActivityRunModal({
 
               <button
                 type="button"
+                className="activity-run-ready-button"
                 onClick={() =>
                   void begin()
                 }
@@ -999,6 +1001,7 @@ export default function ActivityRunModal({
 
               <button
                 type="button"
+                className="activity-run-ready-button"
                 onClick={() =>
                   void begin()
                 }
@@ -1089,14 +1092,8 @@ export default function ActivityRunModal({
                   </strong>
                 </div>
 
-                {![
-                  "strike",
-                  "nightfall",
-                  "gm",
-                  "infiltration",
-                ].includes(
-                  activity.type,
-                ) && (
+                {!isVanguard &&
+                  !isInfiltration && (
                   <>
                     <div>
                       <span>
