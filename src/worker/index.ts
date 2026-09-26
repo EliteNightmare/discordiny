@@ -5525,6 +5525,49 @@ app.post("/api/game/activity/run", async (c) => {
   const isShowdown =
     isRegularShowdown || isDailyShowdown;
 
+  /* =======================================================
+     SHOWDOWN CONFIGURATION
+  ======================================================= */
+
+  let showdownActivity:
+    ShowdownActivity | null = null;
+
+  if (isShowdown) {
+    if (
+      !Array.isArray(requestedActivity.encounters) ||
+      requestedActivity.encounters.length !== 3
+    ) {
+      return c.json(
+        {
+          error:
+            "Invalid Showdown encounter configuration.",
+        },
+        500,
+      );
+    }
+
+    showdownActivity = {
+      id: requestedActivity.id,
+      name: requestedActivity.name,
+
+      type:
+        isDailyShowdown
+          ? "showdown"
+          : "pinnacle",
+
+      weapon_source:
+        requestedWeaponSource as ShowdownWeaponSource,
+
+      reward_table:
+        isDailyShowdown
+          ? "showdown"
+          : "pinnacle",
+
+      encounters:
+        requestedActivity.encounters,
+    };
+  }
+
   let activity:
     ActivityEntry | null = null;
 
