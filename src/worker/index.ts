@@ -4803,12 +4803,87 @@ app.post("/api/game/activity/run", async (c) => {
     }
 
 
-    /* =====================================================
-       WEAPON POOLS
+        /* =====================================================
+       CURRENT INFILTRATION WEAPON SOURCE
 
-       Battleground   -> bgs
-       Empire Hunt    -> emph
+       The current 5-minute rotation selects ONE activity:
+
+       Battlegrounds -> bgs
+       Empire Hunt   -> emph
        Nightmare Hunt -> nigh
+
+       All three encounters in this run use that same source.
+    ===================================================== */
+
+    const infiltrationWeaponSource =
+      currentInfiltration.weapon_source;
+
+    if (
+      infiltrationWeaponSource !== "bgs" &&
+      infiltrationWeaponSource !== "emph" &&
+      infiltrationWeaponSource !== "nigh"
+    ) {
+      return c.json(
+        {
+          authenticated: true,
+          success: false,
+          error:
+            "Invalid Infiltration weapon source.",
+        },
+        500,
+      );
+    }
+
+
+    /* =====================================================
+       CURRENT INFILTRATION ENCOUNTERS
+
+       The selected activity must contain its own three
+       encounters.
+
+       Examples:
+
+       Battlegrounds:
+         Delve
+         Conduit
+         Core
+
+       Empire Hunt:
+         Warrior
+         Priest
+         Technocrat
+
+       Nightmare Hunt:
+         Skolas
+         Fikrul
+         Dominus Ghaul
+    ===================================================== */
+
+    const infiltrationEncounters =
+      currentInfiltration.encounters ?? [];
+
+    if (
+      infiltrationEncounters.length !== 3
+    ) {
+      return c.json(
+        {
+          authenticated: true,
+          success: false,
+          error:
+            "Invalid Infiltration encounter configuration.",
+        },
+        500,
+      );
+    }
+
+
+    /* =====================================================
+       CURRENT ACTIVITY WEAPON POOL
+
+       Only load weapons belonging to the ONE currently
+       rotated Infiltration.
+
+       We no longer load bgs + emph + nigh together.
     ===================================================== */
 
     const infiltrationCatalog =
@@ -4820,12 +4895,11 @@ app.post("/api/game/activity/run", async (c) => {
              rarity,
              source
            FROM weapons
-           WHERE source IN (
-             'bgs',
-             'emph',
-             'nigh'
-           )
+           WHERE source = ?
            ORDER BY name`,
+        )
+        .bind(
+          infiltrationWeaponSource,
         )
         .all<{
           name: string;
@@ -4853,6 +4927,7 @@ app.post("/api/game/activity/run", async (c) => {
           weapon_name: string;
         }>();
 
+
     const ownedWeaponNames =
       (ownedWeapons.results ?? [])
         .map(
@@ -4862,57 +4937,50 @@ app.post("/api/game/activity/run", async (c) => {
 
 
     /* =====================================================
-       BUILD THREE WEAPON POOLS
+       BUILD CURRENT INFILTRATION ACTIVITY
+
+       This is the ONE activity selected by the server's
+       global 5-minute rotation.
+
+       Its three encounters are passed directly into the
+       Infiltration engine.
     ===================================================== */
 
-    const infiltrationRows =
-      infiltrationCatalog.results ?? [];
+    const infiltrationActivity = {
+      id:
+        currentInfiltration.id,
 
-    const weaponPools = [
-      {
-        source:
-          "bgs" as const,
+      name:
+        currentInfiltration.name,
 
-        weapons:
-          infiltrationRows.filter(
-            (weapon) =>
-              weapon.source === "bgs",
-          ),
-      },
+      weaponSource:
+        infiltrationWeaponSource,
 
-      {
-        source:
-          "emph" as const,
-
-        weapons:
-          infiltrationRows.filter(
-            (weapon) =>
-              weapon.source === "emph",
-          ),
-      },
-
-      {
-        source:
-          "nigh" as const,
-
-        weapons:
-          infiltrationRows.filter(
-            (weapon) =>
-              weapon.source === "nigh",
-          ),
-      },
-    ];
+      encounters:
+        infiltrationEncounters,
+    };
 
 
     /* =====================================================
        RUN INFILTRATION
 
        All RNG happens exactly once here.
+
+       The engine will:
+
+         - run all 3 encounters
+         - use the SAME weapon pool for all 3
+         - roll 25% weapon chance per encounter
+         - roll 10% Adept on successful weapon drops
+         - stop weapon rolls after 2 successful drops
     ===================================================== */
 
     const result =
       runInfiltration(
-        weaponPools,
+        infiltrationActivity,
+
+        infiltrationCatalog.results ?? [],
+
         ownedWeaponNames,
       );
 
