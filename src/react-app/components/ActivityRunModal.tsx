@@ -11,6 +11,8 @@ type Activity = {
   name: string;
   type: string;
   destination?: string;
+  weapon_source?: string;
+  reward_table?: string;
   encounters?: readonly string[];
 };
 
