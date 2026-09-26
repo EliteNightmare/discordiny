@@ -43,6 +43,11 @@ type ActivitiesResponse = {
       nightfall: { cooldownSeconds: number; remainingSeconds: number; readyAt: number };
       gm: { cooldownSeconds: number; remainingSeconds: number; readyAt: number; minLevel: number };
     };
+    infiltration: {
+      cooldownSeconds: number;
+      remainingSeconds: number;
+      readyAt: number;
+    };
     endgame: {
       dungeon: {
         cooldownSeconds: number;
