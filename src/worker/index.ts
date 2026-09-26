@@ -6151,6 +6151,125 @@ app.post("/api/game/activity/run", async (c) => {
         ),
     );
 
+        /* =====================================================
+       COMMIT SHOWDOWN RUN
+    ===================================================== */
+
+    await c.env.DB.batch(
+      showdownWrites,
+    );
+
+
+    /* =====================================================
+       SHOWDOWN LIMIT RESPONSE
+    ===================================================== */
+
+    let showdownLimit:
+      | {
+          kind: "charges";
+          maxCharges: number;
+          usedCharges: number;
+          remainingCharges: number;
+        }
+      | {
+          kind: "cooldown";
+          cooldownSeconds: number;
+          remainingSeconds: number;
+          readyAt: number;
+        };
+
+    if (isDailyShowdown) {
+      const showdownDailyChargeKey =
+        getDailyShowdownChargeKey(
+          nowSeconds,
+        );
+
+      const chargeRow =
+        await c.env.DB
+          .prepare(
+            `SELECT timestamp
+             FROM player_cooldowns
+             WHERE user_id = ?
+               AND activity = ?
+             LIMIT 1`,
+          )
+          .bind(
+            session.user_id,
+            showdownDailyChargeKey,
+          )
+          .first<{
+            timestamp: number;
+          }>();
+
+      const usedCharges =
+        Math.max(
+          0,
+          Math.min(
+            DAILY_SHOWDOWN_MAX_CHARGES,
+            Number(
+              chargeRow?.timestamp ?? 0,
+            ) || 0,
+          ),
+        );
+
+      showdownLimit = {
+        kind: "charges",
+
+        maxCharges:
+          DAILY_SHOWDOWN_MAX_CHARGES,
+
+        usedCharges,
+
+        remainingCharges:
+          Math.max(
+            0,
+            DAILY_SHOWDOWN_MAX_CHARGES -
+              usedCharges,
+          ),
+      };
+    } else {
+      const readyAt =
+        nowSeconds +
+        SHOWDOWN_COOLDOWN_SECONDS;
+
+      showdownLimit = {
+        kind: "cooldown",
+
+        cooldownSeconds:
+          SHOWDOWN_COOLDOWN_SECONDS,
+
+        remainingSeconds:
+          SHOWDOWN_COOLDOWN_SECONDS,
+
+        readyAt,
+      };
+    }
+
+
+    /* =====================================================
+       RETURN SHOWDOWN RESULT
+    ===================================================== */
+
+    return c.json({
+      authenticated: true,
+      success: true,
+
+      player: {
+        name: user.username,
+        level:
+          showdownLevelProgress.level,
+        power:
+          showdownPower,
+      },
+
+      limit:
+        showdownLimit,
+
+      result:
+        showdownResult,
+    });
+  }
+
   let activity:
     ActivityEntry | null = null;
 
