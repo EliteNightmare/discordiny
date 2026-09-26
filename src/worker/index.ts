@@ -39,6 +39,22 @@ import {
   type ShowdownWeaponSource,
 } from "./game/showdown";
 
+const REGULAR_SHOWDOWN_SOURCES =
+  new Set<ShowdownWeaponSource>([
+    "seraph",
+    "elivagar",
+    "lucent",
+  ]);
+
+const DAILY_SHOWDOWN_SOURCES =
+  new Set<ShowdownWeaponSource>([
+    "cos",
+    "sos",
+    "eow",
+  ]);
+
+const DAILY_SHOWDOWN_MAX_CHARGES = 3;
+
 type WeaponRow = {
   weapon_name: string;
   masterwork: number;
