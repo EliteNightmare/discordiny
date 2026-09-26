@@ -1747,8 +1747,30 @@ export default function Activities() {
                     .infiltration
                     .activity
                 }
+                timer={rotationTimer(
+                  data.rotation.infiltration,
+                )}
                 backgroundImage={
                   getGeneralActivityBanner(
+                    data.rotation
+                      .infiltration
+                      .activity,
+                  )
+                }
+                disabled={
+                  infiltrationCooldownRemaining >
+                  0
+                }
+                status={
+                  infiltrationCooldownRemaining >
+                  0
+                    ? `COOLDOWN ${formatCooldownTime(
+                        infiltrationCooldownRemaining,
+                      )}`
+                    : "READY"
+                }
+                onClick={() =>
+                  openEndgameActivity(
                     data.rotation
                       .infiltration
                       .activity,
