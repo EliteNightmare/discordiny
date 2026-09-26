@@ -2327,7 +2327,8 @@ app.post("/api/game/cooldowns", async (c) => {
     (
       body.activity.startsWith("__endgame_") ||
       body.activity.startsWith("__vanguard_") ||
-      body.activity.startsWith("__infiltration")
+      body.activity.startsWith("__infiltration") ||
+      body.activity.startsWith("__showdown_")
     )
   ) {
     return c.json(
