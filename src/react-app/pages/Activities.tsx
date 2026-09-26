@@ -1254,7 +1254,7 @@ export default function Activities() {
   const strikeCooldownRemaining = Math.max(0, data.player.vanguard.strike.remainingSeconds - clock);
   const nightfallCooldownRemaining = Math.max(0, data.player.vanguard.nightfall.remainingSeconds - clock);
   const gmCooldownRemaining = Math.max(0, data.player.vanguard.gm.remainingSeconds - clock);
-  const infiltrationCooldownRemaining = Math.max(0, date.player.infiltration.remainingSeconds - clock);
+  const infiltrationCooldownRemaining = Math.max(0, data.player.infiltration.remainingSeconds - clock);
 
   const visibleGlobalActivityEvents =
     isMobileFeed
