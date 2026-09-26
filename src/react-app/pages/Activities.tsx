@@ -1170,9 +1170,28 @@ export default function Activities() {
 
   function openEndgameActivity(activity: Activity | null) {
     if (!activity) return;
-    if (!["raid", "dungeon", "strike", "nightfall", "gm", "infiltration"].includes(activity.type)) return;
+  
+    if (
+      ![
+        "raid",
+        "dungeon",
+        "strike",
+        "nightfall",
+        "gm",
+      ].includes(activity.type)
+    ) {
+      return;
+    }
+  
     setSelectedEndgameActivity(activity);
   }
+  
+  function openInfiltrationActivity(
+    activity: Activity | null,
+  ) {
+    if (!activity) return;
+  
+    setSelectedEndgameActivity(activity);
 
   if (loading) {
     return (
@@ -1770,7 +1789,7 @@ export default function Activities() {
                     : "READY"
                 }
                 onClick={() =>
-                  openEndgameActivity(
+                  openInfiltrationActivity(
                     data.rotation
                       .infiltration
                       .activity,
@@ -2018,8 +2037,19 @@ export default function Activities() {
       {selectedEndgameActivity && (
         <ActivityRunModal
           activity={selectedEndgameActivity}
-          backgroundImage={getActivityBanner(selectedEndgameActivity)}
-          onClose={() => setSelectedEndgameActivity(null)}
+          backgroundImage={
+            selectedEndgameActivity.reward_table ===
+            "pinnacle"
+              ? getGeneralActivityBanner(
+                  selectedEndgameActivity,
+                )
+              : getActivityBanner(
+                  selectedEndgameActivity,
+                )
+          }
+          onClose={() =>
+            setSelectedEndgameActivity(null)
+          }
           onFinished={() => {
             void loadActivities();
             void loadGlobalActivityFeed();
