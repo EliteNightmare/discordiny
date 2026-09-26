@@ -3748,6 +3748,8 @@ const VANGUARD_GM_COOLDOWN_KEY = "__vanguard_gm";
 
 const INFILTRATION_COOLDOWN_KEY = "__infiltration";
 
+const SHOWDOWN_COOLDOWN_KEY = "__showdown_regular";
+
 function getDailyEndgameChargeKey(
   type: "raid" | "dungeon",
   nowSeconds: number,
@@ -3757,6 +3759,16 @@ function getDailyEndgameChargeKey(
   );
 
   return `__endgame_daily_${type}_${rotationNumber}`;
+}
+
+function getDailyShowdownChargeKey(
+  nowSeconds: number,
+): string {
+  const rotationNumber = Math.floor(
+    nowSeconds / DAILY_ROTATION_SECONDS,
+  );
+
+  return `__showdown_daily_${rotationNumber}`;
 }
 
 function getDiscordAvatarUrl(
