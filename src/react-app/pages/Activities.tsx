@@ -1170,7 +1170,7 @@ export default function Activities() {
 
   function openEndgameActivity(activity: Activity | null) {
     if (!activity) return;
-    if (!["raid", "dungeon", "strike", "nightfall", "gm"].includes(activity.type)) return;
+    if (!["raid", "dungeon", "strike", "nightfall", "gm", "infiltration"].includes(activity.type)) return;
     setSelectedEndgameActivity(activity);
   }
 
