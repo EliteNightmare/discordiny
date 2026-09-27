@@ -1752,7 +1752,7 @@ export default function Activities() {
                         .remainingCharges <=
                       0
                         ? "DAILY LIMIT REACHED"
-                        : "READY"
+                        : undefined
                     }
                     onClick={() =>
                       openShowdownActivity(
