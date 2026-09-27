@@ -213,6 +213,39 @@ const weaponImages = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const currencyImages = import.meta.glob(
+  "../assets/icons/currencies/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const upgradeMaterialImages = import.meta.glob(
+  "../assets/icons/upgrade-materials/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const destinationMaterialImages = import.meta.glob(
+  "../assets/icons/destination-materials/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const explorationRewardImages = {
+  ...currencyImages,
+  ...upgradeMaterialImages,
+  ...destinationMaterialImages,
+};
+
 const strikeBanners = import.meta.glob(
   "../assets/general/strikes/*.png",
   {
@@ -464,6 +497,29 @@ function getActivityBanner(
         `/activitybanners/${filename}`,
       ),
   )?.[1];
+}
+
+function getExplorationRewardImage(
+  rewardName: string,
+): string | undefined {
+  const normalizedReward =
+    normalizeAssetName(rewardName);
+
+  return Object.entries(
+    explorationRewardImages,
+  ).find(([path]) => {
+    const filename =
+      path.split("/").pop() ?? "";
+
+    const filenameWithoutExtension =
+      filename.replace(/\.png$/i, "");
+
+    return (
+      normalizeAssetName(
+        filenameWithoutExtension,
+      ) === normalizedReward
+    );
+  })?.[1];
 }
 
 function getWeaponImage(
@@ -2310,6 +2366,18 @@ export default function Activities() {
                       role="dialog"
                       aria-modal="true"
                       aria-label="Exploration claim summary"
+                      style={{
+                        backgroundImage: `
+                          linear-gradient(
+                            145deg,
+                            rgba(15, 20, 30, 0.78),
+                            rgba(5, 8, 14, 0.96)
+                          ),
+                          url("${findDestinationImage(
+                            explorationSummary.destination,
+                          )}")
+                        `,
+                      }}
                     >
                       <span className="exploration-summary-eyebrow">EXPLORATION COMPLETE</span>
                       <h2>{explorationSummary.destination}</h2>
@@ -2325,21 +2393,51 @@ export default function Activities() {
                       <div className="exploration-summary-rewards">
                         {Object.entries(explorationSummary.rewards)
                           .filter(([, amount]) => amount > 0)
-                          .map(([name, amount]) => (
-                            <div key={name}>
-                              <span>{name}</span>
-                              <strong>+{amount.toLocaleString()}</strong>
-                            </div>
-                          ))}
+                          .map(([name, amount]) => {
+                            const rewardImage =
+                              getExplorationRewardImage(name);
+
+                            return (
+                              <div key={name}>
+                                <div className="exploration-summary-reward-name">
+                                  {rewardImage && (
+                                    <img
+                                      src={rewardImage}
+                                      alt=""
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                  <span>{name}</span>
+                                </div>
+                                <strong>+{amount.toLocaleString()}</strong>
+                              </div>
+                            );
+                          })}
                       </div>
 
                       <div className="exploration-summary-weapon">
-                        <span>DESTINATION WEAPON</span>
-                        <strong>
-                          {explorationSummary.weapon.dropped && explorationSummary.weapon.name
-                            ? explorationSummary.weapon.name
-                            : "No weapon found"}
-                        </strong>
+                        {explorationSummary.weapon.dropped &&
+                          explorationSummary.weapon.name &&
+                          getWeaponImage(
+                            explorationSummary.weapon.name,
+                          ) && (
+                            <img
+                              src={getWeaponImage(
+                                explorationSummary.weapon.name,
+                              )}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                          )}
+                        <div>
+                          <span>DESTINATION WEAPON</span>
+                          <strong>
+                            {explorationSummary.weapon.dropped &&
+                            explorationSummary.weapon.name
+                              ? explorationSummary.weapon.name
+                              : "No weapon found"}
+                          </strong>
+                        </div>
                       </div>
 
                       <button
