@@ -331,7 +331,7 @@ export const ACTIVITIES = {
       ]
     },
     "contest": {
-      "name": "Kells Contest",
+      "name": "Contest of Elders",
       "type": "pinnacle",
       "weapon_source": "contest",
       "reward_table": "pinnacle",
