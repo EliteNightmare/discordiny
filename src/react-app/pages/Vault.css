@@ -466,3 +466,9 @@
 
   color: #ff9999;
 }
+
+
+.vault-index-summary { margin-top: 14px; display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 12px; }
+.vault-index-summary strong { font-size: 24px; font-weight: 900; }
+.vault-index-summary span { font-size: 9px; font-weight: 850; letter-spacing: .13em; opacity: .62; }
+.vault-index-summary small { width: 100%; font-size: 9px; color: #ffdc5a; opacity: .8; }
