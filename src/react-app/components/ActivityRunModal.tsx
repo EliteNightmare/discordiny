@@ -1619,7 +1619,7 @@ export default function ActivityRunModal({
 
                   <div className="activity-run-contest-grid">
                     {result.secret.challenge.pieces.map(
-                      (piece, index) => {
+                      (piece) => {
                         const selectedIndex =
                           contestSequence.indexOf(
                             piece.id,
