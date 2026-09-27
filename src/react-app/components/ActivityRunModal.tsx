@@ -315,6 +315,14 @@ const INFILTRATION_REWARD_PREVIEW = [
   "Ascendant Alloy",
 ];
 
+const SHOWDOWN_REWARD_PREVIEW = [
+  "Glimmer",
+  "Lumia Leaves",
+  "Pinnacle Cipher",
+  "Enhancement Prism",
+  "Ascendant Shard",
+];
+
 /* -------------------------------------------------------------------------- */
 /*                              MODAL COMPONENT                               */
 /* -------------------------------------------------------------------------- */
