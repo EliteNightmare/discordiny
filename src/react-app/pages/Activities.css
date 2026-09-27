@@ -660,8 +660,25 @@
 }
 
 .exploration-rewards-banner {
-  background-size: cover;
-  background-position: center;
+  background-size: 112% 112%;
+  background-position: 50% 50%;
+  animation:
+    exploration-destination-drift
+    18s ease-in-out infinite alternate;
+}
+
+@keyframes exploration-destination-drift {
+  0% {
+    background-position: 47% 48%;
+  }
+
+  50% {
+    background-position: 53% 51%;
+  }
+
+  100% {
+    background-position: 49% 54%;
+  }
 }
 
 .exploration-rewards::before {
@@ -1166,6 +1183,29 @@
 
 .exploration-claim-button:active {
   transform: translateY(0);
+}
+
+.exploration-claim-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.exploration-claim-result {
+  position: relative;
+  z-index: 2;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exploration-rewards-banner {
+    animation: none;
+  }
 }
 
 
