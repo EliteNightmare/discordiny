@@ -374,3 +374,6 @@
     transition: none;
   }
 }
+
+
+.vault-activity-index { position: relative; z-index: 1; display: block; margin-top: 7px; color: rgba(255,255,255,.65); font-size: 8px; font-weight: 800; letter-spacing: .08em; text-shadow: 0 1px 5px rgba(0,0,0,.9); }
