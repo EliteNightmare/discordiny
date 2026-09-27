@@ -5565,28 +5565,6 @@ app.post("/api/game/activity/run", async (c) => {
   }
 
   /* =======================================================
-     SHOWDOWN ACTIVITY DETECTION
-  ======================================================= */
-
-  const requestedWeaponSource =
-    typeof requestedActivity.weapon_source === "string"
-      ? requestedActivity.weapon_source
-      : "";
-
-  const isRegularShowdown =
-    REGULAR_SHOWDOWN_SOURCES.has(
-      requestedWeaponSource as ShowdownWeaponSource,
-    );
-
-  const isDailyShowdown =
-    DAILY_SHOWDOWN_SOURCES.has(
-      requestedWeaponSource as ShowdownWeaponSource,
-    );
-
-  const isShowdown =
-    isRegularShowdown || isDailyShowdown;
-
-  /* =======================================================
      SHOWDOWN EXECUTION
 
      Only the server-selected regular 5-minute Showdown or
