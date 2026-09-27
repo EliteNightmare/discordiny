@@ -1,59 +1,38 @@
 /*
  * Discordiny Crawl activity engine
  *
- * A Crawl run executes the FOUR encounters belonging
- * to the ONE currently rotated Pinnacle Crawl.
+ * Server-authoritative Crawl gameplay logic.
  *
  * Current Crawls:
  *
- * The Coil:
- *   Chiasmus
- *   Enthymeme
- *   Polysemy
- *   Synchysis
- *   Weapon source: coil
+ * The Coil
+ * Kells Contest
+ * The Nether
  *
- * Kells Contest:
- *   Shadow Legion
- *   Revenant Scorn
- *   Lucent Brood
- *   The Dread
- *   Weapon source: contest
+ * Legacy behavior:
  *
- * The Nether:
- *   Trenchway
- *   Founts
- *   Mausoleum
- *   Hullbreach
- *   Weapon source: nether
- *
- * Crawl behavior ported from the original Discord bot:
- *
- *   - 120 second cooldown
- *   - 4 encounters
- *   - Crawl encounters do not wipe
- *   - 10% chance for ONE secret encounter per run
- *   - Secret is assigned to one random encounter
- *   - Secret challenge lasts 15 seconds
- *   - Successful secret doubles encounter rewards
- *     from the secret encounter onward
- *   - Full clear awards 25,000 XP
- *   - Full clear performs one final weapon roll
- *   - Successful secret performs one additional
- *     final weapon roll
+ * - 120 second cooldown
+ * - Four encounters
+ * - Crawl encounters do not wipe
+ * - 10% chance for one secret encounter per run
+ * - Secret is assigned to one random encounter
+ * - Secret challenge lasts 15 seconds
+ * - Successful secret doubles rewards from the secret
+ *   encounter onward
+ * - Full clear awards 25,000 XP
+ * - Full clear performs one final weapon roll
+ * - Successful secret performs one additional weapon roll
  *
  * IMPORTANT:
  *
- * Secret challenge success is NOT decided here when
- * the run is initially generated.
+ * Private challenge data must NEVER be returned directly
+ * to the frontend.
  *
- * The Worker must remain authoritative. The frontend
- * displays the generated challenge and sends the
- * player's interaction back to the Worker for
- * validation.
+ * Persist CrawlRunResult in pending_crawl_runs.run_data.
+ * Send getPublicCrawlSecret(run.secret) to React.
  *
- * Splicing, Acclaim, and Gather Materials are
- * intentionally excluded.
+ * React displays/interacts with the challenge.
+ * The Worker validates the submitted answer.
  *
  * This module does not access D1 directly.
  */
@@ -63,56 +42,25 @@
    CONSTANTS
 ========================================================= */
 
-export const CRAWL_COOLDOWN_SECONDS =
-  120;
+export const CRAWL_COOLDOWN_SECONDS = 120;
 
+export const CRAWL_SECRET_CHANCE = 0.10;
 
-export const CRAWL_SECRET_CHANCE =
-  0.10;
+export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
 
+export const CRAWL_XP = 25000;
 
-export const CRAWL_SECRET_TIMEOUT_SECONDS =
-  15;
+export const CRAWL_BASE_WEAPON_ROLLS = 1;
 
+export const CRAWL_SECRET_BONUS_WEAPON_ROLLS = 1;
 
-export const CRAWL_XP =
-  25000;
+export const CRAWL_WEAPON_DROP_CHANCE = 0.25;
 
-
-/*
- * Crawl weapon behavior from the original bot.
- *
- * A completed Crawl gets one weapon roll.
- *
- * A successfully completed secret encounter gets
- * one additional weapon roll.
- */
-
-export const CRAWL_BASE_WEAPON_ROLLS =
-  1;
-
-
-export const CRAWL_SECRET_BONUS_WEAPON_ROLLS =
-  1;
-
-
-/*
- * The current web game's weapon roll convention.
- *
- * This matches the existing Pinnacle activity weapon
- * behavior used by the Worker.
- */
-
-export const CRAWL_WEAPON_DROP_CHANCE =
-  0.25;
-
-
-export const CRAWL_ADEPT_CHANCE =
-  0.10;
+export const CRAWL_ADEPT_CHANCE = 0.10;
 
 
 /* =========================================================
-   COIL SECRET PROMPTS
+   COIL SECRET
 ========================================================= */
 
 export const CRAWL_COIL_PROMPTS = [
@@ -129,29 +77,8 @@ export const CRAWL_COIL_PROMPTS = [
 
 
 /* =========================================================
-   CONTEST SECRET PIECES
+   CONTEST SECRET
 ========================================================= */
-
-/*
- * These correspond to:
- *
- * contest_1
- * contest_2
- * contest_3
- * contest_4
- *
- * in:
- *
- * src/react-app/assets/general/crawls/
- *
- * The frontend will display them in:
- *
- *   1  2
- *   3  4
- *
- * The server generates the order in which they must
- * be selected.
- */
 
 export const CRAWL_CONTEST_PIECES = [
   {
@@ -177,20 +104,15 @@ export const CRAWL_CONTEST_PIECES = [
    NETHER SECRET
 ========================================================= */
 
-export const CRAWL_NETHER_GRID_ROWS =
-  5;
+export const CRAWL_NETHER_GRID_ROWS = 5;
 
+export const CRAWL_NETHER_GRID_COLUMNS = 5;
 
-export const CRAWL_NETHER_GRID_COLUMNS =
-  5;
-
-
-export const CRAWL_NETHER_EYE_COUNT =
-  5;
+export const CRAWL_NETHER_EYE_COUNT = 5;
 
 
 /* =========================================================
-   TYPES
+   GENERAL TYPES
 ========================================================= */
 
 export type CrawlWeaponSource =
@@ -204,22 +126,18 @@ export type CrawlActivity = {
 
   name: string;
 
-  weaponSource:
-    CrawlWeaponSource;
+  weaponSource: CrawlWeaponSource;
 
-  encounters:
-    readonly string[];
+  encounters: readonly string[];
 };
 
 
 export type CrawlWeaponCatalogEntry = {
   name: string;
 
-  rarity:
-    string | null;
+  rarity: string | null;
 
-  emoji_id?:
-    string | null;
+  emoji_id?: string | null;
 };
 
 
@@ -230,14 +148,11 @@ export type CrawlWeaponResult = {
 
   source: string;
 
-  name:
-    string | null;
+  name: string | null;
 
-  rarity:
-    string | null;
+  rarity: string | null;
 
-  emojiId:
-    string | null;
+  emojiId: string | null;
 
   adept: boolean;
 };
@@ -248,7 +163,13 @@ export type CrawlRewardMap =
 
 
 /* =========================================================
-   SECRET TYPES
+   PRIVATE SECRET TYPES
+
+   These are server-side types.
+
+   They may be persisted in pending_crawl_runs.run_data.
+
+   DO NOT send these objects directly to React.
 ========================================================= */
 
 export type CrawlSecretType =
@@ -267,6 +188,12 @@ export type CrawlSecretStatus =
 export type CrawlCoilSecret = {
   type: "coil";
 
+  /*
+   * Public by design.
+   *
+   * The player has to see this string in order to
+   * type it.
+   */
   prompt: string;
 };
 
@@ -281,27 +208,17 @@ export type CrawlContestPiece = {
 export type CrawlContestSecret = {
   type: "contest";
 
-  /*
-   * Pieces are always displayed by the frontend in
-   * their fixed visual positions:
-   *
-   *   1  2
-   *   3  4
-   */
-  pieces:
-    CrawlContestPiece[];
+  pieces: CrawlContestPiece[];
 
   /*
-   * Server-generated required click order.
+   * PRIVATE.
    *
-   * Contains piece IDs, not labels.
+   * Required click order.
    *
-   * Example:
-   *
-   * [3, 1, 4, 2]
+   * Never expose this through the activity-start
+   * response.
    */
-  sequence:
-    number[];
+  sequence: number[];
 };
 
 
@@ -312,6 +229,11 @@ export type CrawlNetherCell = {
 
   column: number;
 
+  /*
+   * PRIVATE.
+   *
+   * Never expose this flag to React.
+   */
   isEye: boolean;
 };
 
@@ -325,8 +247,7 @@ export type CrawlNetherSecret = {
 
   eyeCount: number;
 
-  cells:
-    CrawlNetherCell[];
+  cells: CrawlNetherCell[];
 };
 
 
@@ -339,16 +260,87 @@ export type CrawlSecretChallenge =
 export type CrawlSecret = {
   triggered: boolean;
 
-  encounterIndex:
-    number | null;
+  encounterIndex: number | null;
 
   timeoutSeconds: number;
 
-  status:
-    CrawlSecretStatus | null;
+  status: CrawlSecretStatus | null;
 
-  challenge:
-    CrawlSecretChallenge | null;
+  challenge: CrawlSecretChallenge | null;
+};
+
+
+/* =========================================================
+   PUBLIC SECRET TYPES
+
+   These are safe to return to React.
+========================================================= */
+
+export type PublicCrawlCoilSecret = {
+  type: "coil";
+
+  prompt: string;
+};
+
+
+export type PublicCrawlContestPiece = {
+  id: number;
+
+  label: string;
+};
+
+
+export type PublicCrawlContestSecret = {
+  type: "contest";
+
+  pieces: PublicCrawlContestPiece[];
+};
+
+
+export type PublicCrawlNetherCell = {
+  index: number;
+
+  row: number;
+
+  column: number;
+};
+
+
+export type PublicCrawlNetherSecret = {
+  type: "nether";
+
+  rows: number;
+
+  columns: number;
+
+  eyeCount: number;
+
+  /*
+   * These are the positions in which React is allowed
+   * to render clickable targets.
+   *
+   * No isEye property is exposed.
+   */
+  cells: PublicCrawlNetherCell[];
+};
+
+
+export type PublicCrawlSecretChallenge =
+  | PublicCrawlCoilSecret
+  | PublicCrawlContestSecret
+  | PublicCrawlNetherSecret;
+
+
+export type PublicCrawlSecret = {
+  triggered: boolean;
+
+  encounterIndex: number | null;
+
+  timeoutSeconds: number;
+
+  status: CrawlSecretStatus | null;
+
+  challenge: PublicCrawlSecretChallenge | null;
 };
 
 
@@ -365,25 +357,11 @@ export type CrawlEncounterResult = {
 
   cleared: true;
 
-  /*
-   * Rewards are populated when the encounter is
-   * resolved.
-   *
-   * Before a pending secret has been resolved,
-   * downstream Worker logic may defer persistence
-   * of affected encounter rewards.
-   */
-  rewards:
-    CrawlRewardMap;
+  rewards: CrawlRewardMap;
 
   partialRewards: false;
 
-  /*
-   * Crawl weapons are awarded at the end of the
-   * activity rather than once per encounter.
-   */
-  weapon:
-    CrawlWeaponResult;
+  weapon: CrawlWeaponResult;
 
   secretEncounter: boolean;
 };
@@ -396,10 +374,9 @@ export type CrawlRunResult = {
 
   activityType: "crawl";
 
-  weaponSource: string;
+  weaponSource: CrawlWeaponSource;
 
-  encounters:
-    CrawlEncounterResult[];
+  encounters: CrawlEncounterResult[];
 
   totalEncounters: number;
 
@@ -411,34 +388,28 @@ export type CrawlRunResult = {
 
   wipedAt: null;
 
-  rewards:
-    CrawlRewardMap;
+  rewards: CrawlRewardMap;
 
   xp: number;
 
-  secret:
-    CrawlSecret;
+  secret: CrawlSecret;
 
   /*
-   * Actual successful weapon drops.
+   * Successful weapon drops.
    *
-   * Normally:
-   *
-   *   0 - 1 weapon
+   * Normal clear:
+   *   up to one
    *
    * Successful secret:
-   *
-   *   0 - 2 weapons
+   *   up to two
    */
-  weapons:
-    CrawlWeaponResult[];
+  weapons: CrawlWeaponResult[];
 
   /*
-   * Compatibility field used by the current
-   * activity result UI/feed.
+   * Compatibility field for the existing activity UI
+   * and activity feed.
    */
-  weapon:
-    CrawlWeaponResult;
+  weapon: CrawlWeaponResult;
 };
 
 
@@ -450,11 +421,8 @@ function randomIntInclusive(
   min: number,
   max: number,
 ): number {
-  const lower =
-    Math.ceil(min);
-
-  const upper =
-    Math.floor(max);
+  const lower = Math.ceil(min);
+  const upper = Math.floor(max);
 
   return (
     Math.floor(
@@ -471,12 +439,9 @@ function randomIntInclusive(
 
 
 function randomChoice<T>(
-  values:
-    readonly T[],
+  values: readonly T[],
 ): T | null {
-  if (
-    values.length === 0
-  ) {
+  if (values.length === 0) {
     return null;
   }
 
@@ -493,18 +458,13 @@ function randomChoice<T>(
 
 
 function shuffle<T>(
-  values:
-    readonly T[],
+  values: readonly T[],
 ): T[] {
-  const result =
-    [...values];
+  const result = [...values];
 
   for (
-    let index =
-      result.length - 1;
-
+    let index = result.length - 1;
     index > 0;
-
     index -= 1
   ) {
     const swapIndex =
@@ -568,7 +528,7 @@ function getBaseWeaponName(
 ========================================================= */
 
 /*
- * Original Crawl reward package PER ENCOUNTER:
+ * Legacy Crawl rewards PER ENCOUNTER:
  *
  * Glimmer:
  *   7,500 - 12,500
@@ -633,11 +593,8 @@ export function rollCrawlRewards():
 ========================================================= */
 
 function addReward(
-  rewards:
-    CrawlRewardMap,
-
+  rewards: CrawlRewardMap,
   name: string,
-
   amount: number,
 ): void {
   rewards[name] =
@@ -650,11 +607,8 @@ function addReward(
 
 
 function mergeRewards(
-  target:
-    CrawlRewardMap,
-
-  source:
-    CrawlRewardMap,
+  target: CrawlRewardMap,
+  source: CrawlRewardMap,
 ): void {
   for (
     const [
@@ -675,9 +629,7 @@ function mergeRewards(
 
 
 export function multiplyCrawlRewards(
-  rewards:
-    CrawlRewardMap,
-
+  rewards: CrawlRewardMap,
   multiplier: number,
 ): CrawlRewardMap {
   const multiplied:
@@ -706,7 +658,6 @@ export function multiplyCrawlRewards(
 
 export function emptyCrawlWeaponResult(
   source: string,
-
   rolled = false,
 ): CrawlWeaponResult {
   return {
@@ -733,12 +684,8 @@ export function emptyCrawlWeaponResult(
 
 export function rollCrawlWeapon(
   source: string,
-
-  catalog:
-    readonly CrawlWeaponCatalogEntry[],
-
-  ownedWeapons:
-    readonly string[],
+  catalog: readonly CrawlWeaponCatalogEntry[],
+  ownedWeapons: readonly string[],
 ): CrawlWeaponResult {
   const emptyResult =
     emptyCrawlWeaponResult(
@@ -748,8 +695,6 @@ export function rollCrawlWeapon(
 
 
   /*
-   * First roll:
-   *
    * 25% chance for a weapon.
    */
   if (
@@ -761,9 +706,7 @@ export function rollCrawlWeapon(
 
 
   /*
-   * Successful weapon roll.
-   *
-   * Determine whether the weapon is Adept.
+   * 10% of successful weapon rolls are Adept.
    */
   const adept =
     Math.random()
@@ -779,9 +722,8 @@ export function rollCrawlWeapon(
 
 
   /*
-   * Explicit "(Adept)" rows are metadata rows and
-   * do not participate as additional random
-   * selections.
+   * Explicit "(Adept)" rows are metadata rows rather
+   * than separate random selections.
    */
   const available =
     catalog.filter(
@@ -805,8 +747,8 @@ export function rollCrawlWeapon(
             : baseName;
 
         /*
-         * Normal and Adept variants are considered
-         * separate ownership entries.
+         * Normal and Adept variants are separate
+         * ownership entries.
          */
         return !owned.has(
           normalizeWeaponName(
@@ -817,10 +759,6 @@ export function rollCrawlWeapon(
     );
 
 
-  /*
-   * Player already owns every possible weapon for
-   * the rolled Normal/Adept variant.
-   */
   if (
     available.length === 0
   ) {
@@ -852,8 +790,8 @@ export function rollCrawlWeapon(
 
 
   /*
-   * If an explicit Adept catalog row exists, use
-   * its metadata.
+   * If the weapon catalog contains an explicit Adept
+   * row, use its metadata.
    */
   const explicitAdept =
     adept
@@ -915,10 +853,10 @@ export function rollCrawlSecretEncounter(
 
 
   /*
-   * Exactly one 10% roll is made for the entire
-   * Crawl.
+   * One 10% roll for the entire Crawl.
    *
-   * On success, choose one of the four encounters.
+   * If successful, exactly one encounter receives
+   * the secret.
    */
   if (
     Math.random()
@@ -958,18 +896,9 @@ export function createCoilSecret():
 
 
 export function validateCoilSecret(
-  challenge:
-    CrawlCoilSecret,
-
+  challenge: CrawlCoilSecret,
   answer: string,
 ): boolean {
-  /*
-   * Original bot behavior:
-   *
-   * whitespace around the submitted value is
-   * ignored, but the prompt itself is otherwise
-   * case-sensitive and must match exactly.
-   */
   return (
     answer.trim()
     === challenge.prompt
@@ -996,6 +925,9 @@ export function createContestSecret():
       );
 
 
+  /*
+   * PRIVATE server-generated required click order.
+   */
   const sequence =
     shuffle(
       pieces.map(
@@ -1017,11 +949,8 @@ export function createContestSecret():
 
 
 export function validateContestSecret(
-  challenge:
-    CrawlContestSecret,
-
-  submittedSequence:
-    readonly number[],
+  challenge: CrawlContestSecret,
+  submittedSequence: readonly number[],
 ): boolean {
   if (
     submittedSequence.length
@@ -1033,10 +962,7 @@ export function validateContestSecret(
 
   for (
     let index = 0;
-
-    index
-    < challenge.sequence.length;
-
+    index < challenge.sequence.length;
     index += 1
   ) {
     if (
@@ -1063,19 +989,15 @@ export function createNetherSecret():
 
 
   /*
-   * Original behavior:
+   * Legacy behavior:
    *
    * 5 rows
    * 5 positions per row
-   * exactly ONE eye in every row
-   *
-   * Therefore there are exactly five eyes.
+   * exactly one eye in every row
    */
   for (
     let row = 0;
-
     row < CRAWL_NETHER_GRID_ROWS;
-
     row += 1
   ) {
     const eyeColumn =
@@ -1087,10 +1009,7 @@ export function createNetherSecret():
 
     for (
       let column = 0;
-
-      column
-      < CRAWL_NETHER_GRID_COLUMNS;
-
+      column < CRAWL_NETHER_GRID_COLUMNS;
       column += 1
     ) {
       const index =
@@ -1135,18 +1054,11 @@ export function createNetherSecret():
 
 
 export function validateNetherSecret(
-  challenge:
-    CrawlNetherSecret,
-
-  selectedCells:
-    readonly number[],
+  challenge: CrawlNetherSecret,
+  selectedCells: readonly number[],
 ): boolean {
   /*
-   * Wrong buttons immediately failed the original
-   * encounter.
-   *
-   * For server validation, require exactly the five
-   * eye cells and nothing else.
+   * The player must submit exactly five cells.
    */
   if (
     selectedCells.length
@@ -1163,7 +1075,7 @@ export function validateNetherSecret(
 
 
   /*
-   * Duplicate submissions are invalid.
+   * Duplicate selections are invalid.
    */
   if (
     selected.size
@@ -1188,6 +1100,9 @@ export function validateNetherSecret(
   }
 
 
+  /*
+   * Every actual eye must have been selected.
+   */
   for (
     const cell
     of eyeCells
@@ -1203,7 +1118,7 @@ export function validateNetherSecret(
 
 
   /*
-   * Explicitly ensure no non-eye cell was selected.
+   * No non-eye position may have been submitted.
    */
   for (
     const cellIndex
@@ -1231,12 +1146,11 @@ export function validateNetherSecret(
 
 
 /* =========================================================
-   SECRET CREATION
+   PRIVATE CHALLENGE CREATION
 ========================================================= */
 
 export function createCrawlSecretChallenge(
-  weaponSource:
-    CrawlWeaponSource,
+  weaponSource: CrawlWeaponSource,
 ): CrawlSecretChallenge {
   switch (
     weaponSource
@@ -1256,23 +1170,174 @@ export function createCrawlSecretChallenge(
 
 
 /* =========================================================
+   PUBLIC CHALLENGE SANITIZATION
+========================================================= */
+
+export function getPublicCrawlSecretChallenge(
+  challenge: CrawlSecretChallenge,
+): PublicCrawlSecretChallenge {
+  switch (
+    challenge.type
+  ) {
+    case "coil":
+      /*
+       * The prompt is intentionally visible.
+       */
+      return {
+        type:
+          "coil",
+
+        prompt:
+          challenge.prompt,
+      };
+
+
+    case "contest":
+      /*
+       * IMPORTANT:
+       *
+       * sequence is deliberately omitted.
+       */
+      return {
+        type:
+          "contest",
+
+        pieces:
+          challenge.pieces.map(
+            (piece) => ({
+              id:
+                piece.id,
+
+              label:
+                piece.label,
+            }),
+          ),
+      };
+
+
+    case "nether":
+      /*
+       * IMPORTANT:
+       *
+       * isEye is deliberately omitted.
+       *
+       * React receives positions only.
+       */
+      return {
+        type:
+          "nether",
+
+        rows:
+          challenge.rows,
+
+        columns:
+          challenge.columns,
+
+        eyeCount:
+          challenge.eyeCount,
+
+        cells:
+          challenge.cells.map(
+            (cell) => ({
+              index:
+                cell.index,
+
+              row:
+                cell.row,
+
+              column:
+                cell.column,
+            }),
+          ),
+      };
+  }
+}
+
+
+export function getPublicCrawlSecret(
+  secret: CrawlSecret,
+): PublicCrawlSecret {
+  return {
+    triggered:
+      secret.triggered,
+
+    encounterIndex:
+      secret.encounterIndex,
+
+    timeoutSeconds:
+      secret.timeoutSeconds,
+
+    status:
+      secret.status,
+
+    challenge:
+      secret.challenge
+        ? getPublicCrawlSecretChallenge(
+            secret.challenge,
+          )
+        : null,
+  };
+}
+
+
+/* =========================================================
+   PUBLIC RUN SANITIZATION
+========================================================= */
+
+/*
+ * This helper is intentionally useful for index.ts.
+ *
+ * It creates a frontend-safe version of a Crawl run
+ * without leaking private challenge answers.
+ */
+
+export type PublicCrawlRunResult =
+  Omit<
+    CrawlRunResult,
+    "secret"
+  >
+  & {
+    secret: PublicCrawlSecret;
+  };
+
+
+export function getPublicCrawlRun(
+  run: CrawlRunResult,
+): PublicCrawlRunResult {
+  return {
+    ...run,
+
+    secret:
+      getPublicCrawlSecret(
+        run.secret,
+      ),
+  };
+}
+
+
+/* =========================================================
    INITIAL CRAWL RUN
 ========================================================= */
 
 /*
- * This creates the initial authoritative Crawl state.
+ * Creates the authoritative initial Crawl state.
  *
- * It DOES NOT resolve the interactive secret.
+ * If a secret procs:
  *
- * The next Worker integration will persist enough
- * state to validate the player's secret response
- * before final rewards / bonus weapon roll are
- * committed.
+ * - the private CrawlRunResult should be persisted
+ *   in pending_crawl_runs.run_data
+ *
+ * - getPublicCrawlRun() should be used for the
+ *   frontend response
+ *
+ * - rewards should not yet be persisted
+ *
+ * If no secret procs, the Worker can immediately
+ * finalize the run.
  */
 
 export function runCrawl(
-  activity:
-    CrawlActivity,
+  activity: CrawlActivity,
 ): CrawlRunResult {
   const encounters =
     [...activity.encounters];
@@ -1301,23 +1366,12 @@ export function runCrawl(
 
 
   /*
-   * IMPORTANT:
-   *
-   * The old bot rolled encounter rewards only after
-   * the secret interaction had been completed.
-   *
-   * We still generate the ordinary encounter reward
-   * packages here so all RNG remains server-side.
-   *
-   * The Worker integration decides when these are
-   * persisted and whether rewards at/after the
-   * successful secret receive the x2 multiplier.
+   * Generate all reward RNG server-side before
+   * anything is sent to the frontend.
    */
   for (
     let index = 0;
-
     index < encounters.length;
-
     index += 1
   ) {
     const encounterName =
@@ -1387,10 +1441,9 @@ export function runCrawl(
       encounterResults.length,
 
     /*
-     * Crawl encounters themselves do not wipe.
+     * Crawl encounters do not wipe.
      *
-     * Failing the optional secret does not fail the
-     * Crawl.
+     * Failing a secret does not fail the Crawl.
      */
     fullClear:
       true,
@@ -1429,8 +1482,8 @@ export function runCrawl(
     },
 
     /*
-     * Weapon rolls happen only after the Crawl can
-     * be finalized.
+     * Completion weapon rolls happen when the Worker
+     * finalizes the run.
      */
     weapons:
       [],
@@ -1445,23 +1498,24 @@ export function runCrawl(
 
 
 /* =========================================================
-   SECRET REWARD APPLICATION
+   SUCCESSFUL SECRET REWARDS
 ========================================================= */
 
 /*
- * The original Crawl code applies the x2 multiplier
- * after secret_success becomes true.
+ * Legacy behavior:
  *
- * Because secret_success remains true for the rest
- * of the loop, the secret encounter AND every
- * encounter after it receive doubled rewards.
+ * Once secret_success becomes true in the old Crawl
+ * loop, it remains true for every remaining encounter.
  *
- * This helper deliberately preserves that behavior.
+ * Therefore:
+ *
+ * - encounters before the secret keep normal rewards
+ * - the secret encounter is doubled
+ * - every encounter after the secret is doubled
  */
 
 export function applySuccessfulCrawlSecretRewards(
-  run:
-    CrawlRunResult,
+  run: CrawlRunResult,
 ): CrawlRunResult {
   const secretIndex =
     run.secret.encounterIndex;
@@ -1537,13 +1591,11 @@ export function applySuccessfulCrawlSecretRewards(
 
 
 /* =========================================================
-   FAILED SECRET
+   FAILED / EXPIRED SECRET
 ========================================================= */
 
 export function applyFailedCrawlSecret(
-  run:
-    CrawlRunResult,
-
+  run: CrawlRunResult,
   expired = false,
 ): CrawlRunResult {
   return {
@@ -1562,112 +1614,11 @@ export function applyFailedCrawlSecret(
 
 
 /* =========================================================
-   FINAL WEAPON ROLLS
-========================================================= */
-
-export function rollCrawlCompletionWeapons(
-  run:
-    CrawlRunResult,
-
-  weaponCatalog:
-    readonly CrawlWeaponCatalogEntry[],
-
-  ownedWeapons:
-    readonly string[] = [],
-): CrawlRunResult {
-  const runOwnedWeapons =
-    [...ownedWeapons];
-
-
-  const performedRolls:
-    CrawlWeaponResult[] = [];
-
-
-  const droppedWeapons:
-    CrawlWeaponResult[] = [];
-
-
-  const weaponRollCount =
-    CRAWL_BASE_WEAPON_ROLLS
-    + (
-      run.secret.status
-      === "success"
-        ? CRAWL_SECRET_BONUS_WEAPON_ROLLS
-        : 0
-    );
-
-
-  for (
-    let index = 0;
-
-    index < weaponRollCount;
-
-    index += 1
-  ) {
-    const weapon =
-      rollCrawlWeapon(
-        run.weaponSource,
-        weaponCatalog,
-
-        runOwnedWeapons,
-      );
-
-
-    performedRolls.push(
-      weapon,
-    );
-
-
-    if (
-      weapon.dropped
-      && weapon.name
-    ) {
-      droppedWeapons.push(
-        weapon,
-      );
-
-
-      /*
-       * Prevent the second roll from awarding the
-       * exact same Normal/Adept weapon obtained by
-       * the first roll.
-       */
-      runOwnedWeapons.push(
-        weapon.name,
-      );
-    }
-  }
-
-
-  const compatibilityWeapon =
-    droppedWeapons[0]
-    ?? performedRolls[0]
-    ?? emptyCrawlWeaponResult(
-      run.weaponSource,
-      false,
-    );
-
-
-  return {
-    ...run,
-
-    weapons:
-      droppedWeapons,
-
-    weapon:
-      compatibilityWeapon,
-  };
-}
-
-
-/* =========================================================
-   SECRET VALIDATION HELPERS
+   SECRET VALIDATION
 ========================================================= */
 
 export function validateCrawlSecret(
-  challenge:
-    CrawlSecretChallenge,
-
+  challenge: CrawlSecretChallenge,
   submission:
     string
     | readonly number[],
@@ -1722,4 +1673,185 @@ export function validateCrawlSecret(
       );
     }
   }
+}
+
+
+/* =========================================================
+   FINAL WEAPON ROLLS
+========================================================= */
+
+export function rollCrawlCompletionWeapons(
+  run: CrawlRunResult,
+  weaponCatalog:
+    readonly CrawlWeaponCatalogEntry[],
+  ownedWeapons:
+    readonly string[] = [],
+): CrawlRunResult {
+  const runOwnedWeapons =
+    [...ownedWeapons];
+
+
+  const performedRolls:
+    CrawlWeaponResult[] = [];
+
+
+  const droppedWeapons:
+    CrawlWeaponResult[] = [];
+
+
+  const weaponRollCount =
+    CRAWL_BASE_WEAPON_ROLLS
+    + (
+      run.secret.status
+      === "success"
+        ? CRAWL_SECRET_BONUS_WEAPON_ROLLS
+        : 0
+    );
+
+
+  for (
+    let index = 0;
+    index < weaponRollCount;
+    index += 1
+  ) {
+    const weapon =
+      rollCrawlWeapon(
+        run.weaponSource,
+        weaponCatalog,
+        runOwnedWeapons,
+      );
+
+
+    performedRolls.push(
+      weapon,
+    );
+
+
+    if (
+      weapon.dropped
+      && weapon.name
+    ) {
+      droppedWeapons.push(
+        weapon,
+      );
+
+
+      /*
+       * Do not let the second roll award the exact
+       * same Normal/Adept weapon obtained by the
+       * first roll.
+       */
+      runOwnedWeapons.push(
+        weapon.name,
+      );
+    }
+  }
+
+
+  const compatibilityWeapon =
+    droppedWeapons[0]
+    ?? performedRolls[0]
+    ?? emptyCrawlWeaponResult(
+      run.weaponSource,
+      false,
+    );
+
+
+  return {
+    ...run,
+
+    weapons:
+      droppedWeapons,
+
+    weapon:
+      compatibilityWeapon,
+  };
+}
+
+
+/* =========================================================
+   FINALIZATION HELPERS
+========================================================= */
+
+/*
+ * No secret:
+ *
+ * Finalize normally.
+ */
+
+export function finalizeCrawlWithoutSecret(
+  run: CrawlRunResult,
+  weaponCatalog:
+    readonly CrawlWeaponCatalogEntry[],
+  ownedWeapons:
+    readonly string[] = [],
+): CrawlRunResult {
+  return rollCrawlCompletionWeapons(
+    run,
+    weaponCatalog,
+    ownedWeapons,
+  );
+}
+
+
+/*
+ * Successful secret:
+ *
+ * 1. Apply doubled rewards from the secret encounter
+ *    onward.
+ *
+ * 2. Perform the normal weapon roll plus the bonus
+ *    secret weapon roll.
+ */
+
+export function finalizeSuccessfulCrawlSecret(
+  run: CrawlRunResult,
+  weaponCatalog:
+    readonly CrawlWeaponCatalogEntry[],
+  ownedWeapons:
+    readonly string[] = [],
+): CrawlRunResult {
+  const rewardedRun =
+    applySuccessfulCrawlSecretRewards(
+      run,
+    );
+
+
+  return rollCrawlCompletionWeapons(
+    rewardedRun,
+    weaponCatalog,
+    ownedWeapons,
+  );
+}
+
+
+/*
+ * Failed secret:
+ *
+ * Crawl still completes.
+ *
+ * Rewards remain normal and only the standard
+ * completion weapon roll occurs.
+ */
+
+export function finalizeFailedCrawlSecret(
+  run: CrawlRunResult,
+  weaponCatalog:
+    readonly CrawlWeaponCatalogEntry[],
+  ownedWeapons:
+    readonly string[] = [],
+  expired = false,
+): CrawlRunResult {
+  const failedRun =
+    applyFailedCrawlSecret(
+      run,
+      expired,
+    );
+
+
+  return rollCrawlCompletionWeapons(
+    failedRun,
+    weaponCatalog,
+    ownedWeapons,
+  );
 }
