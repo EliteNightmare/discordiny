@@ -2164,13 +2164,9 @@ export default function Activities() {
                   }}
                   aria-label="Fishing activity"
                 >
-                  <div className="fishing-activity-card-top">
-                    <span>ACTIVITY</span>
-                  </div>
-
                   <div className="fishing-activity-card-content">
                     <span className="fishing-activity-eyebrow">
-                      RELAX &amp; CATCH
+                      PLAY CATCH
                     </span>
 
                     <strong>
