@@ -9,14 +9,15 @@
  * Kells Contest
  * The Nether
  *
- * Legacy behavior:
+ * Crawl behavior:
  *
  * - 120 second cooldown
  * - Four encounters
  * - Crawl encounters do not wipe
  * - 10% chance for one secret encounter per run
  * - Secret is assigned to one random encounter
- * - Secret challenge lasts 15 seconds
+ * - Coil / Contest secrets last 15 seconds
+ * - Nether secret lasts 20 seconds
  * - Successful secret doubles rewards from the secret
  *   encounter onward
  * - Full clear awards 25,000 XP
@@ -47,6 +48,8 @@ export const CRAWL_COOLDOWN_SECONDS = 120;
 export const CRAWL_SECRET_CHANCE = 0.10;
 
 export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
+
+export const CRAWL_NETHER_TIMEOUT_SECONDS = 20;
 
 export const CRAWL_XP = 25000;
 
@@ -104,11 +107,24 @@ export const CRAWL_CONTEST_PIECES = [
    NETHER SECRET
 ========================================================= */
 
-export const CRAWL_NETHER_GRID_ROWS = 5;
+export const CRAWL_NETHER_MIN_EYES = 12;
 
-export const CRAWL_NETHER_GRID_COLUMNS = 5;
+export const CRAWL_NETHER_MAX_EYES = 15;
 
-export const CRAWL_NETHER_EYE_COUNT = 5;
+/*
+ * Eye positions are percentages of the playable
+ * Nether challenge area.
+ *
+ * Keeping the range away from 0 / 100 prevents an
+ * eye from spawning partly outside the modal.
+ */
+export const CRAWL_NETHER_MIN_POSITION = 8;
+
+export const CRAWL_NETHER_MAX_POSITION = 92;
+
+export const CRAWL_NETHER_MIN_ROTATION = -180;
+
+export const CRAWL_NETHER_MAX_ROTATION = 180;
 
 
 /* =========================================================
@@ -164,12 +180,6 @@ export type CrawlRewardMap =
 
 /* =========================================================
    PRIVATE SECRET TYPES
-
-   These are server-side types.
-
-   They may be persisted in pending_crawl_runs.run_data.
-
-   DO NOT send these objects directly to React.
 ========================================================= */
 
 export type CrawlSecretType =
@@ -191,8 +201,7 @@ export type CrawlCoilSecret = {
   /*
    * Public by design.
    *
-   * The player has to see this string in order to
-   * type it.
+   * The player must see the string in order to type it.
    */
   prompt: string;
 };
@@ -222,32 +231,43 @@ export type CrawlContestSecret = {
 };
 
 
-export type CrawlNetherCell = {
-  index: number;
-
-  row: number;
-
-  column: number;
+export type CrawlNetherEye = {
+  /*
+   * The ID is used by the server to verify that every
+   * generated eye was clicked.
+   */
+  id: number;
 
   /*
-   * PRIVATE.
+   * Percentage coordinates used by React.
    *
-   * Never expose this flag to React.
+   * These are presentation data and are intentionally
+   * public because the player has to see the eye.
    */
-  isEye: boolean;
+  x: number;
+
+  y: number;
+
+  /*
+   * Degrees.
+   */
+  rotation: number;
 };
 
 
 export type CrawlNetherSecret = {
   type: "nether";
 
-  rows: number;
-
-  columns: number;
-
   eyeCount: number;
 
-  cells: CrawlNetherCell[];
+  /*
+   * The generated eyes are authoritative.
+   *
+   * React may receive their visual information, but
+   * success is determined by the Worker comparing the
+   * submitted IDs against this stored list.
+   */
+  eyes: CrawlNetherEye[];
 };
 
 
@@ -272,8 +292,6 @@ export type CrawlSecret = {
 
 /* =========================================================
    PUBLIC SECRET TYPES
-
-   These are safe to return to React.
 ========================================================= */
 
 export type PublicCrawlCoilSecret = {
@@ -297,31 +315,30 @@ export type PublicCrawlContestSecret = {
 };
 
 
-export type PublicCrawlNetherCell = {
-  index: number;
+export type PublicCrawlNetherEye = {
+  id: number;
 
-  row: number;
+  x: number;
 
-  column: number;
+  y: number;
+
+  rotation: number;
 };
 
 
 export type PublicCrawlNetherSecret = {
   type: "nether";
 
-  rows: number;
-
-  columns: number;
-
   eyeCount: number;
 
   /*
-   * These are the positions in which React is allowed
-   * to render clickable targets.
+   * Eye positions and rotations are intentionally
+   * public presentation data.
    *
-   * No isEye property is exposed.
+   * The server still owns the authoritative expected
+   * set of IDs and validates the submission.
    */
-  cells: PublicCrawlNetherCell[];
+  eyes: PublicCrawlNetherEye[];
 };
 
 
@@ -394,21 +411,8 @@ export type CrawlRunResult = {
 
   secret: CrawlSecret;
 
-  /*
-   * Successful weapon drops.
-   *
-   * Normal clear:
-   *   up to one
-   *
-   * Successful secret:
-   *   up to two
-   */
   weapons: CrawlWeaponResult[];
 
-  /*
-   * Compatibility field for the existing activity UI
-   * and activity feed.
-   */
   weapon: CrawlWeaponResult;
 };
 
@@ -526,28 +530,6 @@ function getBaseWeaponName(
 /* =========================================================
    REWARDS
 ========================================================= */
-
-/*
- * Legacy Crawl rewards PER ENCOUNTER:
- *
- * Glimmer:
- *   7,500 - 12,500
- *
- * Lumia Leaves:
- *   1
- *
- * Pinnacle Cipher:
- *   10 - 15
- *
- * Armor Plating:
- *   150 - 250
- *
- * Ascendant Shard:
- *   2 - 4
- *
- * Ascendant Alloy:
- *   1 - 3
- */
 
 export function rollCrawlRewards():
   CrawlRewardMap {
@@ -693,10 +675,6 @@ export function rollCrawlWeapon(
       true,
     );
 
-
-  /*
-   * 25% chance for a weapon.
-   */
   if (
     Math.random()
     >= CRAWL_WEAPON_DROP_CHANCE
@@ -704,14 +682,9 @@ export function rollCrawlWeapon(
     return emptyResult;
   }
 
-
-  /*
-   * 10% of successful weapon rolls are Adept.
-   */
   const adept =
     Math.random()
     < CRAWL_ADEPT_CHANCE;
-
 
   const owned =
     new Set(
@@ -720,11 +693,6 @@ export function rollCrawlWeapon(
       ),
     );
 
-
-  /*
-   * Explicit "(Adept)" rows are metadata rows rather
-   * than separate random selections.
-   */
   const available =
     catalog.filter(
       (weapon) => {
@@ -746,10 +714,6 @@ export function rollCrawlWeapon(
             ? `${baseName} (Adept)`
             : baseName;
 
-        /*
-         * Normal and Adept variants are separate
-         * ownership entries.
-         */
         return !owned.has(
           normalizeWeaponName(
             finalName,
@@ -758,41 +722,31 @@ export function rollCrawlWeapon(
       },
     );
 
-
   if (
     available.length === 0
   ) {
     return emptyResult;
   }
 
-
   const selected =
     randomChoice(
       available,
     );
 
-
   if (!selected) {
     return emptyResult;
   }
-
 
   const baseName =
     getBaseWeaponName(
       selected.name,
     );
 
-
   const finalName =
     adept
       ? `${baseName} (Adept)`
       : baseName;
 
-
-  /*
-   * If the weapon catalog contains an explicit Adept
-   * row, use its metadata.
-   */
   const explicitAdept =
     adept
       ? catalog.find(
@@ -807,11 +761,9 @@ export function rollCrawlWeapon(
         )
       : undefined;
 
-
   const metadata =
     explicitAdept
     ?? selected;
-
 
   return {
     rolled: true,
@@ -851,20 +803,12 @@ export function rollCrawlSecretEncounter(
     return null;
   }
 
-
-  /*
-   * One 10% roll for the entire Crawl.
-   *
-   * If successful, exactly one encounter receives
-   * the secret.
-   */
   if (
     Math.random()
     >= CRAWL_SECRET_CHANCE
   ) {
     return null;
   }
-
 
   return randomIntInclusive(
     0,
@@ -883,7 +827,6 @@ export function createCoilSecret():
     randomChoice(
       CRAWL_COIL_PROMPTS,
     );
-
 
   return {
     type: "coil",
@@ -924,10 +867,6 @@ export function createContestSecret():
         }),
       );
 
-
-  /*
-   * PRIVATE server-generated required click order.
-   */
   const sequence =
     shuffle(
       pieces.map(
@@ -935,7 +874,6 @@ export function createContestSecret():
           piece.id,
       ),
     );
-
 
   return {
     type:
@@ -959,7 +897,6 @@ export function validateContestSecret(
     return false;
   }
 
-
   for (
     let index = 0;
     index < challenge.sequence.length;
@@ -973,7 +910,6 @@ export function validateContestSecret(
     }
   }
 
-
   return true;
 }
 
@@ -984,162 +920,150 @@ export function validateContestSecret(
 
 export function createNetherSecret():
   CrawlNetherSecret {
-  const cells:
-    CrawlNetherCell[] = [];
+  const eyeCount =
+    randomIntInclusive(
+      CRAWL_NETHER_MIN_EYES,
+      CRAWL_NETHER_MAX_EYES,
+    );
 
+  const eyes:
+    CrawlNetherEye[] = [];
 
-  /*
-   * Legacy behavior:
-   *
-   * 5 rows
-   * 5 positions per row
-   * exactly one eye in every row
-   */
   for (
-    let row = 0;
-    row < CRAWL_NETHER_GRID_ROWS;
-    row += 1
+    let index = 0;
+    index < eyeCount;
+    index += 1
   ) {
-    const eyeColumn =
-      randomIntInclusive(
-        0,
-        CRAWL_NETHER_GRID_COLUMNS - 1,
-      );
+    eyes.push({
+      /*
+       * IDs are stable for this generated challenge.
+       *
+       * They do not reveal anything useful beyond
+       * identifying the clicked eye.
+       */
+      id:
+        index + 1,
 
+      /*
+       * Percentage positions allow the modal to remain
+       * responsive across screen sizes.
+       */
+      x:
+        randomIntInclusive(
+          CRAWL_NETHER_MIN_POSITION,
+          CRAWL_NETHER_MAX_POSITION,
+        ),
 
-    for (
-      let column = 0;
-      column < CRAWL_NETHER_GRID_COLUMNS;
-      column += 1
-    ) {
-      const index =
-        (
-          row
-          * CRAWL_NETHER_GRID_COLUMNS
-        )
-        + column;
+      y:
+        randomIntInclusive(
+          CRAWL_NETHER_MIN_POSITION,
+          CRAWL_NETHER_MAX_POSITION,
+        ),
 
-
-      cells.push({
-        index,
-
-        row,
-
-        column,
-
-        isEye:
-          column
-          === eyeColumn,
-      });
-    }
+      rotation:
+        randomIntInclusive(
+          CRAWL_NETHER_MIN_ROTATION,
+          CRAWL_NETHER_MAX_ROTATION,
+        ),
+    });
   }
-
 
   return {
     type:
       "nether",
 
-    rows:
-      CRAWL_NETHER_GRID_ROWS,
+    eyeCount,
 
-    columns:
-      CRAWL_NETHER_GRID_COLUMNS,
-
-    eyeCount:
-      CRAWL_NETHER_EYE_COUNT,
-
-    cells,
+    eyes,
   };
 }
 
 
 export function validateNetherSecret(
   challenge: CrawlNetherSecret,
-  selectedCells: readonly number[],
+  selectedEyes: readonly number[],
 ): boolean {
   /*
-   * The player must submit exactly five cells.
+   * The player has to click every generated eye.
    */
   if (
-    selectedCells.length
+    selectedEyes.length
     !== challenge.eyeCount
   ) {
     return false;
   }
 
-
-  const selected =
+  const submitted =
     new Set(
-      selectedCells,
+      selectedEyes,
     );
 
-
   /*
-   * Duplicate selections are invalid.
+   * Duplicate IDs are invalid.
    */
   if (
-    selected.size
-    !== selectedCells.length
+    submitted.size
+    !== selectedEyes.length
   ) {
     return false;
   }
 
-
-  const eyeCells =
-    challenge.cells.filter(
-      (cell) =>
-        cell.isEye,
-    );
-
-
+  /*
+   * Defensive validation of the persisted challenge.
+   */
   if (
-    eyeCells.length
+    challenge.eyes.length
     !== challenge.eyeCount
   ) {
     return false;
   }
 
+  const expected =
+    new Set(
+      challenge.eyes.map(
+        (eye) =>
+          eye.id,
+      ),
+    );
+
+  if (
+    expected.size
+    !== challenge.eyeCount
+  ) {
+    return false;
+  }
 
   /*
-   * Every actual eye must have been selected.
+   * Every expected eye must have been clicked.
    */
   for (
-    const cell
-    of eyeCells
+    const eyeId
+    of expected
   ) {
     if (
-      !selected.has(
-        cell.index,
+      !submitted.has(
+        eyeId,
       )
     ) {
       return false;
     }
   }
 
-
   /*
-   * No non-eye position may have been submitted.
+   * Reject unknown IDs as well.
    */
   for (
-    const cellIndex
-    of selected
+    const eyeId
+    of submitted
   ) {
-    const cell =
-      challenge.cells.find(
-        (candidate) =>
-          candidate.index
-          === cellIndex,
-      );
-
-
     if (
-      !cell
-      || !cell.isEye
+      !expected.has(
+        eyeId,
+      )
     ) {
       return false;
     }
   }
-
 
   return true;
 }
@@ -1158,14 +1082,32 @@ export function createCrawlSecretChallenge(
     case "coil":
       return createCoilSecret();
 
-
     case "contest":
       return createContestSecret();
-
 
     case "nether":
       return createNetherSecret();
   }
+}
+
+
+/* =========================================================
+   SECRET TIMEOUT
+========================================================= */
+
+export function getCrawlSecretTimeoutSeconds(
+  challenge:
+    CrawlSecretChallenge
+    | null,
+): number {
+  if (
+    challenge?.type
+    === "nether"
+  ) {
+    return CRAWL_NETHER_TIMEOUT_SECONDS;
+  }
+
+  return CRAWL_SECRET_TIMEOUT_SECONDS;
 }
 
 
@@ -1180,9 +1122,6 @@ export function getPublicCrawlSecretChallenge(
     challenge.type
   ) {
     case "coil":
-      /*
-       * The prompt is intentionally visible.
-       */
       return {
         type:
           "coil",
@@ -1191,11 +1130,8 @@ export function getPublicCrawlSecretChallenge(
           challenge.prompt,
       };
 
-
     case "contest":
       /*
-       * IMPORTANT:
-       *
        * sequence is deliberately omitted.
        */
       return {
@@ -1214,39 +1150,38 @@ export function getPublicCrawlSecretChallenge(
           ),
       };
 
-
     case "nether":
       /*
-       * IMPORTANT:
+       * Unlike the old 5x5 implementation, every item
+       * in this array is a real visible eye.
        *
-       * isEye is deliberately omitted.
+       * Position and rotation are presentation data and
+       * therefore safe/necessary for React to receive.
        *
-       * React receives positions only.
+       * The Worker still validates the complete set of
+       * clicked IDs against its persisted private run.
        */
       return {
         type:
           "nether",
 
-        rows:
-          challenge.rows,
-
-        columns:
-          challenge.columns,
-
         eyeCount:
           challenge.eyeCount,
 
-        cells:
-          challenge.cells.map(
-            (cell) => ({
-              index:
-                cell.index,
+        eyes:
+          challenge.eyes.map(
+            (eye) => ({
+              id:
+                eye.id,
 
-              row:
-                cell.row,
+              x:
+                eye.x,
 
-              column:
-                cell.column,
+              y:
+                eye.y,
+
+              rotation:
+                eye.rotation,
             }),
           ),
       };
@@ -1284,13 +1219,6 @@ export function getPublicCrawlSecret(
    PUBLIC RUN SANITIZATION
 ========================================================= */
 
-/*
- * This helper is intentionally useful for index.ts.
- *
- * It creates a frontend-safe version of a Crawl run
- * without leaking private challenge answers.
- */
-
 export type PublicCrawlRunResult =
   Omit<
     CrawlRunResult,
@@ -1319,43 +1247,22 @@ export function getPublicCrawlRun(
    INITIAL CRAWL RUN
 ========================================================= */
 
-/*
- * Creates the authoritative initial Crawl state.
- *
- * If a secret procs:
- *
- * - the private CrawlRunResult should be persisted
- *   in pending_crawl_runs.run_data
- *
- * - getPublicCrawlRun() should be used for the
- *   frontend response
- *
- * - rewards should not yet be persisted
- *
- * If no secret procs, the Worker can immediately
- * finalize the run.
- */
-
 export function runCrawl(
   activity: CrawlActivity,
 ): CrawlRunResult {
   const encounters =
     [...activity.encounters];
 
-
   const totalRewards:
     CrawlRewardMap = {};
 
-
   const encounterResults:
     CrawlEncounterResult[] = [];
-
 
   const secretEncounterIndex =
     rollCrawlSecretEncounter(
       encounters.length,
     );
-
 
   const secretChallenge =
     secretEncounterIndex !== null
@@ -1364,6 +1271,15 @@ export function runCrawl(
         )
       : null;
 
+  /*
+   * Nether receives 20 seconds.
+   *
+   * Coil and Contest remain at 15 seconds.
+   */
+  const secretTimeoutSeconds =
+    getCrawlSecretTimeoutSeconds(
+      secretChallenge,
+    );
 
   /*
    * Generate all reward RNG server-side before
@@ -1377,16 +1293,13 @@ export function runCrawl(
     const encounterName =
       encounters[index];
 
-
     const rewards =
       rollCrawlRewards();
-
 
     mergeRewards(
       totalRewards,
       rewards,
     );
-
 
     encounterResults.push({
       index,
@@ -1417,7 +1330,6 @@ export function runCrawl(
     });
   }
 
-
   return {
     activityId:
       activity.id,
@@ -1440,11 +1352,6 @@ export function runCrawl(
     clearedEncounters:
       encounterResults.length,
 
-    /*
-     * Crawl encounters do not wipe.
-     *
-     * Failing a secret does not fail the Crawl.
-     */
     fullClear:
       true,
 
@@ -1469,7 +1376,7 @@ export function runCrawl(
         secretEncounterIndex,
 
       timeoutSeconds:
-        CRAWL_SECRET_TIMEOUT_SECONDS,
+        secretTimeoutSeconds,
 
       status:
         secretEncounterIndex
@@ -1481,10 +1388,6 @@ export function runCrawl(
         secretChallenge,
     },
 
-    /*
-     * Completion weapon rolls happen when the Worker
-     * finalizes the run.
-     */
     weapons:
       [],
 
@@ -1501,32 +1404,17 @@ export function runCrawl(
    SUCCESSFUL SECRET REWARDS
 ========================================================= */
 
-/*
- * Legacy behavior:
- *
- * Once secret_success becomes true in the old Crawl
- * loop, it remains true for every remaining encounter.
- *
- * Therefore:
- *
- * - encounters before the secret keep normal rewards
- * - the secret encounter is doubled
- * - every encounter after the secret is doubled
- */
-
 export function applySuccessfulCrawlSecretRewards(
   run: CrawlRunResult,
 ): CrawlRunResult {
   const secretIndex =
     run.secret.encounterIndex;
 
-
   if (
     secretIndex === null
   ) {
     return run;
   }
-
 
   const encounters =
     run.encounters.map(
@@ -1544,7 +1432,6 @@ export function applySuccessfulCrawlSecretRewards(
           };
         }
 
-
         return {
           ...encounter,
 
@@ -1557,10 +1444,8 @@ export function applySuccessfulCrawlSecretRewards(
       },
     );
 
-
   const rewards:
     CrawlRewardMap = {};
-
 
   for (
     const encounter
@@ -1571,7 +1456,6 @@ export function applySuccessfulCrawlSecretRewards(
       encounter.rewards,
     );
   }
-
 
   return {
     ...run,
@@ -1634,13 +1518,11 @@ export function validateCrawlSecret(
         return false;
       }
 
-
       return validateCoilSecret(
         challenge,
         submission,
       );
     }
-
 
     case "contest": {
       if (
@@ -1650,13 +1532,11 @@ export function validateCrawlSecret(
         return false;
       }
 
-
       return validateContestSecret(
         challenge,
         submission,
       );
     }
-
 
     case "nether": {
       if (
@@ -1665,7 +1545,6 @@ export function validateCrawlSecret(
       ) {
         return false;
       }
-
 
       return validateNetherSecret(
         challenge,
@@ -1690,14 +1569,11 @@ export function rollCrawlCompletionWeapons(
   const runOwnedWeapons =
     [...ownedWeapons];
 
-
   const performedRolls:
     CrawlWeaponResult[] = [];
 
-
   const droppedWeapons:
     CrawlWeaponResult[] = [];
-
 
   const weaponRollCount =
     CRAWL_BASE_WEAPON_ROLLS
@@ -1707,7 +1583,6 @@ export function rollCrawlCompletionWeapons(
         ? CRAWL_SECRET_BONUS_WEAPON_ROLLS
         : 0
     );
-
 
   for (
     let index = 0;
@@ -1721,11 +1596,9 @@ export function rollCrawlCompletionWeapons(
         runOwnedWeapons,
       );
 
-
     performedRolls.push(
       weapon,
     );
-
 
     if (
       weapon.dropped
@@ -1735,18 +1608,11 @@ export function rollCrawlCompletionWeapons(
         weapon,
       );
 
-
-      /*
-       * Do not let the second roll award the exact
-       * same Normal/Adept weapon obtained by the
-       * first roll.
-       */
       runOwnedWeapons.push(
         weapon.name,
       );
     }
   }
-
 
   const compatibilityWeapon =
     droppedWeapons[0]
@@ -1755,7 +1621,6 @@ export function rollCrawlCompletionWeapons(
       run.weaponSource,
       false,
     );
-
 
   return {
     ...run,
@@ -1773,12 +1638,6 @@ export function rollCrawlCompletionWeapons(
    FINALIZATION HELPERS
 ========================================================= */
 
-/*
- * No secret:
- *
- * Finalize normally.
- */
-
 export function finalizeCrawlWithoutSecret(
   run: CrawlRunResult,
   weaponCatalog:
@@ -1794,16 +1653,6 @@ export function finalizeCrawlWithoutSecret(
 }
 
 
-/*
- * Successful secret:
- *
- * 1. Apply doubled rewards from the secret encounter
- *    onward.
- *
- * 2. Perform the normal weapon roll plus the bonus
- *    secret weapon roll.
- */
-
 export function finalizeSuccessfulCrawlSecret(
   run: CrawlRunResult,
   weaponCatalog:
@@ -1816,7 +1665,6 @@ export function finalizeSuccessfulCrawlSecret(
       run,
     );
 
-
   return rollCrawlCompletionWeapons(
     rewardedRun,
     weaponCatalog,
@@ -1824,15 +1672,6 @@ export function finalizeSuccessfulCrawlSecret(
   );
 }
 
-
-/*
- * Failed secret:
- *
- * Crawl still completes.
- *
- * Rewards remain normal and only the standard
- * completion weapon roll occurs.
- */
 
 export function finalizeFailedCrawlSecret(
   run: CrawlRunResult,
@@ -1847,7 +1686,6 @@ export function finalizeFailedCrawlSecret(
       run,
       expired,
     );
-
 
   return rollCrawlCompletionWeapons(
     failedRun,
