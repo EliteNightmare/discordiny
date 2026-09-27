@@ -1429,6 +1429,302 @@ app.post("/api/bungie/unlink", async (c) => {
    GAME - WEAPON VAULT
 ========================================================= */
 
+const VAULT_MAX_MASTERWORK = 77;
+
+function getVaultMasterworkCost(
+  rarity: string | null,
+  weaponName: string,
+  currentLevel: number,
+): Record<string, number> {
+  const adept = weaponName
+    .trim()
+    .toLowerCase()
+    .endsWith("(adept)");
+
+  const effectiveRarity = adept
+    ? "exotic"
+    : String(rarity ?? "Legendary")
+        .trim()
+        .toLowerCase();
+
+  const cost: Record<string, number> = {
+    Glimmer: 250 * (currentLevel + 1),
+  };
+
+  if (effectiveRarity === "exotic") {
+    cost["Enhancement Core"] =
+      (currentLevel * 2 + 4) * 2;
+    cost["Enhancement Prism"] =
+      (currentLevel * 2 + 3) * 2;
+    cost["Ascendant Shard"] =
+      (currentLevel + 1) * 2;
+
+    if (currentLevel >= 3) {
+      cost["Ascendant Alloy"] =
+        currentLevel - 2;
+    }
+  } else {
+    cost["Enhancement Core"] =
+      (currentLevel * 2 + 3) * 3;
+    cost["Enhancement Prism"] =
+      (currentLevel + 1) * 3;
+  }
+
+  return cost;
+}
+
+app.get("/api/game/vault/index", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false }, 401);
+  }
+
+  const [catalog, owned] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT name, source FROM weapons ORDER BY source, name`,
+    ).all<{ name: string; source: string | null }>(),
+    c.env.DB.prepare(
+      `SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?`,
+    ).bind(session.user_id).all<{ weapon_name: string; masterwork: number }>(),
+  ]);
+
+  const ownedMap = new Map(
+    owned.results.map((row) => [
+      row.weapon_name.trim().toLowerCase(),
+      row.masterwork,
+    ]),
+  );
+
+  const sources: Record<string, {
+    normalOwned: number;
+    normalTotal: number;
+    adeptOwned: number;
+    adeptTotal: number;
+    owned: number;
+    total: number;
+    maxed: number;
+  }> = {};
+
+  let normalOwned = 0;
+  let adeptOwned = 0;
+  let maxed = 0;
+
+  for (const weapon of catalog.results) {
+    const source = weapon.source ?? "unknown";
+    const normalKey = weapon.name.trim().toLowerCase();
+    const adeptKey = `${weapon.name} (Adept)`.trim().toLowerCase();
+    const normalMw = ownedMap.get(normalKey);
+    const adeptMw = ownedMap.get(adeptKey);
+
+    const stats = sources[source] ?? {
+      normalOwned: 0, normalTotal: 0, adeptOwned: 0, adeptTotal: 0,
+      owned: 0, total: 0, maxed: 0,
+    };
+
+    stats.normalTotal += 1;
+    stats.adeptTotal += 1;
+    stats.total += 2;
+
+    if (normalMw !== undefined) {
+      normalOwned += 1;
+      stats.normalOwned += 1;
+      stats.owned += 1;
+      if (normalMw >= VAULT_MAX_MASTERWORK) { maxed += 1; stats.maxed += 1; }
+    }
+
+    if (adeptMw !== undefined) {
+      adeptOwned += 1;
+      stats.adeptOwned += 1;
+      stats.owned += 1;
+      if (adeptMw >= VAULT_MAX_MASTERWORK) { maxed += 1; stats.maxed += 1; }
+    }
+
+    sources[source] = stats;
+  }
+
+  const normalTotal = catalog.results.length;
+  const adeptTotal = catalog.results.length;
+  const total = normalTotal + adeptTotal;
+  const totalOwned = normalOwned + adeptOwned;
+
+  return c.json({
+    authenticated: true,
+    maxMasterwork: VAULT_MAX_MASTERWORK,
+    collection: {
+      owned: totalOwned,
+      total,
+      percentage: total > 0 ? totalOwned / total * 100 : 0,
+      maxed,
+      normal: { owned: normalOwned, total: normalTotal },
+      adept: { owned: adeptOwned, total: adeptTotal },
+    },
+    sources,
+  });
+});
+
+app.get("/api/game/weapons/masterwork", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+
+  const session = await c.env.DB
+    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+  if (!session) return c.json({ authenticated: false }, 401);
+
+  const weaponName = c.req.query("weaponName")?.trim();
+  if (!weaponName) return c.json({ error: "Missing weapon name" }, 400);
+
+  const ownedWeapon = await c.env.DB
+    .prepare(`SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1`)
+    .bind(session.user_id, weaponName)
+    .first<{ masterwork: number }>();
+  if (!ownedWeapon) return c.json({ error: "You do not own this weapon." }, 403);
+
+  const currentMasterwork = Math.max(0, Number(ownedWeapon.masterwork) || 0);
+  const baseName = weaponName.replace(/\s*\(Adept\)\s*$/i, "");
+  const catalogWeapon = await c.env.DB
+    .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
+    .bind(baseName)
+    .first<{ rarity: string | null }>();
+  if (!catalogWeapon) return c.json({ error: "Weapon is not in the Vault catalog." }, 404);
+
+  return c.json({
+    authenticated: true,
+    weaponName,
+    masterwork: currentMasterwork,
+    maxMasterwork: VAULT_MAX_MASTERWORK,
+    maxed: currentMasterwork >= VAULT_MAX_MASTERWORK,
+    cost: currentMasterwork >= VAULT_MAX_MASTERWORK
+      ? {}
+      : getVaultMasterworkCost(catalogWeapon.rarity, weaponName, currentMasterwork),
+  });
+});
+
+app.post("/api/game/weapons/masterwork", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) {
+    return c.json({ authenticated: false, error: "Not authenticated" }, 401);
+  }
+
+  const session = await c.env.DB
+    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json({ authenticated: false, error: "Not authenticated" }, 401);
+  }
+
+  let body: { weaponName?: string };
+  try { body = await c.req.json(); }
+  catch { return c.json({ error: "Invalid JSON body" }, 400); }
+
+  const weaponName = body.weaponName?.trim();
+  if (!weaponName) {
+    return c.json({ error: "Invalid weapon name" }, 400);
+  }
+
+  const ownedWeapon = await c.env.DB
+    .prepare(`SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1`)
+    .bind(session.user_id, weaponName)
+    .first<{ masterwork: number }>();
+
+  if (!ownedWeapon) {
+    return c.json({ error: "You do not own this weapon." }, 403);
+  }
+
+  const currentMasterwork = Math.max(0, Number(ownedWeapon.masterwork) || 0);
+  if (currentMasterwork >= VAULT_MAX_MASTERWORK) {
+    return c.json({ error: "This weapon is already fully masterworked." }, 409);
+  }
+
+  const baseName = weaponName.replace(/\s*\(Adept\)\s*$/i, "");
+  const catalogWeapon = await c.env.DB
+    .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
+    .bind(baseName)
+    .first<{ rarity: string | null }>();
+
+  if (!catalogWeapon) {
+    return c.json({ error: "Weapon is not in the Vault catalog." }, 404);
+  }
+
+  const cost = getVaultMasterworkCost(
+    catalogWeapon.rarity,
+    weaponName,
+    currentMasterwork,
+  );
+
+  const currencyRows = await c.env.DB
+    .prepare(`SELECT currency_name, amount FROM player_currencies WHERE user_id = ?`)
+    .bind(session.user_id)
+    .all<{ currency_name: string; amount: number }>();
+  const materialRows = await c.env.DB
+    .prepare(`SELECT material_name, amount FROM player_upgrade_materials WHERE user_id = ?`)
+    .bind(session.user_id)
+    .all<{ material_name: string; amount: number }>();
+
+  const currencies = new Map(currencyRows.results.map((row) => [row.currency_name, row.amount]));
+  const materials = new Map(materialRows.results.map((row) => [row.material_name, row.amount]));
+
+  const missing: string[] = [];
+  for (const [material, amount] of Object.entries(cost)) {
+    const available = material === "Glimmer"
+      ? currencies.get(material) ?? 0
+      : materials.get(material) ?? 0;
+    if (available < amount) missing.push(material);
+  }
+
+  if (missing.length > 0) {
+    return c.json({
+      error: `Missing materials: ${missing.join(", ")}`,
+      cost,
+    }, 409);
+  }
+
+  const statements = Object.entries(cost).map(([material, amount]) =>
+    material === "Glimmer"
+      ? c.env.DB.prepare(`UPDATE player_currencies SET amount = amount - ? WHERE user_id = ? AND currency_name = ? AND amount >= ?`)
+          .bind(amount, session.user_id, material, amount)
+      : c.env.DB.prepare(`UPDATE player_upgrade_materials SET amount = amount - ? WHERE user_id = ? AND material_name = ? AND amount >= ?`)
+          .bind(amount, session.user_id, material, amount),
+  );
+
+  statements.push(
+    c.env.DB.prepare(`UPDATE player_weapons SET masterwork = masterwork + 1 WHERE user_id = ? AND lower(weapon_name) = lower(?) AND masterwork = ? AND masterwork < ?`)
+      .bind(session.user_id, weaponName, currentMasterwork, VAULT_MAX_MASTERWORK),
+  );
+
+  await c.env.DB.batch(statements);
+
+  const updated = await c.env.DB
+    .prepare(`SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1`)
+    .bind(session.user_id, weaponName)
+    .first<{ masterwork: number }>();
+
+  if (!updated || updated.masterwork !== currentMasterwork + 1) {
+    return c.json({ error: "Masterwork state changed. Refresh and try again." }, 409);
+  }
+
+  return c.json({
+    success: true,
+    weaponName,
+    masterwork: updated.masterwork,
+    maxMasterwork: VAULT_MAX_MASTERWORK,
+    cost,
+    maxed: updated.masterwork >= VAULT_MAX_MASTERWORK,
+  });
+});
+
 app.get("/api/game/weapons", async (c) => {
   const sessionId = getCookie(
     c,
@@ -1533,7 +1829,7 @@ app.get("/api/game/weapons", async (c) => {
 
   for (const weapon of owned.results) {
     ownedMap.set(
-      weapon.weapon_name,
+      weapon.weapon_name.trim().toLowerCase(),
       weapon.masterwork
     );
   }
@@ -1553,13 +1849,13 @@ app.get("/api/game/weapons", async (c) => {
   const weapons = catalog.results.map(
     (weapon) => {
       const ownedNormal =
-        ownedMap.has(weapon.name);
+        ownedMap.has(weapon.name.trim().toLowerCase());
 
       const adeptName =
         `${weapon.name} (Adept)`;
 
       const ownedAdept =
-        ownedMap.has(adeptName);
+        ownedMap.has(adeptName.trim().toLowerCase());
 
       return {
         name: weapon.name,
@@ -1581,7 +1877,7 @@ app.get("/api/game/weapons", async (c) => {
 
           masterwork:
             ownedMap.get(
-              weapon.name
+              weapon.name.trim().toLowerCase()
             ) ?? 0,
         },
 
@@ -1590,7 +1886,7 @@ app.get("/api/game/weapons", async (c) => {
 
           masterwork:
             ownedMap.get(
-              adeptName
+              adeptName.trim().toLowerCase()
             ) ?? 0,
         },
       };
