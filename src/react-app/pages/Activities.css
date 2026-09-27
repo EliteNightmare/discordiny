@@ -1701,8 +1701,12 @@
   padding: 30px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 14px;
-  background: linear-gradient(145deg, rgba(34, 42, 56, 0.98), rgba(10, 13, 20, 0.99));
+  background-color: #0a0d14;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
   box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+  isolation: isolate;
 }
 
 .exploration-summary-eyebrow,
@@ -1757,6 +1761,21 @@
   background: rgba(255, 255, 255, 0.035);
 }
 
+.exploration-summary-reward-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.exploration-summary-reward-name img {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+}
+
 .exploration-summary-rewards span {
   min-width: 0;
   overflow: hidden;
@@ -1772,11 +1791,28 @@
 }
 
 .exploration-summary-weapon {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   margin-top: 16px;
   padding: 15px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(5, 8, 13, 0.48);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.exploration-summary-weapon > img {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 12px rgba(0, 0, 0, 0.5));
+}
+
+.exploration-summary-weapon > div {
+  min-width: 0;
 }
 
 .exploration-summary-weapon strong {
