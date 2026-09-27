@@ -5587,16 +5587,112 @@ app.post("/api/game/activity/run", async (c) => {
     isRegularShowdown || isDailyShowdown;
 
   /* =======================================================
-  SHOWDOWN - ENFORCE COOLDOWN / DAILY CHARGES
+     SHOWDOWN EXECUTION
+
+     Only the server-selected regular 5-minute Showdown or
+     current Daily Showdown may run. The browser only sends
+     the activity ID.
   ======================================================= */
 
-  if (showdownActivity) {
-    const showdownDailyChargeKey =
-      getDailyShowdownChargeKey(
-        nowSeconds,
+  const currentShowdown =
+    getRotatingActivity(
+      ACTIVITIES.showdowns,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const currentDailyShowdown =
+    getRotatingActivity(
+      ACTIVITIES.daily.showdowns,
+      DAILY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  const selectedShowdown =
+    currentDailyShowdown?.id === activityId
+      ? currentDailyShowdown
+      : currentShowdown?.id === activityId
+        ? currentShowdown
+        : null;
+
+  const isDailyShowdown =
+    currentDailyShowdown?.id === activityId;
+
+  if (selectedShowdown) {
+    const requestedWeaponSource =
+      selectedShowdown.weapon_source;
+
+    const validSource =
+      isDailyShowdown
+        ? DAILY_SHOWDOWN_SOURCES.has(
+            requestedWeaponSource as ShowdownWeaponSource,
+          )
+        : REGULAR_SHOWDOWN_SOURCES.has(
+            requestedWeaponSource as ShowdownWeaponSource,
+          );
+
+    if (!validSource) {
+      return c.json(
+        {
+          authenticated: true,
+          success: false,
+          error:
+            "Invalid Showdown weapon source.",
+        },
+        500,
       );
+    }
+
+    const encounters =
+      selectedShowdown.encounters ?? [];
+
+    if (encounters.length !== 3) {
+      return c.json(
+        {
+          authenticated: true,
+          success: false,
+          error:
+            "Invalid Showdown encounter configuration.",
+        },
+        500,
+      );
+    }
+
+    const showdownActivity:
+      ShowdownActivity = {
+        id:
+          selectedShowdown.id,
+
+        name:
+          selectedShowdown.name,
+
+        type:
+          isDailyShowdown
+            ? "showdown"
+            : "pinnacle",
+
+        weapon_source:
+          requestedWeaponSource as ShowdownWeaponSource,
+
+        reward_table:
+          isDailyShowdown
+            ? "showdown"
+            : "pinnacle",
+
+        encounters,
+      };
+
+
+    /* =====================================================
+       ENFORCE COOLDOWN / DAILY CHARGES
+    ===================================================== */
 
     if (isDailyShowdown) {
+      const chargeKey =
+        getDailyShowdownChargeKey(
+          nowSeconds,
+        );
+
       const chargeRow =
         await c.env.DB
           .prepare(
@@ -5608,7 +5704,7 @@ app.post("/api/game/activity/run", async (c) => {
           )
           .bind(
             session.user_id,
-            showdownDailyChargeKey,
+            chargeKey,
           )
           .first<{
             timestamp: number;
@@ -5638,10 +5734,14 @@ app.post("/api/game/activity/run", async (c) => {
               "No Daily Showdown charges remain.",
 
             limit: {
-              kind: "charges",
+              kind:
+                "charges" as const,
+
               maxCharges:
                 DAILY_SHOWDOWN_MAX_CHARGES,
+
               usedCharges,
+
               remainingCharges: 0,
             },
           },
@@ -5667,9 +5767,12 @@ app.post("/api/game/activity/run", async (c) => {
           }>();
 
       const readyAt =
-        Number(
-          cooldownRow?.timestamp ?? 0,
-        ) || 0;
+        Math.max(
+          0,
+          Number(
+            cooldownRow?.timestamp ?? 0,
+          ) || 0,
+        );
 
       if (readyAt > nowSeconds) {
         return c.json(
@@ -5681,15 +5784,14 @@ app.post("/api/game/activity/run", async (c) => {
               "Showdown is still on cooldown.",
 
             limit: {
-              kind: "cooldown",
+              kind:
+                "cooldown" as const,
+
               cooldownSeconds:
                 SHOWDOWN_COOLDOWN_SECONDS,
 
               remainingSeconds:
-                Math.max(
-                  0,
-                  readyAt - nowSeconds,
-                ),
+                readyAt - nowSeconds,
 
               readyAt,
             },
@@ -5698,71 +5800,26 @@ app.post("/api/game/activity/run", async (c) => {
         );
       }
     }
-  }
-
-  /* =======================================================
-     SHOWDOWN CONFIGURATION
-  ======================================================= */
-
-  let showdownActivity:
-    ShowdownActivity | null = null;
-
-  if (isShowdown) {
-    if (
-      !Array.isArray(requestedActivity.encounters) ||
-      requestedActivity.encounters.length !== 3
-    ) {
-      return c.json(
-        {
-          error:
-            "Invalid Showdown encounter configuration.",
-        },
-        500,
-      );
-    }
-
-    showdownActivity = {
-      id: requestedActivity.id,
-      name: requestedActivity.name,
-
-      type:
-        isDailyShowdown
-          ? "showdown"
-          : "pinnacle",
-
-      weapon_source:
-        requestedWeaponSource as ShowdownWeaponSource,
-
-      reward_table:
-        isDailyShowdown
-          ? "showdown"
-          : "pinnacle",
-
-      encounters:
-        requestedActivity.encounters,
-    };
-  }
-
-  /* =======================================================
-  SHOWDOWN - RUN ACTIVITY
-  ======================================================= */
-
-  if (showdownActivity) {
-    const {
-      calculateWeaponPower,
-      calculateArmorPower,
-      calculateArtifactPower,
-      calculateLevelPower,
-    } = await import("./game/power");
-
-    const {
-      getLevelProgress,
-    } = await import("./game/level");
 
 
     /* =====================================================
        CURRENT LEVEL + POWER
     ===================================================== */
+
+    const {
+      calculateWeaponPower,
+      calculateArmorPower,
+      calculateArtifactPower,
+      calculateLevelPower,
+    } = await import(
+      "./game/power"
+    );
+
+    const {
+      getLevelProgress,
+    } = await import(
+      "./game/level"
+    );
 
     const showdownWeapons =
       await c.env.DB
@@ -5777,7 +5834,9 @@ app.post("/api/game/activity/run", async (c) => {
                 player_weapons.weapon_name
            WHERE player_weapons.user_id = ?`,
         )
-        .bind(session.user_id)
+        .bind(
+          session.user_id,
+        )
         .all<WeaponRow>();
 
     const showdownWeaponRows =
@@ -5795,7 +5854,9 @@ app.post("/api/game/activity/run", async (c) => {
            WHERE user_id = ?
            LIMIT 1`,
         )
-        .bind(session.user_id)
+        .bind(
+          session.user_id,
+        )
         .first<ArmorRow>();
 
     const showdownArtifacts =
@@ -5807,7 +5868,9 @@ app.post("/api/game/activity/run", async (c) => {
            FROM player_artifacts
            WHERE user_id = ?`,
         )
-        .bind(session.user_id)
+        .bind(
+          session.user_id,
+        )
         .all<ArtifactRow>();
 
     const showdownArtifactRows =
@@ -5865,16 +5928,28 @@ app.post("/api/game/activity/run", async (c) => {
     /* =====================================================
        RUN SHOWDOWN
 
-       RNG happens exactly once here.
+       showdown.ts takes exactly:
+         activity
+         player
+         weaponPool
     ===================================================== */
 
     const showdownResult =
       runShowdownActivity(
         showdownActivity,
-        showdownLevelProgress.level,
-        showdownPower,
+
+        {
+          level:
+            showdownLevelProgress.level,
+
+          power:
+            showdownPower,
+
+          ownedWeapons:
+            showdownOwnedWeaponNames,
+        },
+
         showdownWeaponCatalog.results ?? [],
-        showdownOwnedWeaponNames,
       );
 
 
@@ -5885,21 +5960,13 @@ app.post("/api/game/activity/run", async (c) => {
     const showdownWrites:
       D1PreparedStatement[] = [];
 
-        /* =====================================================
-       CONSUME SHOWDOWN LIMIT
 
-       Daily:
-         consume 1 of 3 charges for this daily rotation.
-
-       Regular:
-         start the 30-second personal cooldown.
-
-       The attempt is consumed whether the result is
-       a CLEAR or a WIPE.
+    /* =====================================================
+       CONSUME LIMIT
     ===================================================== */
 
     if (isDailyShowdown) {
-      const showdownDailyChargeKey =
+      const chargeKey =
         getDailyShowdownChargeKey(
           nowSeconds,
         );
@@ -5921,14 +5988,10 @@ app.post("/api/game/activity/run", async (c) => {
           )
           .bind(
             session.user_id,
-            showdownDailyChargeKey,
+            chargeKey,
           ),
       );
     } else {
-      const showdownNextReadyAt =
-        nowSeconds +
-        SHOWDOWN_COOLDOWN_SECONDS;
-
       showdownWrites.push(
         c.env.DB
           .prepare(
@@ -5947,13 +6010,16 @@ app.post("/api/game/activity/run", async (c) => {
           .bind(
             session.user_id,
             SHOWDOWN_COOLDOWN_KEY,
-            showdownNextReadyAt,
+
+            nowSeconds +
+              SHOWDOWN_COOLDOWN_SECONDS,
           ),
       );
     }
 
-        /* =====================================================
-       SHOWDOWN REWARDS
+
+    /* =====================================================
+       REWARDS
     ===================================================== */
 
     const showdownCurrencies =
@@ -5989,11 +6055,6 @@ app.post("/api/game/activity/run", async (c) => {
         continue;
       }
 
-
-      /* -------------------------------
-         CURRENCIES
-      -------------------------------- */
-
       if (
         showdownCurrencies.has(
           rewardName,
@@ -6015,8 +6076,8 @@ app.post("/api/game/activity/run", async (c) => {
                )
                DO UPDATE SET
                  amount =
-                   player_currencies.amount
-                   + excluded.amount`,
+                   player_currencies.amount +
+                   excluded.amount`,
             )
             .bind(
               session.user_id,
@@ -6027,11 +6088,6 @@ app.post("/api/game/activity/run", async (c) => {
 
         continue;
       }
-
-
-      /* -------------------------------
-         UPGRADE MATERIALS
-      -------------------------------- */
 
       if (
         showdownUpgradeMaterials.has(
@@ -6054,8 +6110,8 @@ app.post("/api/game/activity/run", async (c) => {
                )
                DO UPDATE SET
                  amount =
-                   player_upgrade_materials.amount
-                   + excluded.amount`,
+                   player_upgrade_materials.amount +
+                   excluded.amount`,
             )
             .bind(
               session.user_id,
@@ -6066,14 +6122,14 @@ app.post("/api/game/activity/run", async (c) => {
       }
     }
 
-        /* =====================================================
-       SHOWDOWN XP
 
-       showdown.ts awards XP only when the entire
-       Showdown is cleared. On a wipe, result.xp is 0.
+    /* =====================================================
+       XP
     ===================================================== */
 
-    if (showdownResult.xp > 0) {
+    if (
+      showdownResult.xp > 0
+    ) {
       showdownWrites.push(
         c.env.DB
           .prepare(
@@ -6091,15 +6147,9 @@ app.post("/api/game/activity/run", async (c) => {
       );
     }
 
-        /* =====================================================
-       SHOWDOWN WEAPON
 
-       The Showdown engine already decided:
-         - whether a weapon dropped
-         - which weapon dropped
-         - whether it is Adept
-
-       Do not reroll anything here.
+    /* =====================================================
+       WEAPON
     ===================================================== */
 
     if (
@@ -6129,16 +6179,9 @@ app.post("/api/game/activity/run", async (c) => {
       );
     }
 
-        /* =====================================================
+
+    /* =====================================================
        GLOBAL ACTIVITY FEED
-
-       Public feed stores:
-         - activity
-         - CLEAR / WIPE
-         - optional weapon
-         - whether the weapon is Adept
-
-       Private rewards remain in showdownResult.
     ===================================================== */
 
     showdownWrites.push(
@@ -6179,8 +6222,9 @@ app.post("/api/game/activity/run", async (c) => {
         ),
     );
 
-        /* =====================================================
-       COMMIT SHOWDOWN RUN
+
+    /* =====================================================
+       COMMIT
     ===================================================== */
 
     await c.env.DB.batch(
@@ -6189,7 +6233,7 @@ app.post("/api/game/activity/run", async (c) => {
 
 
     /* =====================================================
-       SHOWDOWN LIMIT RESPONSE
+       RESPONSE LIMIT
     ===================================================== */
 
     let showdownLimit:
@@ -6207,7 +6251,7 @@ app.post("/api/game/activity/run", async (c) => {
         };
 
     if (isDailyShowdown) {
-      const showdownDailyChargeKey =
+      const chargeKey =
         getDailyShowdownChargeKey(
           nowSeconds,
         );
@@ -6223,7 +6267,7 @@ app.post("/api/game/activity/run", async (c) => {
           )
           .bind(
             session.user_id,
-            showdownDailyChargeKey,
+            chargeKey,
           )
           .first<{
             timestamp: number;
@@ -6234,6 +6278,7 @@ app.post("/api/game/activity/run", async (c) => {
           0,
           Math.min(
             DAILY_SHOWDOWN_MAX_CHARGES,
+
             Number(
               chargeRow?.timestamp ?? 0,
             ) || 0,
@@ -6251,6 +6296,7 @@ app.post("/api/game/activity/run", async (c) => {
         remainingCharges:
           Math.max(
             0,
+
             DAILY_SHOWDOWN_MAX_CHARGES -
               usedCharges,
           ),
@@ -6275,7 +6321,7 @@ app.post("/api/game/activity/run", async (c) => {
 
 
     /* =====================================================
-       RETURN SHOWDOWN RESULT
+       RETURN
     ===================================================== */
 
     return c.json({
@@ -6283,9 +6329,13 @@ app.post("/api/game/activity/run", async (c) => {
       success: true,
 
       player: {
-        name: user.username,
+        name:
+          session.global_name ||
+          session.username,
+
         level:
           showdownLevelProgress.level,
+
         power:
           showdownPower,
       },
@@ -6297,6 +6347,7 @@ app.post("/api/game/activity/run", async (c) => {
         showdownResult,
     });
   }
+
 
   let activity:
     ActivityEntry | null = null;
