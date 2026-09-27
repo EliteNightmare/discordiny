@@ -109,6 +109,17 @@
    READY / LOADING / ERROR STATES
 ========================================================= */
 
+.activity-run-ready,
+.activity-run-loading,
+.activity-run-error {
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 50px 54px;
+}
+
 .activity-run-ready button,
 .activity-run-vanguard-ready > button,
 .activity-run-error button,
