@@ -389,9 +389,11 @@ export default function ActivityRunModal({
     );
 
   const endgameRewardPreview =
-    getEndgameRewardPreview(
-      activity.type,
-    );
+    isShowdown
+      ? SHOWDOWN_REWARD_PREVIEW
+      : getEndgameRewardPreview(
+          activity.type,
+        );
 
   const active =
     result?.encounters[
