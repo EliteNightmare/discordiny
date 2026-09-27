@@ -80,6 +80,11 @@ type CrawlNetherEye = {
   rotation: number;
 };
 
+type CrawlContestPiece = {
+  id: number;
+  label: string;
+};
+
 type CrawlSecretChallenge =
   | {
       type: "coil";
@@ -87,10 +92,7 @@ type CrawlSecretChallenge =
     }
   | {
       type: "contest";
-      pieces: Array<{
-        id: number;
-        label: string;
-      }>;
+      pieces: CrawlContestPiece[];
     }
   | {
       type: "nether";
@@ -317,6 +319,49 @@ function number(
   );
 }
 
+function shuffleContestPieces(
+  pieces: CrawlContestPiece[],
+): CrawlContestPiece[] {
+  const shuffled = [...pieces];
+
+  for (
+    let index = shuffled.length - 1;
+    index > 0;
+    index -= 1
+  ) {
+    const swapIndex = Math.floor(
+      Math.random() * (index + 1),
+    );
+
+    [
+      shuffled[index],
+      shuffled[swapIndex],
+    ] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+
+  const unchanged =
+    shuffled.length > 1 &&
+    shuffled.every(
+      (piece, index) =>
+        piece.id === pieces[index]?.id,
+    );
+
+  if (unchanged) {
+    [
+      shuffled[0],
+      shuffled[1],
+    ] = [
+      shuffled[1],
+      shuffled[0],
+    ];
+  }
+
+  return shuffled;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              REWARD PREVIEWS                               */
 /* -------------------------------------------------------------------------- */
@@ -436,6 +481,9 @@ export default function ActivityRunModal({
 
   const [contestSequence, setContestSequence] =
     useState<number[]>([]);
+
+  const [contestPieces, setContestPieces] =
+    useState<CrawlContestPiece[]>([]);
 
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
@@ -901,6 +949,7 @@ export default function ActivityRunModal({
     setCrawlSecondsLeft(0);
     setCoilAnswer("");
     setContestSequence([]);
+    setContestPieces([]);
     setClickedEyes([]);
     setResolvingSecret(false);
     setPhase("loading");
@@ -964,6 +1013,18 @@ export default function ActivityRunModal({
               Math.floor(Date.now() / 1000),
           ),
         );
+
+        if (
+          data.result.secret.challenge.type ===
+          "contest"
+        ) {
+          setContestPieces(
+            shuffleContestPieces(
+              data.result.secret.challenge.pieces,
+            ),
+          );
+        }
+
         setPhase("secret");
         return;
       }
@@ -1618,7 +1679,7 @@ export default function ActivityRunModal({
                   </p>
 
                   <div className="activity-run-contest-grid">
-                    {result.secret.challenge.pieces.map(
+                    {contestPieces.map(
                       (piece) => {
                         const selectedIndex =
                           contestSequence.indexOf(
