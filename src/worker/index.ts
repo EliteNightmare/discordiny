@@ -2072,211 +2072,111 @@ app.post("/api/game/travel", async (c) => {
    normal exploration reward, using its base 25-50 roll.
 ========================================================= */
 
-app.post("/api/game/explore/claim", async (c) => {
-  const sessionId = getCookie(
-    c,
-    SESSION_COOKIE,
-    "host",
-  );
-
-  if (!sessionId) {
-    return c.json(
-      { authenticated: false },
-      401,
-    );
-  }
+app.post("/api/game/explore/test-max", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
 
   const session = await c.env.DB
-    .prepare(
-      `SELECT user_id
-       FROM sessions
-       WHERE id = ?
-       LIMIT 1`,
-    )
+    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
     .bind(sessionId)
     .first<{ user_id: number }>();
 
-  if (!session) {
-    return c.json(
-      { authenticated: false },
-      401,
-    );
-  }
+  if (!session) return c.json({ authenticated: false }, 401);
 
-  const nowSeconds =
-    Math.floor(Date.now() / 1000);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const testLastClaim = nowSeconds - EXPLORE_MAX_SECONDS;
 
-  const profile = await c.env.DB
+  await c.env.DB
     .prepare(
-      `SELECT
-         level,
-         zone
-       FROM player_profiles
-       WHERE user_id = ?
-       LIMIT 1`,
+      `INSERT INTO player_cooldowns (user_id, activity, timestamp)
+       VALUES (?, 'explore', ?)
+       ON CONFLICT(user_id, activity)
+       DO UPDATE SET timestamp = excluded.timestamp`,
     )
-    .bind(session.user_id)
-    .first<{
-      level: number;
-      zone: string;
-    }>();
+    .bind(session.user_id, testLastClaim)
+    .run();
 
-  if (!profile) {
-    return c.json(
-      { error: "Player profile not found." },
-      404,
-    );
-  }
+  return c.json({
+    success: true,
+    lastClaim: testLastClaim,
+    elapsedSeconds: EXPLORE_MAX_SECONDS,
+  });
+});
+
+app.post("/api/game/explore/claim", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+
+  const session = await c.env.DB
+    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) return c.json({ authenticated: false }, 401);
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const profile = await c.env.DB
+    .prepare(`SELECT level, zone FROM player_profiles WHERE user_id = ? LIMIT 1`)
+    .bind(session.user_id)
+    .first<{ level: number; zone: string }>();
+
+  if (!profile) return c.json({ error: "Player profile not found." }, 404);
 
   const cooldown = await c.env.DB
     .prepare(
-      `SELECT timestamp
-       FROM player_cooldowns
-       WHERE user_id = ?
-         AND activity = 'explore'
-       LIMIT 1`,
+      `SELECT timestamp FROM player_cooldowns
+       WHERE user_id = ? AND activity = 'explore' LIMIT 1`,
     )
     .bind(session.user_id)
     .first<{ timestamp: number }>();
 
   if (!cooldown) {
-    await c.env.DB
-      .prepare(
-        `INSERT INTO player_cooldowns
-          (user_id, activity, timestamp)
-         VALUES (?, 'explore', ?)
-         ON CONFLICT(user_id, activity)
-         DO NOTHING`,
-      )
-      .bind(
-        session.user_id,
-        nowSeconds,
-      )
-      .run();
-
-    return c.json(
-      { error: "No exploration rewards are ready yet." },
-      409,
-    );
+    await c.env.DB.prepare(
+      `INSERT INTO player_cooldowns (user_id, activity, timestamp)
+       VALUES (?, 'explore', ?) ON CONFLICT(user_id, activity) DO NOTHING`,
+    ).bind(session.user_id, nowSeconds).run();
+    return c.json({ error: "No exploration rewards are ready yet." }, 409);
   }
 
-  const lastClaim =
-    Number(cooldown.timestamp);
-
-  if (
-    !Number.isFinite(lastClaim) ||
-    lastClaim < 0 ||
-    lastClaim > nowSeconds
-  ) {
-    await c.env.DB
-      .prepare(
-        `UPDATE player_cooldowns
-         SET timestamp = ?
-         WHERE user_id = ?
-           AND activity = 'explore'`,
-      )
-      .bind(
-        nowSeconds,
-        session.user_id,
-      )
-      .run();
-
-    return c.json(
-      { error: "Exploration timer was reset. Try again after exploring." },
-      409,
-    );
+  const lastClaim = Number(cooldown.timestamp);
+  if (!Number.isFinite(lastClaim) || lastClaim < 0 || lastClaim > nowSeconds) {
+    await c.env.DB.prepare(
+      `UPDATE player_cooldowns SET timestamp = ?
+       WHERE user_id = ? AND activity = 'explore'`,
+    ).bind(nowSeconds, session.user_id).run();
+    return c.json({ error: "Exploration timer was reset. Try again after exploring." }, 409);
   }
 
   const elapsedSeconds = Math.min(
     EXPLORE_MAX_SECONDS,
-    Math.max(
-      0,
-      nowSeconds - lastClaim,
-    ),
+    Math.max(0, nowSeconds - lastClaim),
   );
 
-  const claimTicks = Math.min(
-    250,
-    Math.floor(elapsedSeconds / 25),
-  );
-
-  if (claimTicks <= 0) {
-    return c.json(
-      { error: "No exploration rewards are ready yet." },
-      409,
-    );
+  if (elapsedSeconds < 25) {
+    return c.json({ error: "No exploration rewards are ready yet." }, 409);
   }
 
-  /*
-   * Claim the timer first so two simultaneous requests cannot
-   * both pay the same accumulated exploration period.
-   */
-  const claim = await c.env.DB
-    .prepare(
-      `UPDATE player_cooldowns
-       SET timestamp = ?
-       WHERE user_id = ?
-         AND activity = 'explore'
-         AND timestamp = ?`,
-    )
-    .bind(
-      nowSeconds,
-      session.user_id,
-      lastClaim,
-    )
-    .run();
+  const claim = await c.env.DB.prepare(
+    `UPDATE player_cooldowns SET timestamp = ?
+     WHERE user_id = ? AND activity = 'explore' AND timestamp = ?`,
+  ).bind(nowSeconds, session.user_id, lastClaim).run();
 
   if (claim.meta.changes !== 1) {
-    return c.json(
-      { error: "Exploration rewards were already claimed." },
-      409,
-    );
+    return c.json({ error: "Exploration rewards were already claimed." }, 409);
   }
 
-  const level = Math.max(
-    0,
-    Number(profile.level) || 0,
-  );
+  const level = Math.max(0, Number(profile.level) || 0);
+  const scaleReward = (maximum: number): number =>
+    Math.min(maximum, Math.floor(maximum * elapsedSeconds / EXPLORE_MAX_SECONDS));
 
-  const multiplier =
-    1 + level * 0.05;
+  const glimmer = scaleReward(250000);
+  const enhancementCores = scaleReward(1000);
+  const enhancementPrisms = level >= 15 ? scaleReward(750) : 0;
+  const ascendantShards = level >= 25 ? scaleReward(500) : 0;
+  const ascendantAlloys = level >= 35 ? scaleReward(500) : 0;
+  const xp = scaleReward(150000);
 
-  const randomInteger = (
-    min: number,
-    max: number,
-  ): number =>
-    Math.floor(
-      Math.random() *
-        (max - min + 1),
-    ) + min;
-
-  const rewards: Record<string, number> = {};
-
-  const glimmer = Math.trunc(
-    randomInteger(50, 100) *
-      multiplier *
-      claimTicks,
-  );
-
-  const enhancementCores = Math.trunc(
-    Math.floor(
-      (randomInteger(1, 2) *
-        multiplier) /
-        5,
-    ) * claimTicks,
-  );
-
-  rewards.Glimmer = glimmer;
-
-  if (enhancementCores > 0) {
-    rewards["Enhancement Core"] =
-      enhancementCores;
-  }
-
-  const destinationMaterials: Record<
-    string,
-    string
-  > = {
+  const destinationMaterials: Record<string, string> = {
     Cosmodrome: "Spinmetal Leaf",
     EDZ: "Dusklight Shard",
     Nessus: "Microphasic Datalattice",
@@ -2288,240 +2188,109 @@ app.post("/api/game/explore/claim", async (c) => {
     "Pale Heart": "Prismatic Fragment",
   };
 
-  const destinationMaterial =
-    destinationMaterials[profile.zone];
+  const destinationMaterial = destinationMaterials[profile.zone];
+  const destinationMaterialAmount = destinationMaterial ? scaleReward(5000) : 0;
 
-  const destinationMaterialAmount =
-    destinationMaterial
-      ? randomInteger(25, 50)
-      : 0;
-
-  if (
-    destinationMaterial &&
-    destinationMaterialAmount > 0
-  ) {
-    rewards[destinationMaterial] =
-      destinationMaterialAmount;
+  const rewards: Record<string, number> = {};
+  if (glimmer > 0) rewards.Glimmer = glimmer;
+  if (enhancementCores > 0) rewards["Enhancement Core"] = enhancementCores;
+  if (enhancementPrisms > 0) rewards["Enhancement Prism"] = enhancementPrisms;
+  if (ascendantShards > 0) rewards["Ascendant Shard"] = ascendantShards;
+  if (ascendantAlloys > 0) rewards["Ascendant Alloy"] = ascendantAlloys;
+  if (destinationMaterial && destinationMaterialAmount > 0) {
+    rewards[destinationMaterial] = destinationMaterialAmount;
   }
 
-  /* -------------------------------------------------------
-     Legacy destination weapon roll
-  ------------------------------------------------------- */
-
-  const statsRow = await c.env.DB
-    .prepare(
-      `SELECT stats
-       FROM player_stats
-       WHERE user_id = ?
-       LIMIT 1`,
-    )
-    .bind(session.user_id)
-    .first<{ stats: string }>();
+  const statsRow = await c.env.DB.prepare(
+    `SELECT stats FROM player_stats WHERE user_id = ? LIMIT 1`,
+  ).bind(session.user_id).first<{ stats: string }>();
 
   let exoticChance = 0;
   let legendaryChance = 0;
-
   if (statsRow?.stats) {
     try {
-      const parsed = JSON.parse(
-        statsRow.stats,
-      ) as {
-        weapons?: {
-          exotic_chance?: number;
-          legendary_chance?: number;
-        };
+      const parsed = JSON.parse(statsRow.stats) as {
+        weapons?: { exotic_chance?: number; legendary_chance?: number };
       };
-
-      exoticChance = Math.max(
-        0,
-        Number(
-          parsed.weapons?.exotic_chance ?? 0,
-        ) || 0,
-      );
-
-      legendaryChance = Math.max(
-        0,
-        Number(
-          parsed.weapons?.legendary_chance ?? 0,
-        ) || 0,
-      );
+      exoticChance = Math.max(0, Number(parsed.weapons?.exotic_chance ?? 0) || 0);
+      legendaryChance = Math.max(0, Number(parsed.weapons?.legendary_chance ?? 0) || 0);
     } catch {
       exoticChance = 0;
       legendaryChance = 0;
     }
   }
 
-  const weaponCatalog = await c.env.DB
-    .prepare(
-      `SELECT
-         name,
-         rarity
-       FROM weapons
-       WHERE lower(source) = lower(?)
-       ORDER BY name`,
-    )
-    .bind(profile.zone)
-    .all<{
-      name: string;
-      rarity: string | null;
-    }>();
+  const weaponCatalog = await c.env.DB.prepare(
+    `SELECT name, rarity FROM weapons WHERE lower(source) = lower(?) ORDER BY name`,
+  ).bind(profile.zone).all<{ name: string; rarity: string | null }>();
 
-  const ownedWeapons = await c.env.DB
-    .prepare(
-      `SELECT weapon_name
-       FROM player_weapons
-       WHERE user_id = ?`,
-    )
-    .bind(session.user_id)
-    .all<{ weapon_name: string }>();
+  const ownedWeapons = await c.env.DB.prepare(
+    `SELECT weapon_name FROM player_weapons WHERE user_id = ?`,
+  ).bind(session.user_id).all<{ weapon_name: string }>();
 
-  const ownedWeaponNames = new Set(
-    (ownedWeapons.results ?? []).map(
-      (weapon) => weapon.weapon_name,
-    ),
-  );
-
-  const availableWeapons =
-    (weaponCatalog.results ?? []).filter(
-      (weapon) =>
-        !ownedWeaponNames.has(weapon.name),
-    );
-
-  const exoticWeapons =
-    availableWeapons.filter(
-      (weapon) =>
-        weapon.rarity === "Exotic",
-    );
-
-  const legendaryWeapons =
-    availableWeapons.filter(
-      (weapon) =>
-        weapon.rarity === "Legendary",
-    );
-
+  const ownedWeaponNames = new Set((ownedWeapons.results ?? []).map(w => w.weapon_name));
+  const availableWeapons = (weaponCatalog.results ?? []).filter(w => !ownedWeaponNames.has(w.name));
+  const exoticWeapons = availableWeapons.filter(w => w.rarity === "Exotic");
+  const legendaryWeapons = availableWeapons.filter(w => w.rarity === "Legendary");
   const weaponRoll = Math.random();
+  let droppedWeapon: { name: string; rarity: string | null } | null = null;
 
-  let droppedWeapon:
-    | { name: string; rarity: string | null }
-    | null = null;
-
-  if (
-    exoticWeapons.length > 0 &&
-    weaponRoll < exoticChance
-  ) {
-    droppedWeapon =
-      exoticWeapons[
-        randomInteger(
-          0,
-          exoticWeapons.length - 1,
-        )
-      ];
-  } else if (
-    legendaryWeapons.length > 0 &&
-    weaponRoll <
-      exoticChance + legendaryChance
-  ) {
-    droppedWeapon =
-      legendaryWeapons[
-        randomInteger(
-          0,
-          legendaryWeapons.length - 1,
-        )
-      ];
+  if (exoticWeapons.length > 0 && weaponRoll < exoticChance) {
+    droppedWeapon = exoticWeapons[Math.floor(Math.random() * exoticWeapons.length)];
+  } else if (legendaryWeapons.length > 0 && weaponRoll < exoticChance + legendaryChance) {
+    droppedWeapon = legendaryWeapons[Math.floor(Math.random() * legendaryWeapons.length)];
   }
 
   const writes: D1PreparedStatement[] = [];
+  const addCurrency = (name: string, amount: number) => {
+    if (amount <= 0) return;
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO player_currencies (user_id, currency_name, amount) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, currency_name) DO UPDATE SET amount = player_currencies.amount + excluded.amount`,
+    ).bind(session.user_id, name, amount));
+  };
+  const addUpgrade = (name: string, amount: number) => {
+    if (amount <= 0) return;
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO player_upgrade_materials (user_id, material_name, amount) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, material_name) DO UPDATE SET amount = player_upgrade_materials.amount + excluded.amount`,
+    ).bind(session.user_id, name, amount));
+  };
 
-  if (glimmer > 0) {
-    writes.push(
-      c.env.DB
-        .prepare(
-          `INSERT INTO player_currencies
-            (user_id, currency_name, amount)
-           VALUES (?, 'Glimmer', ?)
-           ON CONFLICT(user_id, currency_name)
-           DO UPDATE SET
-             amount =
-               player_currencies.amount +
-               excluded.amount`,
-        )
-        .bind(
-          session.user_id,
-          glimmer,
-        ),
-    );
+  addCurrency("Glimmer", glimmer);
+  addUpgrade("Enhancement Core", enhancementCores);
+  addUpgrade("Enhancement Prism", enhancementPrisms);
+  addUpgrade("Ascendant Shard", ascendantShards);
+  addUpgrade("Ascendant Alloy", ascendantAlloys);
+
+  if (destinationMaterial && destinationMaterialAmount > 0) {
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO player_destination_materials (user_id, material_name, amount) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, material_name) DO UPDATE SET amount = player_destination_materials.amount + excluded.amount`,
+    ).bind(session.user_id, destinationMaterial, destinationMaterialAmount));
   }
 
-  if (enhancementCores > 0) {
-    writes.push(
-      c.env.DB
-        .prepare(
-          `INSERT INTO player_upgrade_materials
-            (user_id, material_name, amount)
-           VALUES (?, 'Enhancement Core', ?)
-           ON CONFLICT(user_id, material_name)
-           DO UPDATE SET
-             amount =
-               player_upgrade_materials.amount +
-               excluded.amount`,
-        )
-        .bind(
-          session.user_id,
-          enhancementCores,
-        ),
-    );
-  }
-
-  if (
-    destinationMaterial &&
-    destinationMaterialAmount > 0
-  ) {
-    writes.push(
-      c.env.DB
-        .prepare(
-          `INSERT INTO player_destination_materials
-            (user_id, material_name, amount)
-           VALUES (?, ?, ?)
-           ON CONFLICT(user_id, material_name)
-           DO UPDATE SET
-             amount =
-               player_destination_materials.amount +
-               excluded.amount`,
-        )
-        .bind(
-          session.user_id,
-          destinationMaterial,
-          destinationMaterialAmount,
-        ),
-    );
+  if (xp > 0) {
+    writes.push(c.env.DB.prepare(
+      `UPDATE player_profiles SET exp = exp + ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+    ).bind(xp, session.user_id));
   }
 
   if (droppedWeapon) {
-    writes.push(
-      c.env.DB
-        .prepare(
-          `INSERT INTO player_weapons
-            (user_id, weapon_name, masterwork)
-           VALUES (?, ?, 0)
-           ON CONFLICT(user_id, weapon_name)
-           DO NOTHING`,
-        )
-        .bind(
-          session.user_id,
-          droppedWeapon.name,
-        ),
-    );
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO player_weapons (user_id, weapon_name, masterwork) VALUES (?, ?, 0)
+       ON CONFLICT(user_id, weapon_name) DO NOTHING`,
+    ).bind(session.user_id, droppedWeapon.name));
   }
 
-  if (writes.length > 0) {
-    await c.env.DB.batch(writes);
-  }
+  if (writes.length > 0) await c.env.DB.batch(writes);
 
   return c.json({
     success: true,
     destination: profile.zone,
     elapsedSeconds,
-    claimTicks,
+    percentage: Math.min(100, elapsedSeconds / EXPLORE_MAX_SECONDS * 100),
+    xp,
     rewards,
     weapon: {
       dropped: Boolean(droppedWeapon),
