@@ -115,14 +115,6 @@ function normalizeName(
     .replace(/\s+/g, " ");
 }
 
-function isAdeptWeapon(
-  weaponName: string,
-): boolean {
-  return weaponName
-    .trim()
-    .toLowerCase()
-    .endsWith("(adept)");
-}
 
 function findWeaponImage(
   source: string,
