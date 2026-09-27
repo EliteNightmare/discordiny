@@ -874,6 +874,16 @@ export default function Activities() {
   ] = useState(false);
 
   const [
+    claimingExploration,
+    setClaimingExploration,
+  ] = useState(false);
+
+  const [
+    explorationClaimMessage,
+    setExplorationClaimMessage,
+  ] = useState("");
+
+  const [
     selectedEndgameActivity,
     setSelectedEndgameActivity,
   ] = useState<Activity | null>(
@@ -1431,13 +1441,82 @@ export default function Activities() {
     );
   }
 
-  function claimExplorationRewards() {
-    /*
-     * The Claim button is intentionally visual for now.
-     * The next backend step should grant the old /claim
-     * rewards and reset the exploration timestamp in one
-     * server-side action.
-     */
+  async function claimExplorationRewards() {
+    if (
+      claimingExploration ||
+      exploreElapsed < 25
+    ) {
+      return;
+    }
+
+    setClaimingExploration(true);
+    setExplorationClaimMessage("");
+    setError("");
+
+    try {
+      const response = await fetch(
+        "/api/game/explore/claim",
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          error?: string;
+          rewards?: Record<string, number>;
+          weapon?: {
+            dropped: boolean;
+            name: string | null;
+          };
+        };
+
+      if (
+        !response.ok ||
+        !result.success
+      ) {
+        throw new Error(
+          result.error ||
+            "Failed to claim exploration rewards.",
+        );
+      }
+
+      const rewardParts = Object.entries(
+        result.rewards ?? {},
+      )
+        .filter(([, amount]) => amount > 0)
+        .map(
+          ([name, amount]) =>
+            `${name} ×${amount.toLocaleString()}`,
+        );
+
+      if (
+        result.weapon?.dropped &&
+        result.weapon.name
+      ) {
+        rewardParts.push(
+          `Weapon: ${result.weapon.name}`,
+        );
+      }
+
+      setExplorationClaimMessage(
+        rewardParts.length > 0
+          ? rewardParts.join(" • ")
+          : "Exploration rewards claimed.",
+      );
+
+      await loadActivities();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to claim exploration rewards.",
+      );
+    } finally {
+      setClaimingExploration(false);
+    }
   }
 
   function openEndgameActivity(
@@ -2139,13 +2218,25 @@ export default function Activities() {
                   <button
                     type="button"
                     className="exploration-claim-button"
-                    onClick={
-                      claimExplorationRewards
+                    disabled={
+                      claimingExploration ||
+                      exploreElapsed < 25
+                    }
+                    onClick={() =>
+                      void claimExplorationRewards()
                     }
                   >
-                    CLAIM
+                    {claimingExploration
+                      ? "CLAIMING..."
+                      : "CLAIM"}
                   </button>
                 </div>
+
+                {explorationClaimMessage && (
+                  <div className="exploration-claim-result">
+                    {explorationClaimMessage}
+                  </div>
+                )}
                 </section>
 
                 <button
@@ -2224,7 +2315,7 @@ export default function Activities() {
                     status={
                       strikeCooldownRemaining >
                       0
-                        ? `COOLDOWN ${formatCooldownTime(
+                        ? `◷ ${formatRotationTime(
                             strikeCooldownRemaining,
                           )}`
                         : "READY"
@@ -2269,7 +2360,7 @@ export default function Activities() {
                     status={
                       nightfallCooldownRemaining >
                       0
-                        ? `COOLDOWN ${formatCooldownTime(
+                        ? `◷ ${formatRotationTime(
                             nightfallCooldownRemaining,
                           )}`
                         : "READY"
@@ -2315,7 +2406,7 @@ export default function Activities() {
                     status={
                       gmCooldownRemaining >
                       0
-                        ? `COOLDOWN ${formatCooldownTime(
+                        ? `◷ ${formatRotationTime(
                             gmCooldownRemaining,
                           )}`
                         : `READY · LVL ${
