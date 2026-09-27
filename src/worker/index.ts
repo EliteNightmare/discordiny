@@ -1431,17 +1431,42 @@ app.post("/api/bungie/unlink", async (c) => {
 
 const VAULT_MAX_MASTERWORK = 77;
 
+const VAULT_SPECIAL_VARIANT_SUFFIX =
+  /\s*\((Adept|Timelost|Harrowed)\)\s*$/i;
+
+function getVaultBaseWeaponName(
+  weaponName: string,
+): string {
+  return weaponName
+    .replace(VAULT_SPECIAL_VARIANT_SUFFIX, "")
+    .trim();
+}
+
+function getVaultVariantSuffix(
+  weaponName: string,
+): "Adept" | "Timelost" | "Harrowed" | null {
+  const match =
+    weaponName.match(VAULT_SPECIAL_VARIANT_SUFFIX);
+
+  if (!match) return null;
+
+  const suffix = match[1].toLowerCase();
+
+  if (suffix === "timelost") return "Timelost";
+  if (suffix === "harrowed") return "Harrowed";
+  return "Adept";
+}
+
+
 function getVaultMasterworkCost(
   rarity: string | null,
   weaponName: string,
   currentLevel: number,
 ): Record<string, number> {
-  const adept = weaponName
-    .trim()
-    .toLowerCase()
-    .endsWith("(adept)");
+  const specialVariant =
+    getVaultVariantSuffix(weaponName) !== null;
 
-  const effectiveRarity = adept
+  const effectiveRarity = specialVariant
     ? "exotic"
     : String(rarity ?? "Legendary")
         .trim()
@@ -1532,7 +1557,7 @@ app.get("/api/game/vault/index", async (c) => {
   for (const weapon of catalog.results) {
     const source = weapon.source ?? "unknown";
     const baseName = weapon.name
-      .replace(/\s*\(Adept\)\s*$/i, "")
+      .replace(VAULT_SPECIAL_VARIANT_SUFFIX, "")
       .trim();
     const familyKey =
       `${source.trim().toLowerCase()}::${baseName.toLowerCase()}`;
@@ -1548,9 +1573,15 @@ app.get("/api/game/vault/index", async (c) => {
   for (const weapon of catalogFamilies.values()) {
     const source = weapon.source;
     const normalKey = weapon.name.trim().toLowerCase();
-    const adeptKey = `${weapon.name} (Adept)`.trim().toLowerCase();
+    const specialKeys = [
+      `${weapon.name} (Adept)`.trim().toLowerCase(),
+      `${weapon.name} (Timelost)`.trim().toLowerCase(),
+      `${weapon.name} (Harrowed)`.trim().toLowerCase(),
+    ];
     const normalMw = ownedMap.get(normalKey);
-    const adeptMw = ownedMap.get(adeptKey);
+    const adeptMw = specialKeys
+      .map((key) => ownedMap.get(key))
+      .find((value) => value !== undefined);
 
     const stats = sources[source] ?? {
       normalOwned: 0, normalTotal: 0, adeptOwned: 0, adeptTotal: 0,
@@ -1618,10 +1649,15 @@ app.get("/api/game/weapons/masterwork", async (c) => {
   if (!ownedWeapon) return c.json({ error: "You do not own this weapon." }, 403);
 
   const currentMasterwork = Math.max(0, Number(ownedWeapon.masterwork) || 0);
-  const baseName = weaponName.replace(/\s*\(Adept\)\s*$/i, "");
+  const baseName = getVaultBaseWeaponName(weaponName);
   const catalogWeapon = await c.env.DB
     .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
-    .bind(baseName)
+    .bind(
+      baseName,
+      `${baseName} (Adept)`,
+      `${baseName} (Timelost)`,
+      `${baseName} (Harrowed)`,
+    )
     .first<{ rarity: string | null }>();
   if (!catalogWeapon) return c.json({ error: "Weapon is not in the Vault catalog." }, 404);
 
@@ -1701,20 +1737,16 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     );
   }
 
-  const baseName = weaponName
-    .replace(/\s*\(Adept\)\s*$/i, "")
-    .trim();
+  const baseName = getVaultBaseWeaponName(weaponName);
 
   const catalogWeapon = await c.env.DB
     .prepare(
       `SELECT rarity
        FROM weapons
-       WHERE lower(
-         replace(
-           replace(name, ' (Adept)', ''),
-           ' (adept)', ''
-         )
-       ) = lower(?)
+       WHERE lower(name) = lower(?)
+          OR lower(name) = lower(?)
+          OR lower(name) = lower(?)
+          OR lower(name) = lower(?)
        LIMIT 1`,
     )
     .bind(baseName)
@@ -2061,33 +2093,51 @@ app.get("/api/game/weapons", async (c) => {
       rarity: string | null;
       source: string | null;
       activity_type: string | null;
+      variantSuffix: "Adept" | "Timelost" | "Harrowed";
     }
   >();
 
   for (const weapon of catalog.results) {
-    const baseName = weapon.name
-      .replace(/\s*\(Adept\)\s*$/i, "")
-      .trim();
+    const baseName =
+      getVaultBaseWeaponName(weapon.name);
     const familyKey = baseName.toLowerCase();
     const existing = catalogFamilies.get(familyKey);
+    const rowSuffix =
+      getVaultVariantSuffix(weapon.name);
 
-    if (!existing || !/\(Adept\)\s*$/i.test(weapon.name)) {
+    if (!existing) {
       catalogFamilies.set(familyKey, {
         name: baseName,
         emoji_id: weapon.emoji_id,
         rarity: weapon.rarity,
         source: weapon.source,
         activity_type: weapon.activity_type,
+        variantSuffix: rowSuffix ?? "Adept",
       });
+      continue;
+    }
+
+    if (rowSuffix) {
+      existing.variantSuffix = rowSuffix;
+    }
+
+    if (!rowSuffix) {
+      existing.emoji_id = weapon.emoji_id;
+      existing.rarity = weapon.rarity;
+      existing.source = weapon.source;
+      existing.activity_type = weapon.activity_type;
     }
   }
 
   const weapons = Array.from(catalogFamilies.values()).map(
     (weapon) => {
       const normalName = weapon.name;
-      const adeptName = `${weapon.name} (Adept)`;
-      const normalKey = normalName.trim().toLowerCase();
-      const adeptKey = adeptName.trim().toLowerCase();
+      const specialName =
+        `${weapon.name} (${weapon.variantSuffix})`;
+      const normalKey =
+        normalName.trim().toLowerCase();
+      const specialKey =
+        specialName.trim().toLowerCase();
 
       return {
         name: weapon.name,
@@ -2104,6 +2154,9 @@ app.get("/api/game/weapons", async (c) => {
         activityType:
           weapon.activity_type,
 
+        variantSuffix:
+          weapon.variantSuffix,
+
         normal: {
           owned: ownedMap.has(normalKey),
 
@@ -2112,10 +2165,10 @@ app.get("/api/game/weapons", async (c) => {
         },
 
         adept: {
-          owned: ownedMap.has(adeptKey),
+          owned: ownedMap.has(specialKey),
 
           masterwork:
-            ownedMap.get(adeptKey) ?? 0,
+            ownedMap.get(specialKey) ?? 0,
         },
       };
     }
