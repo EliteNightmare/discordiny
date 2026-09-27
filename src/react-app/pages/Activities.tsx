@@ -1902,10 +1902,11 @@ export default function Activities() {
               </section>
 
 
-              {/* EXPLORATION REWARDS */}
+              {/* EXPLORATION REWARDS + FISHING */}
 
-              <section
-                className={[
+              <div className="exploration-activity-row">
+                <section
+                  className={[
                   "exploration-rewards",
 
                   destinationBanner
@@ -2145,8 +2146,49 @@ export default function Activities() {
                     CLAIM
                   </button>
                 </div>
-              </section>
-                            {/* VANGUARD */}
+                </section>
+
+                <button
+                  type="button"
+                  className="fishing-activity-card"
+                  style={{
+                    backgroundImage: `
+                      linear-gradient(
+                        180deg,
+                        rgba(4, 8, 14, 0.18) 0%,
+                        rgba(4, 8, 14, 0.48) 58%,
+                        rgba(4, 8, 14, 0.9) 100%
+                      ),
+                      url("${findGeneralImage("fishbg.png") ?? ""}")
+                    `,
+                  }}
+                  aria-label="Fishing activity"
+                >
+                  <div className="fishing-activity-card-top">
+                    <span>ACTIVITY</span>
+                  </div>
+
+                  <div className="fishing-activity-card-content">
+                    <span className="fishing-activity-eyebrow">
+                      RELAX &amp; CATCH
+                    </span>
+
+                    <strong>
+                      FISHING
+                    </strong>
+
+                    <small>
+                      Cast your line
+                    </small>
+                  </div>
+
+                  <span className="fishing-activity-status">
+                    READY
+                  </span>
+                </button>
+              </div>
+
+              {/* VANGUARD */}
 
               <section className="activities-section">
                 <div className="activities-section-heading">

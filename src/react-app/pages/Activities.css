@@ -504,6 +504,137 @@
 
 
 /* =========================================================
+   EXPLORATION + FISHING ROW
+========================================================= */
+
+.exploration-activity-row {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(210px, 0.34fr);
+  align-items: stretch;
+  gap: 14px;
+  margin: 10px 0 40px;
+}
+
+.exploration-activity-row .exploration-rewards {
+  min-width: 0;
+  margin: 0;
+  padding: 22px 23px;
+}
+
+.exploration-activity-row .exploration-rewards-heading h2 {
+  font-size: clamp(1.35rem, 2.5vw, 1.85rem);
+}
+
+.exploration-activity-row .exploration-rewards-heading p {
+  margin-top: 7px;
+  font-size: 0.76rem;
+}
+
+.exploration-activity-row .exploration-rewards-time strong {
+  font-size: clamp(1.45rem, 3vw, 2.05rem);
+}
+
+.fishing-activity-card {
+  position: relative;
+  min-width: 0;
+  min-height: 190px;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #fff;
+  background-color: #101722;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  box-shadow:
+    0 16px 45px rgba(0, 0, 0, 0.22);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    filter 0.16s ease;
+}
+
+.fishing-activity-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(
+      110deg,
+      rgba(255, 255, 255, 0.055),
+      transparent 42%
+    );
+  pointer-events: none;
+}
+
+.fishing-activity-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+  filter: brightness(1.06);
+}
+
+.fishing-activity-card-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+}
+
+.fishing-activity-card-top > span,
+.fishing-activity-eyebrow {
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.15em;
+}
+
+.fishing-activity-card-content {
+  position: absolute;
+  z-index: 2;
+  right: 18px;
+  bottom: 42px;
+  left: 18px;
+}
+
+.fishing-activity-card-content > strong {
+  display: block;
+  margin-top: 5px;
+  font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-shadow:
+    0 2px 14px rgba(0, 0, 0, 0.7);
+}
+
+.fishing-activity-card-content > small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.68rem;
+}
+
+.fishing-activity-status {
+  position: absolute;
+  z-index: 2;
+  right: 18px;
+  bottom: 16px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+}
+
+/* =========================================================
    EXPLORATION REWARDS
 ========================================================= */
 
@@ -1323,6 +1454,14 @@
 }
 
 @media (max-width: 900px) {
+  .exploration-activity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .fishing-activity-card {
+    min-height: 145px;
+  }
+
   .activities-grid-three {
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
@@ -1392,9 +1531,17 @@
     font-size: 0.63rem;
   }
 
-  .exploration-rewards {
+  .exploration-activity-row {
     margin-bottom: 34px;
+  }
+
+  .exploration-rewards {
+    margin-bottom: 0;
     padding: 20px 17px;
+  }
+
+  .fishing-activity-card {
+    min-height: 132px;
   }
 
   .exploration-rewards-main {
