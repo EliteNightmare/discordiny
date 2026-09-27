@@ -69,6 +69,41 @@ type RunResult = {
   rewards?: Record<string, number>;
   activityId?: string;
   activityName?: string;
+  activityType?: string;
+  secret?: CrawlSecret;
+};
+
+type CrawlNetherEye = {
+  id: number;
+  x: number;
+  y: number;
+  rotation: number;
+};
+
+type CrawlSecretChallenge =
+  | {
+      type: "coil";
+      prompt: string;
+    }
+  | {
+      type: "contest";
+      pieces: Array<{
+        id: number;
+        label: string;
+      }>;
+    }
+  | {
+      type: "nether";
+      eyeCount: number;
+      eyes: CrawlNetherEye[];
+    };
+
+type CrawlSecret = {
+  triggered: boolean;
+  encounterIndex: number | null;
+  timeoutSeconds: number;
+  status: "pending" | "success" | "failed" | "expired" | null;
+  challenge: CrawlSecretChallenge | null;
 };
 
 type RunResponse = {
@@ -82,6 +117,13 @@ type RunResponse = {
   };
 
   result?: RunResult;
+  pendingSecret?: boolean;
+  runId?: string;
+  expiresAt?: number;
+  secret?: {
+    success: boolean;
+    expired: boolean;
+  };
 };
 
 type Props = {
@@ -95,6 +137,7 @@ type Phase =
   | "ready"
   | "loading"
   | "encounters"
+  | "secret"
   | "weapon"
   | "complete"
   | "error";
@@ -167,6 +210,38 @@ const materialImages = {
   ...dungeonMaterialImages,
   ...raidMaterialImages,
 };
+
+const crawlImages = import.meta.glob(
+  "../assets/general/crawls/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+function getCrawlImage(
+  filename: string,
+): string | undefined {
+  return Object.entries(
+    crawlImages,
+  ).find(([path]) =>
+    path
+      .toLowerCase()
+      .endsWith(
+        `/crawls/${filename.toLowerCase()}`,
+      ),
+  )?.[1];
+}
+
+const CRAWL_REWARD_PREVIEW = [
+  "Glimmer",
+  "Lumia Leaves",
+  "Pinnacle Cipher",
+  "Armor Plating",
+  "Ascendant Shard",
+  "Ascendant Alloy",
+];
 
 /* -------------------------------------------------------------------------- */
 /*                                  HELPERS                                   */
@@ -347,6 +422,27 @@ export default function ActivityRunModal({
   const [error, setError] =
     useState("");
 
+  const [crawlRunId, setCrawlRunId] =
+    useState<string | null>(null);
+
+  const [crawlExpiresAt, setCrawlExpiresAt] =
+    useState<number | null>(null);
+
+  const [crawlSecondsLeft, setCrawlSecondsLeft] =
+    useState(0);
+
+  const [coilAnswer, setCoilAnswer] =
+    useState("");
+
+  const [contestSequence, setContestSequence] =
+    useState<number[]>([]);
+
+  const [clickedEyes, setClickedEyes] =
+    useState<number[]>([]);
+
+  const [resolvingSecret, setResolvingSecret] =
+    useState(false);
+
   const timers =
     useRef<number[]>([]);
 
@@ -364,6 +460,13 @@ export default function ActivityRunModal({
   const isInfiltration =
     activity.reward_table === "pinnacle" &&
     ["bgs", "emph", "nigh"].includes(
+      activity.weapon_source
+        ?.trim()
+        .toLowerCase() ?? "",
+    );
+
+  const isCrawl =
+    ["coil", "contest", "nether"].includes(
       activity.weapon_source
         ?.trim()
         .toLowerCase() ?? "",
@@ -406,7 +509,9 @@ export default function ActivityRunModal({
   const busy =
     phase === "loading" ||
     phase === "encounters" ||
-    phase === "weapon";
+    phase === "secret" ||
+    phase === "weapon" ||
+    resolvingSecret;
 
   const droppedWeaponImage =
     result?.weapon?.dropped
@@ -417,6 +522,35 @@ export default function ActivityRunModal({
 
   const infiltrationWeapons =
     result?.weapons ?? [];
+
+  const crawlSource =
+    activity.weapon_source
+      ?.trim()
+      .toLowerCase() ?? "";
+
+  const crawlSpecialBackground =
+    isCrawl
+      ? getCrawlImage(
+          crawlSource === "coil"
+            ? "coil_special.png"
+            : crawlSource === "contest"
+              ? "contest_special.png"
+              : "nether_special.png",
+        )
+      : undefined;
+
+  const coilGoblin =
+    getCrawlImage("coil_goblin.png");
+
+  const netherEye =
+    getCrawlImage("nether_eye.png");
+
+  const contestImages = [
+    getCrawlImage("contest_1.png"),
+    getCrawlImage("contest_2.png"),
+    getCrawlImage("contest_3.png"),
+    getCrawlImage("contest_4.png"),
+  ];
 
   /* ------------------------------------------------------------------------ */
   /*                              TIMER HANDLING                              */
@@ -467,6 +601,45 @@ export default function ActivityRunModal({
     };
   }, [busy]);
 
+
+  useEffect(() => {
+    if (
+      phase !== "secret" ||
+      !crawlExpiresAt
+    ) {
+      return;
+    }
+
+    const update = () => {
+      const remaining =
+        Math.max(
+          0,
+          crawlExpiresAt -
+            Math.floor(Date.now() / 1000),
+        );
+
+      setCrawlSecondsLeft(
+        remaining,
+      );
+    };
+
+    update();
+
+    const interval =
+      window.setInterval(
+        update,
+        200,
+      );
+
+    return () =>
+      window.clearInterval(
+        interval,
+      );
+  }, [
+    phase,
+    crawlExpiresAt,
+  ]);
+
   /* ------------------------------------------------------------------------ */
   /*                              RESULT REVEAL                               */
   /* ------------------------------------------------------------------------ */
@@ -474,6 +647,63 @@ export default function ActivityRunModal({
   function reveal(
     run: RunResult,
   ) {
+    /*
+     * CRAWL
+     *
+     * Crawl encounter RNG is already complete on the
+     * server. If no secret is pending, reveal the four
+     * encounters and then the final weapon roll.
+     */
+    if (isCrawl) {
+      if (!run.encounters.length) {
+        setPhase("complete");
+        finish();
+        return;
+      }
+
+      setVisible(1);
+
+      run.encounters
+        .slice(1)
+        .forEach((_, index) => {
+          timers.current.push(
+            window.setTimeout(
+              () =>
+                setVisible(
+                  index + 2,
+                ),
+              ENCOUNTER_MS *
+                (index + 1),
+            ),
+          );
+        });
+
+      const duration =
+        ENCOUNTER_MS *
+        run.encounters.length;
+
+      timers.current.push(
+        window.setTimeout(
+          () => {
+            setPhase("weapon");
+
+            timers.current.push(
+              window.setTimeout(
+                () => {
+                  setPhase("complete");
+                  finish();
+                },
+                WEAPON_MS,
+              ),
+            );
+          },
+          duration,
+        ),
+      );
+
+      return;
+    }
+
     /*
      * INFILTRATION
      *
@@ -666,6 +896,13 @@ export default function ActivityRunModal({
     setError("");
     setPayload(null);
     setVisible(0);
+    setCrawlRunId(null);
+    setCrawlExpiresAt(null);
+    setCrawlSecondsLeft(0);
+    setCoilAnswer("");
+    setContestSequence([]);
+    setClickedEyes([]);
+    setResolvingSecret(false);
     setPhase("loading");
 
     try {
@@ -707,6 +944,30 @@ export default function ActivityRunModal({
 
       setPayload(data);
 
+      if (
+        isCrawl &&
+        data.pendingSecret &&
+        data.runId &&
+        data.expiresAt &&
+        data.result.secret?.challenge
+      ) {
+        setCrawlRunId(
+          data.runId,
+        );
+        setCrawlExpiresAt(
+          data.expiresAt,
+        );
+        setCrawlSecondsLeft(
+          Math.max(
+            0,
+            data.expiresAt -
+              Math.floor(Date.now() / 1000),
+          ),
+        );
+        setPhase("secret");
+        return;
+      }
+
       setPhase(
         "encounters",
       );
@@ -724,6 +985,112 @@ export default function ActivityRunModal({
       setPhase("error");
     }
   }
+
+
+  async function resolveCrawlSecret(
+    submission: string | number[],
+  ) {
+    if (
+      !crawlRunId ||
+      resolvingSecret
+    ) {
+      return;
+    }
+
+    setResolvingSecret(true);
+    setError("");
+
+    try {
+      const response =
+        await fetch(
+          "/api/game/activity/crawl/resolve",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              runId: crawlRunId,
+              submission,
+            }),
+          },
+        );
+
+      const data =
+        (await response.json()) as
+          RunResponse;
+
+      if (
+        !response.ok ||
+        !data.success ||
+        !data.result
+      ) {
+        throw new Error(
+          data.error ||
+            "Unable to resolve Crawl secret.",
+        );
+      }
+
+      clearTimers();
+      setPayload(data);
+      setCrawlRunId(null);
+      setCrawlExpiresAt(null);
+      setResolvingSecret(false);
+      setPhase("encounters");
+      reveal(data.result);
+    } catch (err) {
+      setResolvingSecret(false);
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to resolve Crawl secret.",
+      );
+      setPhase("error");
+    }
+  }
+
+  useEffect(() => {
+    if (
+      phase !== "secret" ||
+      crawlSecondsLeft > 0 ||
+      !crawlRunId ||
+      resolvingSecret
+    ) {
+      return;
+    }
+
+    const challenge =
+      result?.secret?.challenge;
+
+    if (!challenge) {
+      return;
+    }
+
+    if (challenge.type === "coil") {
+      void resolveCrawlSecret(
+        coilAnswer,
+      );
+      return;
+    }
+
+    if (challenge.type === "contest") {
+      void resolveCrawlSecret(
+        contestSequence,
+      );
+      return;
+    }
+
+    void resolveCrawlSecret(
+      clickedEyes,
+    );
+  }, [
+    phase,
+    crawlSecondsLeft,
+    crawlRunId,
+    resolvingSecret,
+  ]);
 
   /* ------------------------------------------------------------------------ */
   /*                                  RENDER                                  */
@@ -750,7 +1117,19 @@ export default function ActivityRunModal({
           activity.name
         }
         style={
-          backgroundImage
+          phase === "secret" &&
+          crawlSpecialBackground
+            ? {
+                backgroundImage: `
+                  linear-gradient(
+                    90deg,
+                    rgba(3,4,8,.72),
+                    rgba(3,4,8,.48)
+                  ),
+                  url("${crawlSpecialBackground}")
+                `,
+              }
+            : backgroundImage
             ? {
                 backgroundImage: `
                   linear-gradient(
@@ -804,7 +1183,81 @@ export default function ActivityRunModal({
         {/* -------------------------------------------------------------- */}
 
         {phase === "ready" && (
-          isInfiltration ? (
+          isCrawl ? (
+            <div className="activity-run-vanguard-ready activity-run-crawl-ready">
+              <div className="activity-run-vanguard-intro">
+                <span>
+                  CRAWL
+                </span>
+
+                <strong>
+                  {activity.name}
+                </strong>
+
+                <p>
+                  Clear four encounters. A hidden challenge
+                  may interrupt the run. Complete it before
+                  the timer expires to empower this encounter
+                  and every encounter that follows.
+                </p>
+              </div>
+
+              <div className="activity-run-vanguard-preview">
+                <span>
+                  ENCOUNTER REWARDS
+                </span>
+
+                <div className="activity-run-vanguard-reward-grid">
+                  {CRAWL_REWARD_PREVIEW.map(
+                    (name) => {
+                      const icon =
+                        getMaterialImage(name);
+
+                      return (
+                        <article key={name}>
+                          {icon && (
+                            <img
+                              src={icon}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                          )}
+
+                          <small>
+                            {name.toUpperCase()}
+                          </small>
+                        </article>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+
+              <div className="activity-run-vanguard-weapon-preview">
+                <span>
+                  FULL CLEAR
+                </span>
+
+                <strong>
+                  25,000 XP + WEAPON ROLL
+                </strong>
+
+                <small>
+                  Successful secret adds a second weapon roll
+                </small>
+              </div>
+
+              <button
+                type="button"
+                className="activity-run-ready-button"
+                onClick={() =>
+                  void begin()
+                }
+              >
+                BEGIN CRAWL
+              </button>
+            </div>
+          ) : isInfiltration ? (
             <div className="activity-run-vanguard-ready">
               <div className="activity-run-vanguard-intro">
                 <span>
@@ -1045,7 +1498,9 @@ export default function ActivityRunModal({
             <i aria-hidden="true" />
 
             <span>
-              {isInfiltration
+              {isCrawl
+                ? "ENTERING CRAWL"
+                : isInfiltration
                 ? "LAUNCHING INFILTRATION"
                 : isVanguard
                   ? "LAUNCHING VANGUARD OPERATION"
@@ -1053,7 +1508,9 @@ export default function ActivityRunModal({
             </span>
 
             <strong>
-              {isInfiltration
+              {isCrawl
+                ? "GENERATING ENCOUNTER PATH"
+                : isInfiltration
                 ? "DEPLOYING ACROSS THREE OPERATIONS"
                 : isVanguard
                   ? "DEPLOYING FIRETEAM"
@@ -1061,6 +1518,265 @@ export default function ActivityRunModal({
             </strong>
           </div>
         )}
+
+
+        {/* -------------------------------------------------------------- */}
+        {/* CRAWL SECRET                                                   */}
+        {/* -------------------------------------------------------------- */}
+
+        {phase === "secret" &&
+          result?.secret?.challenge && (
+            <div className="activity-run-crawl-secret">
+              <div className="activity-run-crawl-secret-top">
+                <div>
+                  <span>
+                    SECRET ENCOUNTER
+                  </span>
+
+                  <strong>
+                    {result.secret.challenge.type === "coil"
+                      ? "GLASSMAKER SIGNAL"
+                      : result.secret.challenge.type === "contest"
+                        ? "KELL'S SEQUENCE"
+                        : "EYES IN THE DARK"}
+                  </strong>
+                </div>
+
+                <div
+                  className={`activity-run-crawl-timer ${
+                    crawlSecondsLeft <= 5
+                      ? "danger"
+                      : ""
+                  }`}
+                >
+                  <span>TIME</span>
+                  <strong>
+                    {crawlSecondsLeft}
+                  </strong>
+                </div>
+              </div>
+
+              {result.secret.challenge.type === "coil" && (
+                <div className="activity-run-coil-secret">
+                  <div className="activity-run-coil-goblin">
+                    {coilGoblin && (
+                      <img
+                        src={coilGoblin}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    )}
+
+                    <div className="activity-run-coil-bubble">
+                      {result.secret.challenge.prompt}
+                    </div>
+                  </div>
+
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void resolveCrawlSecret(
+                        coilAnswer,
+                      );
+                    }}
+                  >
+                    <label htmlFor="crawl-coil-answer">
+                      REPEAT THE SIGNAL
+                    </label>
+
+                    <input
+                      id="crawl-coil-answer"
+                      autoFocus
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={coilAnswer}
+                      disabled={resolvingSecret}
+                      onChange={(event) =>
+                        setCoilAnswer(
+                          event.target.value,
+                        )
+                      }
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={
+                        resolvingSecret ||
+                        !coilAnswer.trim()
+                      }
+                    >
+                      SUBMIT
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {result.secret.challenge.type === "contest" && (
+                <div className="activity-run-contest-secret">
+                  <p>
+                    Select all four fragments in the correct order.
+                  </p>
+
+                  <div className="activity-run-contest-grid">
+                    {result.secret.challenge.pieces.map(
+                      (piece, index) => {
+                        const selectedIndex =
+                          contestSequence.indexOf(
+                            piece.id,
+                          );
+
+                        return (
+                          <button
+                            key={piece.id}
+                            type="button"
+                            className={
+                              selectedIndex >= 0
+                                ? "selected"
+                                : ""
+                            }
+                            disabled={
+                              resolvingSecret ||
+                              selectedIndex >= 0
+                            }
+                            onClick={() => {
+                              const next = [
+                                ...contestSequence,
+                                piece.id,
+                              ];
+
+                              setContestSequence(
+                                next,
+                              );
+
+                              if (
+                                next.length === 4
+                              ) {
+                                void resolveCrawlSecret(
+                                  next,
+                                );
+                              }
+                            }}
+                          >
+                            {contestImages[index] && (
+                              <img
+                                src={contestImages[index]}
+                                alt=""
+                                aria-hidden="true"
+                              />
+                            )}
+
+                            <span>
+                              {selectedIndex >= 0
+                                ? selectedIndex + 1
+                                : piece.label}
+                            </span>
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="activity-run-contest-reset"
+                    disabled={
+                      resolvingSecret ||
+                      contestSequence.length === 0
+                    }
+                    onClick={() =>
+                      setContestSequence([])
+                    }
+                  >
+                    RESET SEQUENCE
+                  </button>
+                </div>
+              )}
+
+              {result.secret.challenge.type === "nether" && (
+                <div className="activity-run-nether-secret">
+                  <div className="activity-run-nether-counter">
+                    <span>EYES REMAINING</span>
+                    <strong>
+                      {Math.max(
+                        0,
+                        result.secret.challenge.eyeCount -
+                          clickedEyes.length,
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="activity-run-nether-field">
+                    {result.secret.challenge.eyes.map(
+                      (eye) => {
+                        const clicked =
+                          clickedEyes.includes(
+                            eye.id,
+                          );
+
+                        if (clicked) {
+                          return null;
+                        }
+
+                        return (
+                          <button
+                            key={eye.id}
+                            type="button"
+                            className="activity-run-nether-eye"
+                            disabled={resolvingSecret}
+                            aria-label="Destroy eye"
+                            style={{
+                              left: `${eye.x}%`,
+                              top: `${eye.y}%`,
+                              transform:
+                                `translate(-50%, -50%) rotate(${eye.rotation}deg)`,
+                            }}
+                            onClick={() => {
+                              const next = [
+                                ...clickedEyes,
+                                eye.id,
+                              ];
+
+                              setClickedEyes(
+                                next,
+                              );
+
+                              if (
+                                result.secret
+                                  ?.challenge?.type ===
+                                  "nether" &&
+                                next.length ===
+                                  result.secret
+                                    .challenge
+                                    .eyeCount
+                              ) {
+                                void resolveCrawlSecret(
+                                  next,
+                                );
+                              }
+                            }}
+                          >
+                            {netherEye && (
+                              <img
+                                src={netherEye}
+                                alt=""
+                                aria-hidden="true"
+                              />
+                            )}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {resolvingSecret && (
+                <div className="activity-run-crawl-resolving">
+                  RESOLVING SECRET...
+                </div>
+              )}
+            </div>
+          )}
 
         {/* -------------------------------------------------------------- */}
         {/* ERROR                                                          */}
@@ -1116,8 +1832,35 @@ export default function ActivityRunModal({
                   </strong>
                 </div>
 
+                {isCrawl && (
+                  <>
+                    <div>
+                      <span>
+                        ENCOUNTERS
+                      </span>
+
+                      <strong>
+                        {result.totalEncounters}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        SECRET
+                      </span>
+
+                      <strong>
+                        {result.secret?.status
+                          ? result.secret.status.toUpperCase()
+                          : "NONE"}
+                      </strong>
+                    </div>
+                  </>
+                )}
+
                 {!isVanguard &&
-                  !isInfiltration && (
+                  !isInfiltration &&
+                  !isCrawl && (
                   <>
                     <div>
                       <span>
