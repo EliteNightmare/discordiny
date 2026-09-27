@@ -963,3 +963,40 @@ to {
     padding: 9px 11px;
   }
 }
+
+/* =========================================================
+   SHOWDOWN / ENDGAME READY ALIGNMENT
+========================================================= */
+
+.activity-run-ready
+  .activity-run-endgame-preview {
+  width: 100%;
+  max-width: 760px;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.activity-run-ready
+  .activity-run-endgame-reward-icons {
+  width: 100%;
+  align-items: stretch;
+}
+
+.activity-run-ready
+  .activity-run-endgame-reward-icons
+  article {
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px) {
+  .activity-run-ready
+    .activity-run-endgame-preview {
+    max-width: 100%;
+  }
+
+  .activity-run-ready
+    .activity-run-endgame-reward-icons {
+    width: 100%;
+  }
+}
