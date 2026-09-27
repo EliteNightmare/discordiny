@@ -2116,9 +2116,9 @@ app.post("/api/game/explore/claim", async (c) => {
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const profile = await c.env.DB
-    .prepare(`SELECT level, zone FROM player_profiles WHERE user_id = ? LIMIT 1`)
+    .prepare(`SELECT exp, zone FROM player_profiles WHERE user_id = ? LIMIT 1`)
     .bind(session.user_id)
-    .first<{ level: number; zone: string }>();
+    .first<{ exp: number; zone: string }>();
 
   if (!profile) return c.json({ error: "Player profile not found." }, 404);
 
@@ -2165,7 +2165,21 @@ app.post("/api/game/explore/claim", async (c) => {
     return c.json({ error: "Exploration rewards were already claimed." }, 409);
   }
 
-  const level = Math.max(0, Number(profile.level) || 0);
+  /*
+   * Use the same XP-derived level that the profile and activities UI use.
+   * player_profiles.level can be stale and must not gate Exploration rewards.
+   */
+  const { getLevelProgress } =
+    await import("./game/level");
+
+  const levelProgress =
+    getLevelProgress(
+      Number(profile.exp) || 0,
+    );
+
+  const level =
+    levelProgress.level;
+
   const scaleReward = (maximum: number): number =>
     Math.min(maximum, Math.floor(maximum * elapsedSeconds / EXPLORE_MAX_SECONDS));
 
@@ -2290,6 +2304,12 @@ app.post("/api/game/explore/claim", async (c) => {
     destination: profile.zone,
     elapsedSeconds,
     percentage: Math.min(100, elapsedSeconds / EXPLORE_MAX_SECONDS * 100),
+    level,
+    unlocks: {
+      enhancementPrism: level >= 15,
+      ascendantShard: level >= 25,
+      ascendantAlloy: level >= 35,
+    },
     xp,
     rewards,
     weapon: {
