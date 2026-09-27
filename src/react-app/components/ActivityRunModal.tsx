@@ -369,6 +369,20 @@ export default function ActivityRunModal({
         .toLowerCase() ?? "",
     );
 
+  const isShowdown =
+  [
+    "seraph",
+    "elivagar",
+    "lucent",
+    "cos",
+    "sos",
+    "eow",
+  ].includes(
+    activity.weapon_source
+      ?.trim()
+      .toLowerCase() ?? "",
+  );
+
   const vanguardRewardPreview =
     getVanguardRewardPreview(
       activity.type,
