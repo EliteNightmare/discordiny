@@ -1657,9 +1657,9 @@ export default function ActivityRunModal({
                               }
                             }}
                           >
-                            {contestImages[index] && (
+                            {contestImages[piece.id - 1] && (
                               <img
-                                src={contestImages[index]}
+                                src={contestImages[piece.id - 1]}
                                 alt=""
                                 aria-hidden="true"
                               />
