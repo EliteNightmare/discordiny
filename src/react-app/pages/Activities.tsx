@@ -29,8 +29,10 @@ type Rotation = {
 type ActivitiesResponse = {
   authenticated: boolean;
   serverTime: number;
+
   player: {
     destination: string;
+
     explore: {
       lastClaim: number;
       elapsedSeconds: number;
@@ -38,32 +40,65 @@ type ActivitiesResponse = {
       percentage: number;
       capped: boolean;
     };
+
     vanguard: {
-      strike: { cooldownSeconds: number; remainingSeconds: number; readyAt: number };
-      nightfall: { cooldownSeconds: number; remainingSeconds: number; readyAt: number };
-      gm: { cooldownSeconds: number; remainingSeconds: number; readyAt: number; minLevel: number };
+      strike: {
+        cooldownSeconds: number;
+        remainingSeconds: number;
+        readyAt: number;
+      };
+
+      nightfall: {
+        cooldownSeconds: number;
+        remainingSeconds: number;
+        readyAt: number;
+      };
+
+      gm: {
+        cooldownSeconds: number;
+        remainingSeconds: number;
+        readyAt: number;
+        minLevel: number;
+      };
     };
+
     infiltration: {
       cooldownSeconds: number;
       remainingSeconds: number;
       readyAt: number;
     };
+
+    showdown: {
+      cooldownSeconds: number;
+      remainingSeconds: number;
+      readyAt: number;
+
+      daily: {
+        maxCharges: number;
+        usedCharges: number;
+        remainingCharges: number;
+      };
+    };
+
     endgame: {
       dungeon: {
         cooldownSeconds: number;
         remainingSeconds: number;
         readyAt: number;
       };
+
       raid: {
         cooldownSeconds: number;
         remainingSeconds: number;
         readyAt: number;
       };
+
       dailyDungeon: {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
       };
+
       dailyRaid: {
         maxCharges: number;
         usedCharges: number;
@@ -71,6 +106,7 @@ type ActivitiesResponse = {
       };
     };
   };
+
   rotation: {
     dailyShowdown: Rotation;
     dailyDungeon: Rotation;
@@ -81,6 +117,7 @@ type ActivitiesResponse = {
     showdown: Rotation;
     crawl: Rotation;
   };
+
   current: {
     strike: Activity | null;
     dungeon: Activity | null;
@@ -95,10 +132,12 @@ type GlobalActivityFeedEvent = {
   activity: string;
   activityType: string;
   result: "CLEAR" | "WIPE" | string;
+
   weapon: {
     name: string;
     adept: boolean;
   } | null;
+
   createdAt: string;
 };
 
@@ -119,10 +158,12 @@ type ActivityCardProps = {
   daily?: boolean;
   disabled?: boolean;
   status?: string;
+
   charges?: {
     remaining: number;
     max: number;
   };
+
   onClick?: () => void;
 };
 
@@ -193,7 +234,9 @@ const grandmasterBanners = import.meta.glob(
   },
 ) as Record<string, string>;
 
-function normalizeAssetName(value: string) {
+function normalizeAssetName(
+  value: string,
+) {
   return value
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
@@ -203,7 +246,9 @@ function normalizeAssetName(value: string) {
 function findDestinationImage(
   destination: string,
 ): string {
-  return `/destinations/${normalizeAssetName(destination)}.png`;
+  return `/destinations/${normalizeAssetName(
+    destination,
+  )}.png`;
 }
 
 function findGeneralImage(
@@ -212,9 +257,11 @@ function findGeneralImage(
   return Object.entries(
     generalImages,
   ).find(([path]) =>
-    path.toLowerCase().endsWith(
-      `/general/${filename.toLowerCase()}`,
-    ),
+    path
+      .toLowerCase()
+      .endsWith(
+        `/general/${filename.toLowerCase()}`,
+      ),
   )?.[1];
 }
 
@@ -347,14 +394,18 @@ function findPlaylistBanner(
   }
 
   const filename =
-    `${activity.id.trim().toLowerCase()}.png`;
+    `${activity.id
+      .trim()
+      .toLowerCase()}.png`;
 
   return Object.entries(
     banners,
   ).find(([path]) =>
     path
       .toLowerCase()
-      .endsWith(`/${filename}`),
+      .endsWith(
+        `/${filename}`,
+      ),
   )?.[1];
 }
 
@@ -395,7 +446,8 @@ function getActivityBanner(
   }
 
   const filename =
-    `${activity.weapon_source.toLowerCase()}.png`;
+    `${activity.weapon_source
+      .toLowerCase()}.png`;
 
   return Object.entries(
     activityBanners,
@@ -411,21 +463,31 @@ function getActivityBanner(
 function getWeaponImage(
   weaponName: string,
 ): string | undefined {
-  const baseName = weaponName
-    .replace(/\s*\(Adept\)\s*$/i, "")
-    .trim();
+  const baseName =
+    weaponName
+      .replace(
+        /\s*\(Adept\)\s*$/i,
+        "",
+      )
+      .trim();
 
   const normalizedWeapon =
-    normalizeAssetName(baseName);
+    normalizeAssetName(
+      baseName,
+    );
 
   return Object.entries(
     weaponImages,
   ).find(([path]) => {
     const filename =
-      path.split("/").pop() ?? "";
+      path.split("/").pop() ??
+      "";
 
     const filenameWithoutExtension =
-      filename.replace(/\.png$/i, "");
+      filename.replace(
+        /\.png$/i,
+        "",
+      );
 
     return (
       normalizeAssetName(
@@ -438,10 +500,11 @@ function getWeaponImage(
 function formatCooldownTime(
   seconds: number,
 ): string {
-  const safeSeconds = Math.max(
-    0,
-    Math.ceil(seconds),
-  );
+  const safeSeconds =
+    Math.max(
+      0,
+      Math.ceil(seconds),
+    );
 
   return `0:${safeSeconds
     .toString()
@@ -452,14 +515,20 @@ function formatRotationTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(0, Math.floor(seconds));
+    Math.max(
+      0,
+      Math.floor(seconds),
+    );
 
   const hours =
-    Math.floor(safeSeconds / 3600);
+    Math.floor(
+      safeSeconds / 3600,
+    );
 
   const minutes =
     Math.floor(
-      (safeSeconds % 3600) / 60,
+      (safeSeconds % 3600) /
+        60,
     );
 
   const secs =
@@ -468,9 +537,15 @@ function formatRotationTime(
   if (hours > 0) {
     return `${hours}h ${minutes
       .toString()
-      .padStart(2, "0")}m ${secs
+      .padStart(
+        2,
+        "0",
+      )}m ${secs
       .toString()
-      .padStart(2, "0")}s`;
+      .padStart(
+        2,
+        "0",
+      )}s`;
   }
 
   return `${minutes}:${secs
@@ -482,14 +557,20 @@ function formatExploreTime(
   seconds: number,
 ): string {
   const safeSeconds =
-    Math.max(0, Math.floor(seconds));
+    Math.max(
+      0,
+      Math.floor(seconds),
+    );
 
   const hours =
-    Math.floor(safeSeconds / 3600);
+    Math.floor(
+      safeSeconds / 3600,
+    );
 
   const minutes =
     Math.floor(
-      (safeSeconds % 3600) / 60,
+      (safeSeconds % 3600) /
+        60,
     );
 
   return `${hours}h ${minutes
@@ -501,48 +582,72 @@ function formatFeedTime(
   createdAt: string,
   now: number,
 ): string {
-  const parsed = Date.parse(
-    createdAt.includes("T")
-      ? createdAt
-      : `${createdAt.replace(" ", "T")}Z`,
-  );
+  const parsed =
+    Date.parse(
+      createdAt.includes("T")
+        ? createdAt
+        : `${createdAt.replace(
+            " ",
+            "T",
+          )}Z`,
+    );
 
-  if (!Number.isFinite(parsed)) {
+  if (
+    !Number.isFinite(
+      parsed,
+    )
+  ) {
     return "";
   }
 
-  const seconds = Math.max(
-    0,
-    Math.floor((now - parsed) / 1000),
-  );
+  const seconds =
+    Math.max(
+      0,
+      Math.floor(
+        (now - parsed) /
+          1000,
+      ),
+    );
 
   if (seconds < 60) {
     return "JUST NOW";
   }
 
-  const minutes = Math.floor(seconds / 60);
+  const minutes =
+    Math.floor(
+      seconds / 60,
+    );
 
   if (minutes < 60) {
     return `${minutes}M AGO`;
   }
 
-  const hours = Math.floor(minutes / 60);
+  const hours =
+    Math.floor(
+      minutes / 60,
+    );
 
   if (hours < 24) {
     return `${hours}H AGO`;
   }
 
-  const days = Math.floor(hours / 24);
+  const days =
+    Math.floor(
+      hours / 24,
+    );
 
   if (days < 7) {
     return `${days}D AGO`;
   }
 
   return new Date(parsed)
-    .toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    })
+    .toLocaleDateString(
+      undefined,
+      {
+        month: "short",
+        day: "numeric",
+      },
+    )
     .toUpperCase();
 }
 
@@ -563,7 +668,8 @@ function ActivityCard({
   label,
   activity,
   timer,
-  unavailableText = "Unavailable",
+  unavailableText =
+    "Unavailable",
   backgroundImage,
   icon,
   backgroundPosition,
@@ -576,12 +682,16 @@ function ActivityCard({
 }: ActivityCardProps) {
   const className = [
     "activity-dashboard-card",
-    activity && !disabled
+
+    activity &&
+    !disabled
       ? "activity-dashboard-card-active"
       : "activity-dashboard-card-disabled",
+
     backgroundImage
       ? "activity-dashboard-card-image"
       : "",
+
     daily
       ? "activity-dashboard-card-daily"
       : "",
@@ -592,10 +702,16 @@ function ActivityCard({
   return (
     <button
       type="button"
-      className={className}
-      disabled={!activity || disabled}
+      className={
+        className
+      }
+      disabled={
+        !activity ||
+        disabled
+      }
       onClick={
-        activity && !disabled
+        activity &&
+        !disabled
           ? onClick
           : undefined
       }
@@ -611,10 +727,14 @@ function ActivityCard({
                 ),
                 url("${backgroundImage}")
               `,
+
               backgroundPosition:
-                backgroundPosition ?? "center",
+                backgroundPosition ??
+                "center",
+
               backgroundSize:
-                backgroundSize ?? "cover",
+                backgroundSize ??
+                "cover",
             }
           : undefined
       }
@@ -645,6 +765,7 @@ function ActivityCard({
         {timer && (
           <span className="activity-dashboard-timer">
             <AnimatedClock />
+
             {timer}
           </span>
         )}
@@ -658,20 +779,34 @@ function ActivityCard({
 
         {activity?.destination && (
           <span className="activity-dashboard-destination">
-            {activity.destination}
+            {
+              activity.destination
+            }
           </span>
         )}
 
         {charges && (
           <div className="activity-dashboard-charges">
-            <span className="activity-charge-pips" aria-hidden="true">
+            <span
+              className="activity-charge-pips"
+              aria-hidden="true"
+            >
               {Array.from(
-                { length: charges.max },
-                (_, index) => (
+                {
+                  length:
+                    charges.max,
+                },
+                (
+                  _,
+                  index,
+                ) => (
                   <i
-                    key={index}
+                    key={
+                      index
+                    }
                     className={
-                      index < charges.remaining
+                      index <
+                      charges.remaining
                         ? "filled"
                         : ""
                     }
@@ -681,7 +816,14 @@ function ActivityCard({
             </span>
 
             <strong>
-              {charges.remaining} / {charges.max} CHARGES
+              {
+                charges.remaining
+              }{" "}
+              /{" "}
+              {
+                charges.max
+              }{" "}
+              CHARGES
             </strong>
           </div>
         )}
@@ -695,7 +837,6 @@ function ActivityCard({
     </button>
   );
 }
-
 export default function Activities() {
   const [data, setData] =
     useState<ActivitiesResponse | null>(
@@ -729,41 +870,58 @@ export default function Activities() {
   const [
     selectedEndgameActivity,
     setSelectedEndgameActivity,
-  ] = useState<Activity | null>(null);
+  ] = useState<Activity | null>(
+    null,
+  );
 
   const [
     globalActivityEvents,
     setGlobalActivityEvents,
-  ] = useState<GlobalActivityFeedEvent[]>([]);
+  ] = useState<
+    GlobalActivityFeedEvent[]
+  >([]);
 
   const [
     globalFeedLoading,
     setGlobalFeedLoading,
   ] = useState(true);
 
-  const [feedClock, setFeedClock] =
-    useState(Date.now());
-  const [isMobileFeed, setIsMobileFeed] =
-    useState(
-      () =>
-        typeof window !== "undefined" &&
-        window.matchMedia(
-          "(max-width: 650px)",
-        ).matches,
-    );
+  const [
+    feedClock,
+    setFeedClock,
+  ] = useState(
+    Date.now(),
+  );
 
+  const [
+    isMobileFeed,
+    setIsMobileFeed,
+  ] = useState(
+    () =>
+      typeof window !==
+        "undefined" &&
+      window.matchMedia(
+        "(max-width: 650px)",
+      ).matches,
+  );
 
   const feedRefreshingRef =
     useRef(false);
 
   const activitiesMainRef =
-    useRef<HTMLDivElement | null>(null);
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
   const globalFeedRef =
-    useRef<HTMLElement | null>(null);
+    useRef<HTMLElement | null>(
+      null,
+    );
 
   const loadedAtRef =
-    useRef(Date.now());
+    useRef(
+      Date.now(),
+    );
 
   const refreshingRef =
     useRef(false);
@@ -778,7 +936,9 @@ export default function Activities() {
       async (
         showLoading = false,
       ) => {
-        if (refreshingRef.current) {
+        if (
+          refreshingRef.current
+        ) {
           return;
         }
 
@@ -815,13 +975,18 @@ export default function Activities() {
           loadedAtRef.current =
             Date.now();
 
-          setData(result);
+          setData(
+            result,
+          );
 
           setExploreElapsed(
             Math.min(
-              result.player.explore
+              result.player
+                .explore
                 .elapsedSeconds,
-              result.player.explore
+
+              result.player
+                .explore
                 .maxSeconds,
             ),
           );
@@ -847,65 +1012,89 @@ export default function Activities() {
     );
 
   const loadGlobalActivityFeed =
-    useCallback(async () => {
-      if (feedRefreshingRef.current) {
-        return;
-      }
-
-      feedRefreshingRef.current = true;
-
-      try {
-        const response = await fetch(
-          "/api/game/activity/feed",
-          {
-            credentials: "include",
-          },
-        );
-
-        const result =
-          (await response.json()) as
-            GlobalActivityFeedResponse;
-
+    useCallback(
+      async () => {
         if (
-          !response.ok ||
-          !result.authenticated
+          feedRefreshingRef.current
         ) {
           return;
         }
 
-        setGlobalActivityEvents(
-          Array.isArray(result.events)
-            ? result.events
-            : [],
-        );
-      } catch {
-        /*
-         * The feed is supplemental UI, so a temporary
-         * refresh failure should not replace the Director
-         * page with an error state.
-         */
-      } finally {
-        feedRefreshingRef.current = false;
-        setGlobalFeedLoading(false);
-      }
-    }, []);
+        feedRefreshingRef.current =
+          true;
+
+        try {
+          const response =
+            await fetch(
+              "/api/game/activity/feed",
+              {
+                credentials:
+                  "include",
+              },
+            );
+
+          const result =
+            (await response.json()) as
+              GlobalActivityFeedResponse;
+
+          if (
+            !response.ok ||
+            !result.authenticated
+          ) {
+            return;
+          }
+
+          setGlobalActivityEvents(
+            Array.isArray(
+              result.events,
+            )
+              ? result.events
+              : [],
+          );
+        } catch {
+          /*
+           * The feed is supplemental UI, so a temporary
+           * refresh failure should not replace the Director
+           * page with an error state.
+           */
+        } finally {
+          feedRefreshingRef.current =
+            false;
+
+          setGlobalFeedLoading(
+            false,
+          );
+        }
+      },
+      [],
+    );
 
   useEffect(() => {
-    void loadActivities(true);
+    void loadActivities(
+      true,
+    );
   }, [loadActivities]);
 
   useEffect(() => {
     void loadGlobalActivityFeed();
 
     const refreshInterval =
-      window.setInterval(() => {
-        void loadGlobalActivityFeed();
-      }, 15000);
+      window.setInterval(
+        () => {
+          void loadGlobalActivityFeed();
+        },
+        15000,
+      );
 
     const clockInterval =
-      window.setInterval(() => {
-        setFeedClock(Date.now());
-      }, 30000);
+      window.setInterval(
+        () => {
+          setFeedClock(
+            Date.now(),
+          );
+        },
+        30000,
+      );
 
     return () => {
       window.clearInterval(
@@ -916,34 +1105,52 @@ export default function Activities() {
         clockInterval,
       );
     };
-  }, [loadGlobalActivityFeed]);
+  }, [
+    loadGlobalActivityFeed,
+  ]);
 
   useEffect(() => {
-    const main = activitiesMainRef.current;
-    const feed = globalFeedRef.current;
+    const main =
+      activitiesMainRef.current;
 
-    if (!main || !feed) {
+    const feed =
+      globalFeedRef.current;
+
+    if (
+      !main ||
+      !feed
+    ) {
       return;
     }
 
-    const syncFeedHeight = () => {
-      const height = Math.max(
-        0,
-        Math.floor(main.getBoundingClientRect().height),
-      );
+    const syncFeedHeight =
+      () => {
+        const height =
+          Math.max(
+            0,
+            Math.floor(
+              main
+                .getBoundingClientRect()
+                .height,
+            ),
+          );
 
-      feed.style.setProperty(
-        "--global-feed-max-height",
-        `${height}px`,
-      );
-    };
+        feed.style.setProperty(
+          "--global-feed-max-height",
+          `${height}px`,
+        );
+      };
 
     syncFeedHeight();
 
     const observer =
-      new ResizeObserver(syncFeedHeight);
+      new ResizeObserver(
+        syncFeedHeight,
+      );
 
-    observer.observe(main);
+    observer.observe(
+      main,
+    );
 
     window.addEventListener(
       "resize",
@@ -961,13 +1168,17 @@ export default function Activities() {
   }, [data]);
 
   useEffect(() => {
-    const media = window.matchMedia(
-      "(max-width: 650px)",
-    );
+    const media =
+      window.matchMedia(
+        "(max-width: 650px)",
+      );
 
-    const updateMobileFeed = () => {
-      setIsMobileFeed(media.matches);
-    };
+    const updateMobileFeed =
+      () => {
+        setIsMobileFeed(
+          media.matches,
+        );
+      };
 
     updateMobileFeed();
 
@@ -994,7 +1205,9 @@ export default function Activities() {
           event.target as Node,
         )
       ) {
-        setTravelOpen(false);
+        setTravelOpen(
+          false,
+        );
       }
     }
 
@@ -1013,19 +1226,25 @@ export default function Activities() {
 
   useEffect(() => {
     const interval =
-      window.setInterval(() => {
-        setClock(
-          Math.floor(
-            (
-              Date.now() -
-              loadedAtRef.current
-            ) / 1000,
-          ),
-        );
-      }, 1000);
+      window.setInterval(
+        () => {
+          setClock(
+            Math.floor(
+              (
+                Date.now() -
+                loadedAtRef.current
+              ) /
+                1000,
+            ),
+          );
+        },
+        1000,
+      );
 
     return () => {
-      window.clearInterval(interval);
+      window.clearInterval(
+        interval,
+      );
     };
   }, []);
 
@@ -1036,14 +1255,20 @@ export default function Activities() {
 
     setExploreElapsed(
       Math.min(
-        data.player.explore
+        data.player
+          .explore
           .elapsedSeconds +
           clock,
-        data.player.explore
+
+        data.player
+          .explore
           .maxSeconds,
       ),
     );
-  }, [clock, data]);
+  }, [
+    clock,
+    data,
+  ]);
 
   useEffect(() => {
     if (!data) {
@@ -1051,31 +1276,52 @@ export default function Activities() {
     }
 
     const globalTimers = [
-      data.rotation.dailyShowdown
+      data.rotation
+        .dailyShowdown
         .remainingSeconds,
-      data.rotation.dailyDungeon
+
+      data.rotation
+        .dailyDungeon
         .remainingSeconds,
-      data.rotation.dailyRaid
+
+      data.rotation
+        .dailyRaid
         .remainingSeconds,
-      data.rotation.nightfall
+
+      data.rotation
+        .nightfall
         .remainingSeconds,
-      data.rotation.grandmaster
+
+      data.rotation
+        .grandmaster
         .remainingSeconds,
-      data.rotation.infiltration
+
+      data.rotation
+        .infiltration
         .remainingSeconds,
-      data.rotation.showdown
+
+      data.rotation
+        .showdown
         .remainingSeconds,
-      data.rotation.crawl
+
+      data.rotation
+        .crawl
         .remainingSeconds,
     ];
 
     const rotationExpired =
       globalTimers.some(
-        (remaining) =>
-          remaining - clock <= 0,
+        (
+          remaining,
+        ) =>
+          remaining -
+            clock <=
+          0,
       );
 
-    if (rotationExpired) {
+    if (
+      rotationExpired
+    ) {
       void loadActivities();
     }
   }, [
@@ -1091,14 +1337,24 @@ export default function Activities() {
       !data ||
       traveling ||
       destination ===
-        data.player.destination
+        data.player
+          .destination
     ) {
-      setTravelOpen(false);
+      setTravelOpen(
+        false,
+      );
+
       return;
     }
 
-    setTraveling(true);
-    setTravelOpen(false);
+    setTraveling(
+      true,
+    );
+
+    setTravelOpen(
+      false,
+    );
+
     setError("");
 
     try {
@@ -1106,15 +1362,21 @@ export default function Activities() {
         await fetch(
           "/api/game/travel",
           {
-            method: "POST",
-            credentials: "include",
+            method:
+              "POST",
+
+            credentials:
+              "include",
+
             headers: {
               "Content-Type":
                 "application/json",
             },
-            body: JSON.stringify({
-              destination,
-            }),
+
+            body:
+              JSON.stringify({
+                destination,
+              }),
           },
         );
 
@@ -1143,7 +1405,9 @@ export default function Activities() {
           : "Failed to travel.",
       );
     } finally {
-      setTraveling(false);
+      setTraveling(
+        false,
+      );
     }
   }
 
@@ -1153,7 +1417,9 @@ export default function Activities() {
     return formatRotationTime(
       Math.max(
         0,
-        rotation.remainingSeconds -
+
+        rotation
+          .remainingSeconds -
           clock,
       ),
     );
@@ -1168,9 +1434,13 @@ export default function Activities() {
      */
   }
 
-  function openEndgameActivity(activity: Activity | null) {
-    if (!activity) return;
-  
+  function openEndgameActivity(
+    activity: Activity | null,
+  ) {
+    if (!activity) {
+      return;
+    }
+
     if (
       ![
         "raid",
@@ -1178,20 +1448,59 @@ export default function Activities() {
         "strike",
         "nightfall",
         "gm",
-      ].includes(activity.type)
+      ].includes(
+        activity.type,
+      )
     ) {
       return;
     }
-  
-    setSelectedEndgameActivity(activity);
+
+    setSelectedEndgameActivity(
+      activity,
+    );
   }
-  
+
   function openInfiltrationActivity(
     activity: Activity | null,
   ) {
-    if (!activity) return;
-  
-    setSelectedEndgameActivity(activity);
+    if (!activity) {
+      return;
+    }
+
+    setSelectedEndgameActivity(
+      activity,
+    );
+  }
+
+  function openShowdownActivity(
+    activity: Activity | null,
+  ) {
+    if (!activity) {
+      return;
+    }
+
+    const source =
+      activity.weapon_source
+        ?.trim()
+        .toLowerCase();
+
+    const validShowdownSource =
+      source === "seraph" ||
+      source === "elivagar" ||
+      source === "lucent" ||
+      source === "cos" ||
+      source === "sos" ||
+      source === "eow";
+
+    if (
+      !validShowdownSource
+    ) {
+      return;
+    }
+
+    setSelectedEndgameActivity(
+      activity,
+    );
   }
 
   if (loading) {
@@ -1208,7 +1517,10 @@ export default function Activities() {
     );
   }
 
-  if (error && !data) {
+  if (
+    error &&
+    !data
+  ) {
     return (
       <div className="activities-screen">
         <TopBar />
@@ -1228,18 +1540,22 @@ export default function Activities() {
 
   const destinationBanner =
     findDestinationImage(
-      data.player.destination,
+      data.player
+        .destination,
     );
 
   const exploreMax =
-    data.player.explore
+    data.player
+      .explore
       .maxSeconds;
 
   const explorePercentage =
     Math.min(
       100,
+
       Math.max(
         0,
+
         (
           exploreElapsed /
           exploreMax
@@ -1254,31 +1570,99 @@ export default function Activities() {
   const dungeonCooldownRemaining =
     Math.max(
       0,
-      data.player.endgame.dungeon
-        .remainingSeconds - clock,
+
+      data.player
+        .endgame
+        .dungeon
+        .remainingSeconds -
+        clock,
     );
 
   const raidCooldownRemaining =
     Math.max(
       0,
-      data.player.endgame.raid
-        .remainingSeconds - clock,
+
+      data.player
+        .endgame
+        .raid
+        .remainingSeconds -
+        clock,
     );
 
   const dailyDungeonCharges =
-    data.player.endgame.dailyDungeon;
+    data.player
+      .endgame
+      .dailyDungeon;
 
   const dailyRaidCharges =
-    data.player.endgame.dailyRaid;
+    data.player
+      .endgame
+      .dailyRaid;
 
-  const strikeCooldownRemaining = Math.max(0, data.player.vanguard.strike.remainingSeconds - clock);
-  const nightfallCooldownRemaining = Math.max(0, data.player.vanguard.nightfall.remainingSeconds - clock);
-  const gmCooldownRemaining = Math.max(0, data.player.vanguard.gm.remainingSeconds - clock);
-  const infiltrationCooldownRemaining = Math.max(0, data.player.infiltration.remainingSeconds - clock);
+  const dailyShowdownCharges =
+    data.player
+      .showdown
+      .daily;
+
+  const strikeCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .vanguard
+        .strike
+        .remainingSeconds -
+        clock,
+    );
+
+  const nightfallCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .vanguard
+        .nightfall
+        .remainingSeconds -
+        clock,
+    );
+
+  const gmCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .vanguard
+        .gm
+        .remainingSeconds -
+        clock,
+    );
+
+  const infiltrationCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .infiltration
+        .remainingSeconds -
+        clock,
+    );
+
+  const showdownCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .showdown
+        .remainingSeconds -
+        clock,
+    );
 
   const visibleGlobalActivityEvents =
     isMobileFeed
-      ? globalActivityEvents.slice(0, 5)
+      ? globalActivityEvents.slice(
+          0,
+          5,
+        )
       : globalActivityEvents;
 
   return (
@@ -1288,667 +1672,872 @@ export default function Activities() {
       <main className="activities-page">
         <div className="activities-container">
           <div className="activities-layout">
-            <div className="activities-main" ref={activitiesMainRef}>
-
-          <header className="activities-header">
-            <span className="activities-eyebrow">
-              DIRECTOR
-            </span>
-
-            <h1>Activities</h1>
-
-            <p>
-              Choose an activity to begin.
-            </p>
-          </header>
-
-
-          {/* DAILY ROTATION */}
-
-          <section className="activities-section">
-            <div className="activities-section-heading">
-              <div>
-                <span>
-                  GLOBAL ROTATION
-                </span>
-
-                <h2>
-                  Daily Activities
-                </h2>
-              </div>
-
-              <p className="activities-heading-timer">
-                <AnimatedClock />
-                {rotationTimer(
-                  data.rotation.dailyRaid,
-                )}
-              </p>
-            </div>
-
-            <div className="activities-grid activities-grid-three">
-              <ActivityCard
-                label="DAILY SHOWDOWN"
-                activity={
-                  data.rotation
-                    .dailyShowdown
-                    .activity
-                }
-                backgroundImage={
-                  getDailyShowdownBanner(
-                    data.rotation
-                      .dailyShowdown
-                      .activity,
-                  )
-                }
-                daily
-              />
-
-              <ActivityCard
-                label="DAILY DUNGEON"
-                activity={
-                  data.rotation
-                    .dailyDungeon
-                    .activity
-                }
-                backgroundImage={
-                  getActivityBanner(
-                    data.rotation
-                      .dailyDungeon
-                      .activity,
-                  )
-                }
-                backgroundPosition="center"
-                backgroundSize="85% auto"
-                charges={{
-                  remaining:
-                    dailyDungeonCharges.remainingCharges,
-                  max:
-                    dailyDungeonCharges.maxCharges,
-                }}
-                disabled={
-                  dailyDungeonCharges.remainingCharges <= 0
-                }
-                status={
-                  dailyDungeonCharges.remainingCharges <= 0
-                    ? "DAILY LIMIT REACHED"
-                    : undefined
-                }
-                onClick={() => openEndgameActivity(data.rotation.dailyDungeon.activity)}
-                daily
-              />
-
-              <ActivityCard
-                label="DAILY RAID"
-                activity={
-                  data.rotation
-                    .dailyRaid
-                    .activity
-                }
-                backgroundImage={
-                  getActivityBanner(
-                    data.rotation
-                      .dailyRaid
-                      .activity,
-                  )
-                }
-                backgroundPosition="center"
-                backgroundSize="85% auto"
-                charges={{
-                  remaining:
-                    dailyRaidCharges.remainingCharges,
-                  max:
-                    dailyRaidCharges.maxCharges,
-                }}
-                disabled={
-                  dailyRaidCharges.remainingCharges <= 0
-                }
-                status={
-                  dailyRaidCharges.remainingCharges <= 0
-                    ? "DAILY LIMIT REACHED"
-                    : undefined
-                }
-                onClick={() => openEndgameActivity(data.rotation.dailyRaid.activity)}
-                daily
-              />
-            </div>
-          </section>
-
-
-          {/* EXPLORATION REWARDS */}
-
-          <section
-            className={[
-              "exploration-rewards",
-              destinationBanner
-                ? "exploration-rewards-banner"
-                : "",
-              travelOpen
-                ? "travel-menu-open"
-                : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            style={
-              destinationBanner
-                ? {
-                    backgroundImage: `
-                      linear-gradient(
-                        90deg,
-                        rgba(5, 8, 14, 0.92) 0%,
-                        rgba(5, 8, 14, 0.7) 52%,
-                        rgba(5, 8, 14, 0.48) 100%
-                      ),
-                      url("${destinationBanner}")
-                    `,
-                  }
-                : undefined
-            }
-          >
             <div
-              className="exploration-scan"
-              aria-hidden="true"
-            />
-
-            <div
-              className="exploration-particles"
-              aria-hidden="true"
+              className="activities-main"
+              ref={
+                activitiesMainRef
+              }
             >
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
-
-            <div className="exploration-rewards-main">
-              <div className="exploration-rewards-heading">
-                <span className="exploration-rewards-eyebrow">
-                  EXPLORATION REWARDS
+              <header className="activities-header">
+                <span className="activities-eyebrow">
+                  DIRECTOR
                 </span>
 
-                <div className="exploration-title-row">
-                  <h2>
-                    {
-                      data.player
-                        .destination
+                <h1>
+                  Activities
+                </h1>
+
+                <p>
+                  Choose an activity
+                  to begin.
+                </p>
+              </header>
+
+
+              {/* DAILY ROTATION */}
+
+              <section className="activities-section">
+                <div className="activities-section-heading">
+                  <div>
+                    <span>
+                      GLOBAL ROTATION
+                    </span>
+
+                    <h2>
+                      Daily Activities
+                    </h2>
+                  </div>
+
+                  <p className="activities-heading-timer">
+                    <AnimatedClock />
+
+                    {rotationTimer(
+                      data.rotation
+                        .dailyRaid,
+                    )}
+                  </p>
+                </div>
+
+                <div className="activities-grid activities-grid-three">
+                  <ActivityCard
+                    label="DAILY SHOWDOWN"
+                    activity={
+                      data.rotation
+                        .dailyShowdown
+                        .activity
                     }
-                  </h2>
+                    backgroundImage={
+                      getDailyShowdownBanner(
+                        data.rotation
+                          .dailyShowdown
+                          .activity,
+                      )
+                    }
+                    charges={{
+                      remaining:
+                        dailyShowdownCharges
+                          .remainingCharges,
 
-                  <div
-                    className="activity-travel"
-                    ref={travelRef}
-                  >
-                    <button
-                      type="button"
-                      className="activity-travel-button"
-                      disabled={traveling}
-                      aria-expanded={
-                        travelOpen
-                      }
-                      onClick={() =>
-                        setTravelOpen(
-                          (open) =>
-                            !open,
-                        )
-                      }
-                    >
-                      {traveling
-                        ? "TRAVELING..."
-                        : "TRAVEL"}
+                      max:
+                        dailyShowdownCharges
+                          .maxCharges,
+                    }}
+                    disabled={
+                      dailyShowdownCharges
+                        .remainingCharges <=
+                      0
+                    }
+                    status={
+                      dailyShowdownCharges
+                        .remainingCharges <=
+                      0
+                        ? "DAILY LIMIT REACHED"
+                        : "READY"
+                    }
+                    onClick={() =>
+                      openShowdownActivity(
+                        data.rotation
+                          .dailyShowdown
+                          .activity,
+                      )
+                    }
+                    daily
+                  />
 
-                      {!traveling && (
-                        <span
-                          className={`activity-travel-arrow ${
+                  <ActivityCard
+                    label="DAILY DUNGEON"
+                    activity={
+                      data.rotation
+                        .dailyDungeon
+                        .activity
+                    }
+                    backgroundImage={
+                      getActivityBanner(
+                        data.rotation
+                          .dailyDungeon
+                          .activity,
+                      )
+                    }
+                    backgroundPosition="center"
+                    backgroundSize="85% auto"
+                    charges={{
+                      remaining:
+                        dailyDungeonCharges
+                          .remainingCharges,
+
+                      max:
+                        dailyDungeonCharges
+                          .maxCharges,
+                    }}
+                    disabled={
+                      dailyDungeonCharges
+                        .remainingCharges <=
+                      0
+                    }
+                    status={
+                      dailyDungeonCharges
+                        .remainingCharges <=
+                      0
+                        ? "DAILY LIMIT REACHED"
+                        : undefined
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.rotation
+                          .dailyDungeon
+                          .activity,
+                      )
+                    }
+                    daily
+                  />
+
+                  <ActivityCard
+                    label="DAILY RAID"
+                    activity={
+                      data.rotation
+                        .dailyRaid
+                        .activity
+                    }
+                    backgroundImage={
+                      getActivityBanner(
+                        data.rotation
+                          .dailyRaid
+                          .activity,
+                      )
+                    }
+                    backgroundPosition="center"
+                    backgroundSize="85% auto"
+                    charges={{
+                      remaining:
+                        dailyRaidCharges
+                          .remainingCharges,
+
+                      max:
+                        dailyRaidCharges
+                          .maxCharges,
+                    }}
+                    disabled={
+                      dailyRaidCharges
+                        .remainingCharges <=
+                      0
+                    }
+                    status={
+                      dailyRaidCharges
+                        .remainingCharges <=
+                      0
+                        ? "DAILY LIMIT REACHED"
+                        : undefined
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.rotation
+                          .dailyRaid
+                          .activity,
+                      )
+                    }
+                    daily
+                  />
+                </div>
+              </section>
+
+
+              {/* EXPLORATION REWARDS */}
+
+              <section
+                className={[
+                  "exploration-rewards",
+
+                  destinationBanner
+                    ? "exploration-rewards-banner"
+                    : "",
+
+                  travelOpen
+                    ? "travel-menu-open"
+                    : "",
+                ]
+                  .filter(
+                    Boolean,
+                  )
+                  .join(" ")}
+                style={
+                  destinationBanner
+                    ? {
+                        backgroundImage: `
+                          linear-gradient(
+                            90deg,
+                            rgba(5, 8, 14, 0.92) 0%,
+                            rgba(5, 8, 14, 0.7) 52%,
+                            rgba(5, 8, 14, 0.48) 100%
+                          ),
+                          url("${destinationBanner}")
+                        `,
+                      }
+                    : undefined
+                }
+              >
+                <div
+                  className="exploration-scan"
+                  aria-hidden="true"
+                />
+
+                <div
+                  className="exploration-particles"
+                  aria-hidden="true"
+                >
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                </div>
+
+                <div className="exploration-rewards-main">
+                  <div className="exploration-rewards-heading">
+                    <span className="exploration-rewards-eyebrow">
+                      EXPLORATION
+                      REWARDS
+                    </span>
+
+                    <div className="exploration-title-row">
+                      <h2>
+                        {
+                          data.player
+                            .destination
+                        }
+                      </h2>
+
+                      <div
+                        className="activity-travel"
+                        ref={
+                          travelRef
+                        }
+                      >
+                        <button
+                          type="button"
+                          className="activity-travel-button"
+                          disabled={
+                            traveling
+                          }
+                          aria-expanded={
                             travelOpen
-                              ? "open"
-                              : ""
-                          }`}
+                          }
+                          onClick={() =>
+                            setTravelOpen(
+                              (
+                                open,
+                              ) =>
+                                !open,
+                            )
+                          }
                         >
-                          ▼
-                        </span>
-                      )}
-                    </button>
+                          {traveling
+                            ? "TRAVELING..."
+                            : "TRAVEL"}
 
-                    {travelOpen && (
-                      <div className="activity-travel-menu">
-                        {DESTINATIONS.map(
-                          (
-                            destination,
-                          ) => {
-                            const active =
-                              destination ===
-                              data.player
-                                .destination;
+                          {!traveling && (
+                            <span
+                              className={`activity-travel-arrow ${
+                                travelOpen
+                                  ? "open"
+                                  : ""
+                              }`}
+                            >
+                              ▼
+                            </span>
+                          )}
+                        </button>
 
-                            return (
-                              <button
-                                key={
-                                  destination
-                                }
-                                type="button"
-                                className={[
-                                  "activity-travel-option",
-                                  active
-                                    ? "active"
-                                    : "",
+                        {travelOpen && (
+                          <div className="activity-travel-menu">
+                            {DESTINATIONS.map(
+                              (
+                                destination,
+                              ) => {
+                                const active =
                                   destination ===
-                                  "Plaguelands"
-                                    ? "plaguelands"
-                                    : "",
-                                ]
-                                  .filter(Boolean)
-                                  .join(" ")}
-                                onClick={() =>
-                                  void travel(
-                                    destination,
-                                  )
-                                }
-                              >
-                                <span>
-                                  {
-                                    destination
-                                  }
-                                </span>
+                                  data
+                                    .player
+                                    .destination;
 
-                                {active && (
-                                  <small>
-                                    CURRENT
-                                  </small>
-                                )}
-                              </button>
-                            );
-                          },
+                                return (
+                                  <button
+                                    key={
+                                      destination
+                                    }
+                                    type="button"
+                                    className={[
+                                      "activity-travel-option",
+
+                                      active
+                                        ? "active"
+                                        : "",
+
+                                      destination ===
+                                      "Plaguelands"
+                                        ? "plaguelands"
+                                        : "",
+                                    ]
+                                      .filter(
+                                        Boolean,
+                                      )
+                                      .join(
+                                        " ",
+                                      )}
+                                    onClick={() =>
+                                      void travel(
+                                        destination,
+                                      )
+                                    }
+                                  >
+                                    <span>
+                                      {
+                                        destination
+                                      }
+                                    </span>
+
+                                    {active && (
+                                      <small>
+                                        CURRENT
+                                      </small>
+                                    )}
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
                         )}
                       </div>
-                    )}
+                    </div>
+
+                    <p>
+                      Rewards accumulate
+                      while exploring your
+                      current destination,
+                      up to 24 hours.
+                    </p>
+                  </div>
+
+                  <div className="exploration-rewards-time">
+                    <AnimatedClock />
+
+                    <strong>
+                      {formatExploreTime(
+                        exploreElapsed,
+                      )}
+                    </strong>
+
+                    <span>
+                      / 24h
+                    </span>
                   </div>
                 </div>
 
-                <p>
-                  Rewards accumulate while
-                  exploring your current
-                  destination, up to 24
-                  hours.
-                </p>
-              </div>
-
-              <div className="exploration-rewards-time">
-                <AnimatedClock />
-
-                <strong>
-                  {formatExploreTime(
-                    exploreElapsed,
-                  )}
-                </strong>
-
-                <span>
-                  / 24h
-                </span>
-              </div>
-            </div>
-
-            <div className="exploration-progress">
-              <div
-                className="exploration-progress-fill"
-                style={{
-                  width:
-                    `${explorePercentage}%`,
-                }}
-              >
-                <span />
-              </div>
-            </div>
-
-            <div className="exploration-rewards-footer">
-              <div className="exploration-rewards-status">
-                <div>
-                  <span>
-                    {exploreCapped
-                      ? "MAXIMUM REWARDS READY"
-                      : "EXPLORING"}
-                  </span>
-
-                  {!exploreCapped && (
-                    <span
-                      className="exploring-dots"
-                      aria-hidden="true"
-                    >
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                  )}
+                <div className="exploration-progress">
+                  <div
+                    className="exploration-progress-fill"
+                    style={{
+                      width:
+                        `${explorePercentage}%`,
+                    }}
+                  >
+                    <span />
+                  </div>
                 </div>
 
-                <strong>
-                  {Math.floor(
-                    explorePercentage,
-                  )}
-                  %
-                </strong>
-              </div>
+                <div className="exploration-rewards-footer">
+                  <div className="exploration-rewards-status">
+                    <div>
+                      <span>
+                        {exploreCapped
+                          ? "MAXIMUM REWARDS READY"
+                          : "EXPLORING"}
+                      </span>
 
-              <button
-                type="button"
-                className="exploration-claim-button"
-                onClick={
-                  claimExplorationRewards
-                }
-              >
-                CLAIM
-              </button>
-            </div>
-          </section>
+                      {!exploreCapped && (
+                        <span
+                          className="exploring-dots"
+                          aria-hidden="true"
+                        >
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      )}
+                    </div>
 
+                    <strong>
+                      {Math.floor(
+                        explorePercentage,
+                      )}
+                      %
+                    </strong>
+                  </div>
 
-          {/* VANGUARD */}
+                  <button
+                    type="button"
+                    className="exploration-claim-button"
+                    onClick={
+                      claimExplorationRewards
+                    }
+                  >
+                    CLAIM
+                  </button>
+                </div>
+              </section>
+                            {/* VANGUARD */}
 
-          <section className="activities-section">
-            <div className="activities-section-heading">
-              <div>
-                <span>
-                  PLAYLIST
-                </span>
+              <section className="activities-section">
+                <div className="activities-section-heading">
+                  <div>
+                    <span>
+                      PLAYLIST
+                    </span>
 
-                <h2>
-                  Vanguard Operations
-                </h2>
-              </div>
-            </div>
+                    <h2>
+                      Vanguard Operations
+                    </h2>
+                  </div>
+                </div>
 
-            <div className="activities-grid activities-grid-three">
-              <ActivityCard
-                label="STRIKE"
-                activity={
-                  data.current.strike
-                }
-                backgroundImage={
-                  getStrikeBanner(
-                    data.current.strike,
-                  )
-                }
-                icon={
-                  findGeneralImage(
-                    "strike.png",
-                  )
-                }
-                disabled={strikeCooldownRemaining > 0}
-                status={strikeCooldownRemaining > 0 ? `◷ ${formatRotationTime(strikeCooldownRemaining)}` : "READY"}
-                onClick={() => openEndgameActivity(data.current.strike)}
-              />
+                <div className="activities-grid activities-grid-three">
+                  <ActivityCard
+                    label="STRIKE"
+                    activity={
+                      data.current
+                        .strike
+                    }
+                    backgroundImage={
+                      getStrikeBanner(
+                        data.current
+                          .strike,
+                      )
+                    }
+                    icon={
+                      findGeneralImage(
+                        "strike.png",
+                      )
+                    }
+                    disabled={
+                      strikeCooldownRemaining >
+                      0
+                    }
+                    status={
+                      strikeCooldownRemaining >
+                      0
+                        ? `◷ ${formatRotationTime(
+                            strikeCooldownRemaining,
+                          )}`
+                        : "READY"
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.current
+                          .strike,
+                      )
+                    }
+                  />
 
-              <ActivityCard
-                label="NIGHTFALL"
-                activity={
-                  data.rotation
-                    .nightfall
-                    .activity
-                }
-                timer={rotationTimer(
-                  data.rotation
-                    .nightfall,
-                )}
-                backgroundImage={
-                  getNightfallBanner(
-                    data.rotation
-                      .nightfall
-                      .activity,
-                  )
-                }
-                icon={
-                  findGeneralImage(
-                    "nightfall.png",
-                  )
-                }
-                disabled={nightfallCooldownRemaining > 0}
-                status={nightfallCooldownRemaining > 0 ? `◷ ${formatRotationTime(nightfallCooldownRemaining)}` : "READY"}
-                onClick={() => openEndgameActivity(data.rotation.nightfall.activity)}
-              />
+                  <ActivityCard
+                    label="NIGHTFALL"
+                    activity={
+                      data.rotation
+                        .nightfall
+                        .activity
+                    }
+                    timer={
+                      rotationTimer(
+                        data.rotation
+                          .nightfall,
+                      )
+                    }
+                    backgroundImage={
+                      getNightfallBanner(
+                        data.rotation
+                          .nightfall
+                          .activity,
+                      )
+                    }
+                    icon={
+                      findGeneralImage(
+                        "nightfall.png",
+                      )
+                    }
+                    disabled={
+                      nightfallCooldownRemaining >
+                      0
+                    }
+                    status={
+                      nightfallCooldownRemaining >
+                      0
+                        ? `◷ ${formatRotationTime(
+                            nightfallCooldownRemaining,
+                          )}`
+                        : "READY"
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.rotation
+                          .nightfall
+                          .activity,
+                      )
+                    }
+                  />
 
-              <ActivityCard
-                label="GRANDMASTER NIGHTFALL"
-                activity={
-                  data.rotation
-                    .grandmaster
-                    .activity
-                }
-                timer={rotationTimer(
-                  data.rotation
-                    .grandmaster,
-                )}
-                backgroundImage={
-                  getGrandmasterBanner(
-                    data.rotation
-                      .grandmaster
-                      .activity,
-                  )
-                }
-                icon={
-                  findGeneralImage(
-                    "grandmaster.png",
-                  )
-                }
-                disabled={gmCooldownRemaining > 0}
-                status={gmCooldownRemaining > 0 ? `◷ ${formatRotationTime(gmCooldownRemaining)}` : `READY · LVL ${data.player.vanguard.gm.minLevel}+`}
-                onClick={() => openEndgameActivity(data.rotation.grandmaster.activity)}
-              />
-            </div>
-          </section>
-
-
-          {/* SPECIAL ACTIVITIES */}
-
-          <section className="activities-section">
-            <div className="activities-section-heading">
-              <div>
-                <span>
-                  5 MINUTE ROTATION
-                </span>
-
-                <h2>
-                  Special Activities
-                </h2>
-              </div>
-
-              <p className="activities-heading-timer">
-                <AnimatedClock />
-                {rotationTimer(
-                  data.rotation.infiltration,
-                )}
-              </p>
-            </div>
-
-            <div className="activities-grid activities-grid-three">
-              <ActivityCard
-                label="INFILTRATE"
-                activity={
-                  data.rotation
-                    .infiltration
-                    .activity
-                }
-                timer={rotationTimer(
-                  data.rotation.infiltration,
-                )}
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.rotation
-                      .infiltration
-                      .activity,
-                  )
-                }
-                disabled={
-                  infiltrationCooldownRemaining >
-                  0
-                }
-                status={
-                  infiltrationCooldownRemaining >
-                  0
-                    ? `COOLDOWN ${formatCooldownTime(
-                        infiltrationCooldownRemaining,
-                      )}`
-                    : "READY"
-                }
-                onClick={() =>
-                  openInfiltrationActivity(
-                    data.rotation
-                      .infiltration
-                      .activity,
-                  )
-                }
-              />
-
-              <ActivityCard
-                label="SHOWDOWN"
-                activity={
-                  data.rotation
-                    .showdown
-                    .activity
-                }
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.rotation
-                      .showdown
-                      .activity,
-                  )
-                }
-              />
-
-              <ActivityCard
-                label="CRAWL"
-                activity={
-                  data.rotation
-                    .crawl
-                    .activity
-                }
-                backgroundImage={
-                  getGeneralActivityBanner(
-                    data.rotation
-                      .crawl
-                      .activity,
-                  )
-                }
-              />
-            </div>
-          </section>
+                  <ActivityCard
+                    label="GRANDMASTER NIGHTFALL"
+                    activity={
+                      data.rotation
+                        .grandmaster
+                        .activity
+                    }
+                    timer={
+                      rotationTimer(
+                        data.rotation
+                          .grandmaster,
+                      )
+                    }
+                    backgroundImage={
+                      getGrandmasterBanner(
+                        data.rotation
+                          .grandmaster
+                          .activity,
+                      )
+                    }
+                    icon={
+                      findGeneralImage(
+                        "grandmaster.png",
+                      )
+                    }
+                    disabled={
+                      gmCooldownRemaining >
+                      0
+                    }
+                    status={
+                      gmCooldownRemaining >
+                      0
+                        ? `◷ ${formatRotationTime(
+                            gmCooldownRemaining,
+                          )}`
+                        : `READY · LVL ${
+                            data.player
+                              .vanguard
+                              .gm
+                              .minLevel
+                          }+`
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.rotation
+                          .grandmaster
+                          .activity,
+                      )
+                    }
+                  />
+                </div>
+              </section>
 
 
-          {/* DESTINATION DUNGEON / RAID */}
+              {/* SPECIAL ACTIVITIES */}
 
-          <section className="activities-section activities-destination-section">
-            <div className="activities-section-heading">
-              <div>
-                <span>
-                  DESTINATION ACTIVITIES
-                </span>
+              <section className="activities-section">
+                <div className="activities-section-heading">
+                  <div>
+                    <span>
+                      5 MINUTE ROTATION
+                    </span>
 
-                <h2>
-                  {
-                    data.player
-                      .destination
-                  }
-                </h2>
-              </div>
-            </div>
+                    <h2>
+                      Special Activities
+                    </h2>
+                  </div>
 
-            <div className="activities-grid activities-grid-two">
-              <ActivityCard
-                label="DUNGEON"
-                activity={
-                  data.current.dungeon
-                }
-                unavailableText={
-                  `No Dungeon on ${data.player.destination}`
-                }
-                backgroundImage={
-                  getActivityBanner(
-                    data.current.dungeon,
-                  )
-                }
-                disabled={
-                  dungeonCooldownRemaining > 0
-                }
-                status={
-                  dungeonCooldownRemaining > 0
-                    ? `COOLDOWN ${formatCooldownTime(
-                        dungeonCooldownRemaining,
-                      )}`
-                    : data.current.dungeon
-                      ? "READY"
-                      : undefined
-                }
-                onClick={() => openEndgameActivity(data.current.dungeon)}
-              />
+                  <p className="activities-heading-timer">
+                    <AnimatedClock />
 
-              <ActivityCard
-                label="RAID"
-                activity={
-                  data.current.raid
-                }
-                unavailableText={
-                  `No Raid on ${data.player.destination}`
-                }
-                backgroundImage={
-                  getActivityBanner(
-                    data.current.raid,
-                  )
-                }
-                disabled={
-                  raidCooldownRemaining > 0
-                }
-                status={
-                  raidCooldownRemaining > 0
-                    ? `COOLDOWN ${formatCooldownTime(
-                        raidCooldownRemaining,
-                      )}`
-                    : data.current.raid
-                      ? "READY"
-                      : undefined
-                }
-                onClick={() => openEndgameActivity(data.current.raid)}
-              />
-            </div>
-          </section>
+                    {rotationTimer(
+                      data.rotation
+                        .infiltration,
+                    )}
+                  </p>
+                </div>
 
-          {error && (
-            <div className="activities-inline-error">
-              {error}
-            </div>
-          )}
+                <div className="activities-grid activities-grid-three">
+                  <ActivityCard
+                    label="INFILTRATE"
+                    activity={
+                      data.rotation
+                        .infiltration
+                        .activity
+                    }
+                    timer={
+                      rotationTimer(
+                        data.rotation
+                          .infiltration,
+                      )
+                    }
+                    backgroundImage={
+                      getGeneralActivityBanner(
+                        data.rotation
+                          .infiltration
+                          .activity,
+                      )
+                    }
+                    disabled={
+                      infiltrationCooldownRemaining >
+                      0
+                    }
+                    status={
+                      infiltrationCooldownRemaining >
+                      0
+                        ? `COOLDOWN ${formatCooldownTime(
+                            infiltrationCooldownRemaining,
+                          )}`
+                        : "READY"
+                    }
+                    onClick={() =>
+                      openInfiltrationActivity(
+                        data.rotation
+                          .infiltration
+                          .activity,
+                      )
+                    }
+                  />
+
+                  <ActivityCard
+                    label="SHOWDOWN"
+                    activity={
+                      data.rotation
+                        .showdown
+                        .activity
+                    }
+                    timer={
+                      rotationTimer(
+                        data.rotation
+                          .showdown,
+                      )
+                    }
+                    backgroundImage={
+                      getGeneralActivityBanner(
+                        data.rotation
+                          .showdown
+                          .activity,
+                      )
+                    }
+                    disabled={
+                      showdownCooldownRemaining >
+                      0
+                    }
+                    status={
+                      showdownCooldownRemaining >
+                      0
+                        ? `COOLDOWN ${formatCooldownTime(
+                            showdownCooldownRemaining,
+                          )}`
+                        : "READY"
+                    }
+                    onClick={() =>
+                      openShowdownActivity(
+                        data.rotation
+                          .showdown
+                          .activity,
+                      )
+                    }
+                  />
+
+                  <ActivityCard
+                    label="CRAWL"
+                    activity={
+                      data.rotation
+                        .crawl
+                        .activity
+                    }
+                    backgroundImage={
+                      getGeneralActivityBanner(
+                        data.rotation
+                          .crawl
+                          .activity,
+                      )
+                    }
+                  />
+                </div>
+              </section>
+
+
+              {/* DESTINATION DUNGEON / RAID */}
+
+              <section className="activities-section activities-destination-section">
+                <div className="activities-section-heading">
+                  <div>
+                    <span>
+                      DESTINATION
+                      ACTIVITIES
+                    </span>
+
+                    <h2>
+                      {
+                        data.player
+                          .destination
+                      }
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="activities-grid activities-grid-two">
+                  <ActivityCard
+                    label="DUNGEON"
+                    activity={
+                      data.current
+                        .dungeon
+                    }
+                    unavailableText={
+                      `No Dungeon on ${data.player.destination}`
+                    }
+                    backgroundImage={
+                      getActivityBanner(
+                        data.current
+                          .dungeon,
+                      )
+                    }
+                    disabled={
+                      dungeonCooldownRemaining >
+                      0
+                    }
+                    status={
+                      dungeonCooldownRemaining >
+                      0
+                        ? `COOLDOWN ${formatCooldownTime(
+                            dungeonCooldownRemaining,
+                          )}`
+                        : data.current
+                              .dungeon
+                          ? "READY"
+                          : undefined
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.current
+                          .dungeon,
+                      )
+                    }
+                  />
+
+                  <ActivityCard
+                    label="RAID"
+                    activity={
+                      data.current
+                        .raid
+                    }
+                    unavailableText={
+                      `No Raid on ${data.player.destination}`
+                    }
+                    backgroundImage={
+                      getActivityBanner(
+                        data.current
+                          .raid,
+                      )
+                    }
+                    disabled={
+                      raidCooldownRemaining >
+                      0
+                    }
+                    status={
+                      raidCooldownRemaining >
+                      0
+                        ? `COOLDOWN ${formatCooldownTime(
+                            raidCooldownRemaining,
+                          )}`
+                        : data.current
+                              .raid
+                          ? "READY"
+                          : undefined
+                    }
+                    onClick={() =>
+                      openEndgameActivity(
+                        data.current
+                          .raid,
+                      )
+                    }
+                  />
+                </div>
+              </section>
+
+              {error && (
+                <div className="activities-inline-error">
+                  {error}
+                </div>
+              )}
             </div>
 
             <aside
-              ref={globalFeedRef}
+              ref={
+                globalFeedRef
+              }
               className="global-activity-feed"
               aria-label="Global activity feed"
             >
               <div className="global-activity-feed-inner">
                 <div className="global-activity-feed-heading">
-                  <span>LIVE FEED</span>
-                  <h2>Global Activity</h2>
+                  <span>
+                    LIVE FEED
+                  </span>
+
+                  <h2>
+                    Global Activity
+                  </h2>
                 </div>
 
-                {visibleGlobalActivityEvents.length > 0 ? (
+                {visibleGlobalActivityEvents
+                  .length >
+                0 ? (
                   <div className="global-activity-feed-events">
                     {visibleGlobalActivityEvents.map(
-                      (event) => (
+                      (
+                        event,
+                      ) => (
                         <article
                           className="global-activity-event"
-                          key={event.id}
+                          key={
+                            event.id
+                          }
                         >
                           <div className="global-activity-event-top">
                             <div className="global-activity-event-player-row">
                               {event.avatarUrl && (
                                 <img
                                   className="global-activity-event-avatar"
-                                  src={event.avatarUrl}
+                                  src={
+                                    event.avatarUrl
+                                  }
                                   alt=""
                                   aria-hidden="true"
                                 />
                               )}
 
                               <strong className="global-activity-event-player">
-                                {event.player}
+                                {
+                                  event.player
+                                }
                               </strong>
                             </div>
 
@@ -1961,28 +2550,40 @@ export default function Activities() {
                           </div>
 
                           <span className="global-activity-event-activity">
-                            {event.activity}
+                            {
+                              event.activity
+                            }
                           </span>
 
                           <span
                             className={[
                               "global-activity-event-result",
-                              event.result.toLowerCase(),
-                            ].join(" ")}
+
+                              event.result
+                                .toLowerCase(),
+                            ].join(
+                              " ",
+                            )}
                           >
-                            {event.result}
+                            {
+                              event.result
+                            }
                           </span>
 
                           {event.weapon && (
                             <div className="global-activity-event-weapon">
                               {getWeaponImage(
-                                event.weapon.name,
+                                event.weapon
+                                  .name,
                               ) && (
                                 <img
                                   className="global-activity-event-weapon-icon"
-                                  src={getWeaponImage(
-                                    event.weapon.name,
-                                  )}
+                                  src={
+                                    getWeaponImage(
+                                      event.weapon
+                                        .name,
+                                    )
+                                  }
                                   alt=""
                                   aria-hidden="true"
                                 />
@@ -1994,11 +2595,19 @@ export default function Activities() {
                                 </span>
 
                                 <strong>
-                                  {event.weapon.name}
-                                  {event.weapon.adept &&
-                                  !event.weapon.name
+                                  {
+                                    event.weapon
+                                      .name
+                                  }
+
+                                  {event.weapon
+                                    .adept &&
+                                  !event.weapon
+                                    .name
                                     .toLowerCase()
-                                    .includes("(adept)")
+                                    .includes(
+                                      "(adept)",
+                                    )
                                     ? " (Adept)"
                                     : ""}
                                 </strong>
@@ -2023,9 +2632,10 @@ export default function Activities() {
                     </strong>
 
                     <p>
-                      Clears, wipes and weapon
-                      drops from all players
-                      will appear here.
+                      Clears, wipes and
+                      weapon drops from all
+                      players will appear
+                      here.
                     </p>
                   </div>
                 )}
@@ -2037,19 +2647,36 @@ export default function Activities() {
 
       {selectedEndgameActivity && (
         <ActivityRunModal
-          activity={selectedEndgameActivity}
+          activity={
+            selectedEndgameActivity
+          }
           backgroundImage={
-            selectedEndgameActivity.reward_table ===
-            "pinnacle"
-              ? getGeneralActivityBanner(
+            selectedEndgameActivity
+              .weapon_source ===
+              "cos" ||
+            selectedEndgameActivity
+              .weapon_source ===
+              "sos" ||
+            selectedEndgameActivity
+              .weapon_source ===
+              "eow"
+              ? getDailyShowdownBanner(
                   selectedEndgameActivity,
                 )
-              : getActivityBanner(
-                  selectedEndgameActivity,
-                )
+              : selectedEndgameActivity
+                    .reward_table ===
+                  "pinnacle"
+                ? getGeneralActivityBanner(
+                    selectedEndgameActivity,
+                  )
+                : getActivityBanner(
+                    selectedEndgameActivity,
+                  )
           }
           onClose={() =>
-            setSelectedEndgameActivity(null)
+            setSelectedEndgameActivity(
+              null,
+            )
           }
           onFinished={() => {
             void loadActivities();
