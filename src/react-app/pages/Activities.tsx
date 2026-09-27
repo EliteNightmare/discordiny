@@ -80,6 +80,12 @@ type ActivitiesResponse = {
       };
     };
 
+    crawl: {
+      cooldownSeconds: number;
+      remainingSeconds: number;
+      readyAt: number;
+    };
+
     endgame: {
       dungeon: {
         cooldownSeconds: number;
@@ -1682,6 +1688,16 @@ export default function Activities() {
         clock,
     );
 
+  const crawlCooldownRemaining =
+    Math.max(
+      0,
+
+      data.player
+        .crawl
+        .remainingSeconds -
+        clock,
+    );
+
   const visibleGlobalActivityEvents =
     isMobileFeed
       ? globalActivityEvents.slice(
@@ -2404,7 +2420,18 @@ export default function Activities() {
                           .activity,
                       )
                     }
-                    status="READY"
+                    disabled={
+                      crawlCooldownRemaining >
+                      0
+                    }
+                    status={
+                      crawlCooldownRemaining >
+                      0
+                        ? `COOLDOWN ${formatCooldownTime(
+                            crawlCooldownRemaining,
+                          )}`
+                        : "READY"
+                    }
                     onClick={() =>
                       openCrawlActivity(
                         data.rotation
