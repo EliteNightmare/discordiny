@@ -2059,6 +2059,478 @@ app.post("/api/game/travel", async (c) => {
   });
 });
 
+/* =========================================================
+   GAME - EXPLORATION CLAIM
+
+   Legacy cogs/zone.py behavior, with intentionally removed
+   systems left out:
+   - no fishing
+   - no SIVA event
+   - no Acclaim
+
+   The old Acclaim-gated destination material remains as a
+   normal exploration reward, using its base 25-50 roll.
+========================================================= */
+
+app.post("/api/game/explore/claim", async (c) => {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+
+  if (!session) {
+    return c.json(
+      { authenticated: false },
+      401,
+    );
+  }
+
+  const nowSeconds =
+    Math.floor(Date.now() / 1000);
+
+  const profile = await c.env.DB
+    .prepare(
+      `SELECT
+         level,
+         zone
+       FROM player_profiles
+       WHERE user_id = ?
+       LIMIT 1`,
+    )
+    .bind(session.user_id)
+    .first<{
+      level: number;
+      zone: string;
+    }>();
+
+  if (!profile) {
+    return c.json(
+      { error: "Player profile not found." },
+      404,
+    );
+  }
+
+  const cooldown = await c.env.DB
+    .prepare(
+      `SELECT timestamp
+       FROM player_cooldowns
+       WHERE user_id = ?
+         AND activity = 'explore'
+       LIMIT 1`,
+    )
+    .bind(session.user_id)
+    .first<{ timestamp: number }>();
+
+  if (!cooldown) {
+    await c.env.DB
+      .prepare(
+        `INSERT INTO player_cooldowns
+          (user_id, activity, timestamp)
+         VALUES (?, 'explore', ?)
+         ON CONFLICT(user_id, activity)
+         DO NOTHING`,
+      )
+      .bind(
+        session.user_id,
+        nowSeconds,
+      )
+      .run();
+
+    return c.json(
+      { error: "No exploration rewards are ready yet." },
+      409,
+    );
+  }
+
+  const lastClaim =
+    Number(cooldown.timestamp);
+
+  if (
+    !Number.isFinite(lastClaim) ||
+    lastClaim < 0 ||
+    lastClaim > nowSeconds
+  ) {
+    await c.env.DB
+      .prepare(
+        `UPDATE player_cooldowns
+         SET timestamp = ?
+         WHERE user_id = ?
+           AND activity = 'explore'`,
+      )
+      .bind(
+        nowSeconds,
+        session.user_id,
+      )
+      .run();
+
+    return c.json(
+      { error: "Exploration timer was reset. Try again after exploring." },
+      409,
+    );
+  }
+
+  const elapsedSeconds = Math.min(
+    EXPLORE_MAX_SECONDS,
+    Math.max(
+      0,
+      nowSeconds - lastClaim,
+    ),
+  );
+
+  const claimTicks = Math.min(
+    250,
+    Math.floor(elapsedSeconds / 25),
+  );
+
+  if (claimTicks <= 0) {
+    return c.json(
+      { error: "No exploration rewards are ready yet." },
+      409,
+    );
+  }
+
+  /*
+   * Claim the timer first so two simultaneous requests cannot
+   * both pay the same accumulated exploration period.
+   */
+  const claim = await c.env.DB
+    .prepare(
+      `UPDATE player_cooldowns
+       SET timestamp = ?
+       WHERE user_id = ?
+         AND activity = 'explore'
+         AND timestamp = ?`,
+    )
+    .bind(
+      nowSeconds,
+      session.user_id,
+      lastClaim,
+    )
+    .run();
+
+  if (claim.meta.changes !== 1) {
+    return c.json(
+      { error: "Exploration rewards were already claimed." },
+      409,
+    );
+  }
+
+  const level = Math.max(
+    0,
+    Number(profile.level) || 0,
+  );
+
+  const multiplier =
+    1 + level * 0.05;
+
+  const randomInteger = (
+    min: number,
+    max: number,
+  ): number =>
+    Math.floor(
+      Math.random() *
+        (max - min + 1),
+    ) + min;
+
+  const rewards: Record<string, number> = {};
+
+  const glimmer = Math.trunc(
+    randomInteger(50, 100) *
+      multiplier *
+      claimTicks,
+  );
+
+  const enhancementCores = Math.trunc(
+    Math.floor(
+      (randomInteger(1, 2) *
+        multiplier) /
+        5,
+    ) * claimTicks,
+  );
+
+  rewards.Glimmer = glimmer;
+
+  if (enhancementCores > 0) {
+    rewards["Enhancement Core"] =
+      enhancementCores;
+  }
+
+  const destinationMaterials: Record<
+    string,
+    string
+  > = {
+    Cosmodrome: "Spinmetal Leaf",
+    EDZ: "Dusklight Shard",
+    Nessus: "Microphasic Datalattice",
+    "Dreaming City": "Baryon Bough",
+    Moon: "Helium Filament",
+    Europa: "Glacial Starwort",
+    "Throne World": "Cunning Essence",
+    Neomuna: "Cloudark Datachip",
+    "Pale Heart": "Prismatic Fragment",
+  };
+
+  const destinationMaterial =
+    destinationMaterials[profile.zone];
+
+  const destinationMaterialAmount =
+    destinationMaterial
+      ? randomInteger(25, 50)
+      : 0;
+
+  if (
+    destinationMaterial &&
+    destinationMaterialAmount > 0
+  ) {
+    rewards[destinationMaterial] =
+      destinationMaterialAmount;
+  }
+
+  /* -------------------------------------------------------
+     Legacy destination weapon roll
+  ------------------------------------------------------- */
+
+  const statsRow = await c.env.DB
+    .prepare(
+      `SELECT stats
+       FROM player_stats
+       WHERE user_id = ?
+       LIMIT 1`,
+    )
+    .bind(session.user_id)
+    .first<{ stats: string }>();
+
+  let exoticChance = 0;
+  let legendaryChance = 0;
+
+  if (statsRow?.stats) {
+    try {
+      const parsed = JSON.parse(
+        statsRow.stats,
+      ) as {
+        weapons?: {
+          exotic_chance?: number;
+          legendary_chance?: number;
+        };
+      };
+
+      exoticChance = Math.max(
+        0,
+        Number(
+          parsed.weapons?.exotic_chance ?? 0,
+        ) || 0,
+      );
+
+      legendaryChance = Math.max(
+        0,
+        Number(
+          parsed.weapons?.legendary_chance ?? 0,
+        ) || 0,
+      );
+    } catch {
+      exoticChance = 0;
+      legendaryChance = 0;
+    }
+  }
+
+  const weaponCatalog = await c.env.DB
+    .prepare(
+      `SELECT
+         name,
+         rarity
+       FROM weapons
+       WHERE lower(source) = lower(?)
+       ORDER BY name`,
+    )
+    .bind(profile.zone)
+    .all<{
+      name: string;
+      rarity: string | null;
+    }>();
+
+  const ownedWeapons = await c.env.DB
+    .prepare(
+      `SELECT weapon_name
+       FROM player_weapons
+       WHERE user_id = ?`,
+    )
+    .bind(session.user_id)
+    .all<{ weapon_name: string }>();
+
+  const ownedWeaponNames = new Set(
+    (ownedWeapons.results ?? []).map(
+      (weapon) => weapon.weapon_name,
+    ),
+  );
+
+  const availableWeapons =
+    (weaponCatalog.results ?? []).filter(
+      (weapon) =>
+        !ownedWeaponNames.has(weapon.name),
+    );
+
+  const exoticWeapons =
+    availableWeapons.filter(
+      (weapon) =>
+        weapon.rarity === "Exotic",
+    );
+
+  const legendaryWeapons =
+    availableWeapons.filter(
+      (weapon) =>
+        weapon.rarity === "Legendary",
+    );
+
+  const weaponRoll = Math.random();
+
+  let droppedWeapon:
+    | { name: string; rarity: string | null }
+    | null = null;
+
+  if (
+    exoticWeapons.length > 0 &&
+    weaponRoll < exoticChance
+  ) {
+    droppedWeapon =
+      exoticWeapons[
+        randomInteger(
+          0,
+          exoticWeapons.length - 1,
+        )
+      ];
+  } else if (
+    legendaryWeapons.length > 0 &&
+    weaponRoll <
+      exoticChance + legendaryChance
+  ) {
+    droppedWeapon =
+      legendaryWeapons[
+        randomInteger(
+          0,
+          legendaryWeapons.length - 1,
+        )
+      ];
+  }
+
+  const writes: D1PreparedStatement[] = [];
+
+  if (glimmer > 0) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_currencies
+            (user_id, currency_name, amount)
+           VALUES (?, 'Glimmer', ?)
+           ON CONFLICT(user_id, currency_name)
+           DO UPDATE SET
+             amount =
+               player_currencies.amount +
+               excluded.amount`,
+        )
+        .bind(
+          session.user_id,
+          glimmer,
+        ),
+    );
+  }
+
+  if (enhancementCores > 0) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_upgrade_materials
+            (user_id, material_name, amount)
+           VALUES (?, 'Enhancement Core', ?)
+           ON CONFLICT(user_id, material_name)
+           DO UPDATE SET
+             amount =
+               player_upgrade_materials.amount +
+               excluded.amount`,
+        )
+        .bind(
+          session.user_id,
+          enhancementCores,
+        ),
+    );
+  }
+
+  if (
+    destinationMaterial &&
+    destinationMaterialAmount > 0
+  ) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_destination_materials
+            (user_id, material_name, amount)
+           VALUES (?, ?, ?)
+           ON CONFLICT(user_id, material_name)
+           DO UPDATE SET
+             amount =
+               player_destination_materials.amount +
+               excluded.amount`,
+        )
+        .bind(
+          session.user_id,
+          destinationMaterial,
+          destinationMaterialAmount,
+        ),
+    );
+  }
+
+  if (droppedWeapon) {
+    writes.push(
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_weapons
+            (user_id, weapon_name, masterwork)
+           VALUES (?, ?, 0)
+           ON CONFLICT(user_id, weapon_name)
+           DO NOTHING`,
+        )
+        .bind(
+          session.user_id,
+          droppedWeapon.name,
+        ),
+    );
+  }
+
+  if (writes.length > 0) {
+    await c.env.DB.batch(writes);
+  }
+
+  return c.json({
+    success: true,
+    destination: profile.zone,
+    elapsedSeconds,
+    claimTicks,
+    rewards,
+    weapon: {
+      dropped: Boolean(droppedWeapon),
+      name: droppedWeapon?.name ?? null,
+      rarity: droppedWeapon?.rarity ?? null,
+    },
+  });
+});
+
 app.get("/api/game/stats", async (c) => {
   const sessionId = getCookie(
     c,
