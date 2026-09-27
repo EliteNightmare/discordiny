@@ -6,7 +6,7 @@
  * Current Crawls:
  *
  * The Coil
- * Kells Contest
+ * Contest of Elders
  * The Nether
  *
  * Crawl behavior:
@@ -867,19 +867,27 @@ export function createContestSecret():
         }),
       );
 
+  /*
+   * Randomize only the visual grid positions.
+   *
+   * The required click order always remains
+   * contest_1 -> contest_2 -> contest_3 -> contest_4.
+   */
+  const shuffledPieces =
+    shuffle(pieces);
+
   const sequence =
-    shuffle(
-      pieces.map(
-        (piece) =>
-          piece.id,
-      ),
+    CRAWL_CONTEST_PIECES.map(
+      (piece) =>
+        piece.id,
     );
 
   return {
     type:
       "contest",
 
-    pieces,
+    pieces:
+      shuffledPieces,
 
     sequence,
   };
