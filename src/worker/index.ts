@@ -20,7 +20,6 @@ import {
 } from "./game/endgame";
 import {
   GM_MIN_LEVEL,
-  VANGUARD_COOLDOWNS,
   makeVanguardResult,
   rollVanguardRewards,
   rollVanguardWeapon,
@@ -28,19 +27,16 @@ import {
 } from "./game/vanguard";
 
 import {
-  INFILTRATION_COOLDOWN_SECONDS,
   runInfiltration,
 } from "./game/infiltration";
 
 import {
-  SHOWDOWN_COOLDOWN_SECONDS,
   runShowdownActivity,
   type ShowdownActivity,
   type ShowdownWeaponSource,
 } from "./game/showdown";
 
 import {
-  CRAWL_COOLDOWN_SECONDS,
   finalizeCrawlWithoutSecret,
   finalizeFailedCrawlSecret,
   finalizeSuccessfulCrawlSecret,
@@ -3748,8 +3744,24 @@ const GM_ROTATION_SECONDS = 60 * 30;
 const DAILY_ROTATION_SECONDS = 60 * 60 * 24;
 const SPECIAL_ACTIVITY_ROTATION_SECONDS = 60 * 5;
 
-const ENDGAME_DUNGEON_COOLDOWN_SECONDS = 15;
-const ENDGAME_RAID_COOLDOWN_SECONDS = 30;
+/*
+ * Authoritative regular-activity cooldown policy.
+ *
+ * Keep these values here so both activity execution and
+ * /api/game/activities expose the exact same cooldowns.
+ */
+const VANGUARD_COOLDOWNS = {
+  strike: 15,
+  nightfall: 25,
+  gm: 120,
+} as const;
+
+const INFILTRATION_COOLDOWN_SECONDS = 20;
+const SHOWDOWN_COOLDOWN_SECONDS = 30;
+const CRAWL_COOLDOWN_SECONDS = 90;
+
+const ENDGAME_DUNGEON_COOLDOWN_SECONDS = 45;
+const ENDGAME_RAID_COOLDOWN_SECONDS = 90;
 const ENDGAME_DAILY_MAX_CHARGES = 3;
 
 const ENDGAME_DUNGEON_COOLDOWN_KEY =
@@ -4175,10 +4187,10 @@ app.get("/api/game/activities", async (c) => {
      ENDGAME COOLDOWNS / DAILY CHARGES
 
      Regular Dungeon:
-       15 second cooldown
+       45 second cooldown
 
      Regular Raid:
-       30 second cooldown
+       90 second cooldown
 
      Daily Dungeon:
        3 charges per daily rotation
@@ -4212,7 +4224,7 @@ app.get("/api/game/activities", async (c) => {
            timestamp
          FROM player_cooldowns
          WHERE user_id = ?
-           AND activity IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           AND activity IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         session.user_id,
@@ -4225,6 +4237,7 @@ app.get("/api/game/activities", async (c) => {
         VANGUARD_GM_COOLDOWN_KEY,
         INFILTRATION_COOLDOWN_KEY,
         SHOWDOWN_COOLDOWN_KEY,
+        CRAWL_COOLDOWN_KEY,
         dailyShowdownChargeKey,
       )
       .all<{
@@ -4285,6 +4298,11 @@ app.get("/api/game/activities", async (c) => {
   const showdownReadyAt =
     endgameCooldownMap.get(
       SHOWDOWN_COOLDOWN_KEY,
+    ) ?? 0;
+
+  const crawlReadyAt =
+    endgameCooldownMap.get(
+      CRAWL_COOLDOWN_KEY,
     ) ?? 0;
   
   const dailyShowdownUsed =
@@ -4387,6 +4405,20 @@ app.get("/api/game/activities", async (c) => {
             DAILY_SHOWDOWN_MAX_CHARGES -
             dailyShowdownUsed,
         },
+      },
+
+      crawl: {
+        cooldownSeconds:
+          CRAWL_COOLDOWN_SECONDS,
+
+        remainingSeconds:
+          Math.max(
+            0,
+            crawlReadyAt - nowSeconds,
+          ),
+
+        readyAt:
+          crawlReadyAt,
       },
 
       endgame: {
