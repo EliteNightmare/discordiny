@@ -879,9 +879,24 @@ export default function Activities() {
   ] = useState(false);
 
   const [
-    explorationClaimMessage,
-    setExplorationClaimMessage,
-  ] = useState("");
+    explorationSummary,
+    setExplorationSummary,
+  ] = useState<{
+    destination: string;
+    elapsedSeconds: number;
+    xp: number;
+    rewards: Record<string, number>;
+    weapon: {
+      dropped: boolean;
+      name: string | null;
+      rarity?: string | null;
+    };
+  } | null>(null);
+
+  const [
+    settingExploreMax,
+    setSettingExploreMax,
+  ] = useState(false);
 
   const [
     selectedEndgameActivity,
@@ -1450,7 +1465,7 @@ export default function Activities() {
     }
 
     setClaimingExploration(true);
-    setExplorationClaimMessage("");
+    setExplorationSummary(null);
     setError("");
 
     try {
@@ -1466,6 +1481,9 @@ export default function Activities() {
         (await response.json()) as {
           success?: boolean;
           error?: string;
+          destination?: string;
+          elapsedSeconds?: number;
+          xp?: number;
           rewards?: Record<string, number>;
           weapon?: {
             dropped: boolean;
@@ -1483,29 +1501,20 @@ export default function Activities() {
         );
       }
 
-      const rewardParts = Object.entries(
-        result.rewards ?? {},
-      )
-        .filter(([, amount]) => amount > 0)
-        .map(
-          ([name, amount]) =>
-            `${name} ×${amount.toLocaleString()}`,
-        );
-
-      if (
-        result.weapon?.dropped &&
-        result.weapon.name
-      ) {
-        rewardParts.push(
-          `Weapon: ${result.weapon.name}`,
-        );
-      }
-
-      setExplorationClaimMessage(
-        rewardParts.length > 0
-          ? rewardParts.join(" • ")
-          : "Exploration rewards claimed.",
-      );
+      setExplorationSummary({
+        destination:
+          result.destination ??
+          data?.player.destination ??
+          "Unknown",
+        elapsedSeconds:
+          result.elapsedSeconds ?? 0,
+        xp: result.xp ?? 0,
+        rewards: result.rewards ?? {},
+        weapon: result.weapon ?? {
+          dropped: false,
+          name: null,
+        },
+      });
 
       await loadActivities();
     } catch (err) {
@@ -1516,6 +1525,47 @@ export default function Activities() {
       );
     } finally {
       setClaimingExploration(false);
+    }
+  }
+
+  async function setExplorationToMaxForTesting() {
+    if (settingExploreMax) return;
+
+    setSettingExploreMax(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "/api/game/explore/test-max",
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const result =
+        (await response.json()) as {
+          success?: boolean;
+          error?: string;
+        };
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error ||
+            "Failed to set exploration test timer.",
+        );
+      }
+
+      setExplorationSummary(null);
+      await loadActivities();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to set exploration test timer.",
+      );
+    } finally {
+      setSettingExploreMax(false);
     }
   }
 
@@ -2215,6 +2265,18 @@ export default function Activities() {
                     </strong>
                   </div>
 
+                  <div className="exploration-claim-actions">
+                    <button
+                      type="button"
+                      className="exploration-test-max-button"
+                      disabled={settingExploreMax || claimingExploration}
+                      onClick={() =>
+                        void setExplorationToMaxForTesting()
+                      }
+                    >
+                      {settingExploreMax ? "SETTING..." : "TEST 24H"}
+                    </button>
+
                   <button
                     type="button"
                     className="exploration-claim-button"
@@ -2230,11 +2292,64 @@ export default function Activities() {
                       ? "CLAIMING..."
                       : "CLAIM"}
                   </button>
+                  </div>
                 </div>
 
-                {explorationClaimMessage && (
-                  <div className="exploration-claim-result">
-                    {explorationClaimMessage}
+                {explorationSummary && (
+                  <div
+                    className="exploration-summary-backdrop"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) {
+                        setExplorationSummary(null);
+                      }
+                    }}
+                  >
+                    <section
+                      className="exploration-summary-modal"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Exploration claim summary"
+                    >
+                      <span className="exploration-summary-eyebrow">EXPLORATION COMPLETE</span>
+                      <h2>{explorationSummary.destination}</h2>
+                      <p className="exploration-summary-time">
+                        Explored for {formatExploreTime(explorationSummary.elapsedSeconds)}
+                      </p>
+
+                      <div className="exploration-summary-xp">
+                        <span>XP EARNED</span>
+                        <strong>+{explorationSummary.xp.toLocaleString()}</strong>
+                      </div>
+
+                      <div className="exploration-summary-rewards">
+                        {Object.entries(explorationSummary.rewards)
+                          .filter(([, amount]) => amount > 0)
+                          .map(([name, amount]) => (
+                            <div key={name}>
+                              <span>{name}</span>
+                              <strong>+{amount.toLocaleString()}</strong>
+                            </div>
+                          ))}
+                      </div>
+
+                      <div className="exploration-summary-weapon">
+                        <span>DESTINATION WEAPON</span>
+                        <strong>
+                          {explorationSummary.weapon.dropped && explorationSummary.weapon.name
+                            ? explorationSummary.weapon.name
+                            : "No weapon found"}
+                        </strong>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="exploration-summary-close"
+                        onClick={() => setExplorationSummary(null)}
+                      >
+                        CONTINUE
+                      </button>
+                    </section>
                   </div>
                 )}
                 </section>
