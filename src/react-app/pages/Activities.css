@@ -1452,3 +1452,18 @@
     animation: none !important;
   }
 }
+
+/* =========================================================
+   GLOBAL FEED — RESULT SPACING
+========================================================= */
+
+.global-activity-event-activity {
+  display: block;
+}
+
+.global-activity-event-result {
+  display: flex;
+  width: fit-content;
+  margin-top: 9px;
+  line-height: 1.2;
+}
