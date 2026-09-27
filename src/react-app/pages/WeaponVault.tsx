@@ -35,6 +35,7 @@ type WeaponData = {
   rarity: string | null;
   source: string | null;
   activityType: string | null;
+  variantSuffix?: "Adept" | "Timelost" | "Harrowed";
   normal: WeaponOwnership;
   adept: WeaponOwnership;
 };
@@ -399,12 +400,18 @@ function WeaponVault({
 
           const baseName =
             weapon.name
-              .replace(/\s*\(Adept\)\s*$/i, "")
+              .replace(
+                /\s*\((Adept|Timelost|Harrowed)\)\s*$/i,
+                "",
+              )
               .trim();
+
+          const variantSuffix =
+            weapon.variantSuffix ?? "Adept";
 
           const displayName =
             tier === "adept"
-              ? `${baseName} (Adept)`
+              ? `${baseName} (${variantSuffix})`
               : baseName;
 
           return {
@@ -840,7 +847,7 @@ function WeaponVault({
                               {weapon.owned
                                 ? `MASTERWORK ${weapon.masterwork}/${MAX_MASTERWORK}`
                                 : tier === "adept"
-                                  ? "ADEPT · NOT OWNED"
+                                  ? `${weapon.name.match(/\((Adept|Timelost|Harrowed)\)$/i)?.[1]?.toUpperCase() ?? "ADEPT"} · NOT OWNED`
                                   : "NORMAL · NOT OWNED"}
                             </span>
                           </div>
