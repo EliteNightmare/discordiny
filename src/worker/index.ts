@@ -39,6 +39,20 @@ import {
   type ShowdownWeaponSource,
 } from "./game/showdown";
 
+import {
+  CRAWL_COOLDOWN_SECONDS,
+  finalizeCrawlWithoutSecret,
+  finalizeFailedCrawlSecret,
+  finalizeSuccessfulCrawlSecret,
+  getPublicCrawlRun,
+  runCrawl,
+  validateCrawlSecret,
+  type CrawlActivity,
+  type CrawlRunResult,
+  type CrawlWeaponCatalogEntry,
+  type CrawlWeaponSource,
+} from "./game/crawl";
+
 const REGULAR_SHOWDOWN_SOURCES =
   new Set<ShowdownWeaponSource>([
     "seraph",
@@ -2344,7 +2358,8 @@ app.post("/api/game/cooldowns", async (c) => {
       body.activity.startsWith("__endgame_") ||
       body.activity.startsWith("__vanguard_") ||
       body.activity.startsWith("__infiltration") ||
-      body.activity.startsWith("__showdown_")
+      body.activity.startsWith("__showdown_") ||
+      body.activity.startsWith("__crawl")
     )
   ) {
     return c.json(
@@ -3750,6 +3765,8 @@ const INFILTRATION_COOLDOWN_KEY = "__infiltration";
 
 const SHOWDOWN_COOLDOWN_KEY = "__showdown_regular";
 
+const CRAWL_COOLDOWN_KEY = "__crawl";
+
 function getDailyEndgameChargeKey(
   type: "raid" | "dungeon",
   nowSeconds: number,
@@ -4664,9 +4681,571 @@ app.get("/api/game/weapons", async (c) => {
   });
 });
 
+
+/* =========================================================
+   CRAWL - FINAL RESULT PERSISTENCE
+========================================================= */
+
+function buildCrawlFinalWrites(
+  db: D1Database,
+  userId: number,
+  result: CrawlRunResult,
+): D1PreparedStatement[] {
+  const writes: D1PreparedStatement[] = [];
+
+  const crawlCurrencies =
+    new Set([
+      "Glimmer",
+      "Lumia Leaves",
+    ]);
+
+  const crawlUpgradeMaterials =
+    new Set([
+      "Pinnacle Cipher",
+      "Armor Plating",
+      "Ascendant Shard",
+      "Ascendant Alloy",
+    ]);
+
+  for (
+    const [
+      rewardName,
+      rawAmount,
+    ]
+    of Object.entries(
+      result.rewards,
+    )
+  ) {
+    const amount =
+      Math.trunc(
+        rawAmount,
+      );
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0
+    ) {
+      continue;
+    }
+
+    if (
+      crawlCurrencies.has(
+        rewardName,
+      )
+    ) {
+      writes.push(
+        db
+          .prepare(
+            `INSERT INTO player_currencies
+              (
+                user_id,
+                currency_name,
+                amount
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(
+               user_id,
+               currency_name
+             )
+             DO UPDATE SET
+               amount =
+                 player_currencies.amount
+                 + excluded.amount`,
+          )
+          .bind(
+            userId,
+            rewardName,
+            amount,
+          ),
+      );
+
+      continue;
+    }
+
+    if (
+      crawlUpgradeMaterials.has(
+        rewardName,
+      )
+    ) {
+      writes.push(
+        db
+          .prepare(
+            `INSERT INTO player_upgrade_materials
+              (
+                user_id,
+                material_name,
+                amount
+              )
+             VALUES (?, ?, ?)
+             ON CONFLICT(
+               user_id,
+               material_name
+             )
+             DO UPDATE SET
+               amount =
+                 player_upgrade_materials.amount
+                 + excluded.amount`,
+          )
+          .bind(
+            userId,
+            rewardName,
+            amount,
+          ),
+      );
+    }
+  }
+
+  if (result.xp > 0) {
+    writes.push(
+      db
+        .prepare(
+          `UPDATE player_profiles
+           SET
+             exp = exp + ?,
+             updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = ?`,
+        )
+        .bind(
+          result.xp,
+          userId,
+        ),
+    );
+  }
+
+  for (
+    const weapon of
+    result.weapons
+  ) {
+    if (
+      !weapon.dropped ||
+      !weapon.name
+    ) {
+      continue;
+    }
+
+    writes.push(
+      db
+        .prepare(
+          `INSERT INTO player_weapons
+            (
+              user_id,
+              weapon_name,
+              masterwork
+            )
+           VALUES (?, ?, 0)
+           ON CONFLICT(
+             user_id,
+             weapon_name
+           )
+           DO NOTHING`,
+        )
+        .bind(
+          userId,
+          weapon.name,
+        ),
+    );
+  }
+
+  const feedWeapon =
+    result.weapons[0] ?? null;
+
+  writes.push(
+    db
+      .prepare(
+        `INSERT INTO global_activity_feed
+          (
+            user_id,
+            activity_name,
+            activity_type,
+            result,
+            weapon_name,
+            weapon_adept
+          )
+         VALUES (
+           ?,
+           ?,
+           'crawl',
+           'CLEAR',
+           ?,
+           ?
+         )`,
+      )
+      .bind(
+        userId,
+        result.activityName,
+        feedWeapon?.name ?? null,
+        feedWeapon?.adept
+          ? 1
+          : 0,
+      ),
+  );
+
+  return writes;
+}
+
+
 /* =========================================================
    GAME - RUN ENDGAME ACTIVITY
 ========================================================= */
+
+
+/* =========================================================
+   GAME - RESOLVE CRAWL SECRET
+========================================================= */
+
+app.post(
+  "/api/game/activity/crawl/resolve",
+  async (c) => {
+    const sessionId = getCookie(
+      c,
+      SESSION_COOKIE,
+      "host",
+    );
+
+    if (!sessionId) {
+      return c.json(
+        {
+          authenticated: false,
+          error: "Not authenticated",
+        },
+        401,
+      );
+    }
+
+    const session =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             sessions.user_id,
+             users.username,
+             users.global_name
+           FROM sessions
+           INNER JOIN users
+             ON users.id = sessions.user_id
+           WHERE sessions.id = ?
+             AND sessions.expires_at > ?
+           LIMIT 1`,
+        )
+        .bind(
+          sessionId,
+          new Date().toISOString(),
+        )
+        .first<{
+          user_id: number;
+          username: string;
+          global_name: string | null;
+        }>();
+
+    if (!session) {
+      return c.json(
+        {
+          authenticated: false,
+          error: "Not authenticated",
+        },
+        401,
+      );
+    }
+
+    let body: {
+      runId?: string;
+      submission?:
+        string
+        | number[];
+    };
+
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json(
+        {
+          error: "Invalid JSON body",
+        },
+        400,
+      );
+    }
+
+    const runId =
+      body.runId?.trim();
+
+    if (!runId) {
+      return c.json(
+        {
+          error: "Missing runId",
+        },
+        400,
+      );
+    }
+
+    if (
+      typeof body.submission !== "string" &&
+      !Array.isArray(
+        body.submission,
+      )
+    ) {
+      return c.json(
+        {
+          error: "Invalid Crawl submission",
+        },
+        400,
+      );
+    }
+
+    if (
+      Array.isArray(
+        body.submission,
+      ) &&
+      body.submission.some(
+        (value) =>
+          !Number.isInteger(
+            value,
+          ),
+      )
+    ) {
+      return c.json(
+        {
+          error: "Invalid Crawl submission",
+        },
+        400,
+      );
+    }
+
+    const pending =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             run_id,
+             user_id,
+             activity_id,
+             activity_name,
+             weapon_source,
+             run_data,
+             created_at,
+             expires_at,
+             resolved
+           FROM pending_crawl_runs
+           WHERE run_id = ?
+             AND user_id = ?
+           LIMIT 1`,
+        )
+        .bind(
+          runId,
+          session.user_id,
+        )
+        .first<{
+          run_id: string;
+          user_id: number;
+          activity_id: string;
+          activity_name: string;
+          weapon_source: string;
+          run_data: string;
+          created_at: number;
+          expires_at: number;
+          resolved: number;
+        }>();
+
+    if (!pending) {
+      return c.json(
+        {
+          error:
+            "Crawl run was not found.",
+        },
+        404,
+      );
+    }
+
+    if (pending.resolved !== 0) {
+      return c.json(
+        {
+          error:
+            "Crawl run has already been resolved.",
+        },
+        409,
+      );
+    }
+
+    let pendingRun:
+      CrawlRunResult;
+
+    try {
+      pendingRun =
+        JSON.parse(
+          pending.run_data,
+        ) as CrawlRunResult;
+    } catch {
+      return c.json(
+        {
+          error:
+            "Stored Crawl run is invalid.",
+        },
+        500,
+      );
+    }
+
+    if (
+      !pendingRun.secret.triggered ||
+      !pendingRun.secret.challenge ||
+      pendingRun.secret.status !==
+        "pending"
+    ) {
+      return c.json(
+        {
+          error:
+            "Crawl run has no pending secret.",
+        },
+        409,
+      );
+    }
+
+    const nowSeconds =
+      Math.floor(
+        Date.now() / 1000,
+      );
+
+    const expired =
+      nowSeconds >
+      pending.expires_at;
+
+    const secretSuccess =
+      !expired &&
+      validateCrawlSecret(
+        pendingRun.secret.challenge,
+        body.submission,
+      );
+
+    /*
+     * Claim the run before any rewards are written.
+     *
+     * The conditional UPDATE prevents two resolve
+     * requests from paying the same Crawl twice.
+     */
+    const claim =
+      await c.env.DB
+        .prepare(
+          `UPDATE pending_crawl_runs
+           SET resolved = 1
+           WHERE run_id = ?
+             AND user_id = ?
+             AND resolved = 0`,
+        )
+        .bind(
+          runId,
+          session.user_id,
+        )
+        .run();
+
+    if (
+      !claim.meta.changes ||
+      claim.meta.changes !== 1
+    ) {
+      return c.json(
+        {
+          error:
+            "Crawl run has already been resolved.",
+        },
+        409,
+      );
+    }
+
+    const catalog =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             name,
+             emoji_id,
+             rarity
+           FROM weapons
+           WHERE source = ?
+           ORDER BY name`,
+        )
+        .bind(
+          pending.weapon_source,
+        )
+        .all<CrawlWeaponCatalogEntry>();
+
+    const owned =
+      await c.env.DB
+        .prepare(
+          `SELECT weapon_name
+           FROM player_weapons
+           WHERE user_id = ?`,
+        )
+        .bind(
+          session.user_id,
+        )
+        .all<{
+          weapon_name: string;
+        }>();
+
+    const ownedWeaponNames =
+      (owned.results ?? [])
+        .map(
+          (row) =>
+            row.weapon_name,
+        );
+
+    const finalResult =
+      secretSuccess
+        ? finalizeSuccessfulCrawlSecret(
+            pendingRun,
+            catalog.results ?? [],
+            ownedWeaponNames,
+          )
+        : finalizeFailedCrawlSecret(
+            pendingRun,
+            catalog.results ?? [],
+            ownedWeaponNames,
+            expired,
+          );
+
+    const writes =
+      buildCrawlFinalWrites(
+        c.env.DB,
+        session.user_id,
+        finalResult,
+      );
+
+    writes.push(
+      c.env.DB
+        .prepare(
+          `DELETE FROM pending_crawl_runs
+           WHERE run_id = ?
+             AND user_id = ?`,
+        )
+        .bind(
+          runId,
+          session.user_id,
+        ),
+    );
+
+    await c.env.DB.batch(
+      writes,
+    );
+
+    return c.json({
+      authenticated: true,
+      success: true,
+
+      player: {
+        name:
+          session.global_name ||
+          session.username,
+      },
+
+      secret: {
+        success:
+          secretSuccess,
+
+        expired,
+      },
+
+      result:
+        getPublicCrawlRun(
+          finalResult,
+        ),
+    });
+  },
+);
+
 
 app.post("/api/game/activity/run", async (c) => {
   /* =======================================================
@@ -6323,6 +6902,421 @@ app.post("/api/game/activity/run", async (c) => {
 
       result:
         showdownResult,
+    });
+  }
+
+
+
+  /* =======================================================
+     CRAWL EXECUTION
+  ======================================================= */
+
+  const currentCrawl =
+    getRotatingActivity(
+      ACTIVITIES.crawls,
+      SPECIAL_ACTIVITY_ROTATION_SECONDS,
+      nowSeconds,
+    );
+
+  if (
+    currentCrawl?.id ===
+    activityId
+  ) {
+    if (
+      !currentCrawl.weapon_source ||
+      !currentCrawl.encounters ||
+      currentCrawl.encounters.length === 0
+    ) {
+      return c.json(
+        {
+          error:
+            "Crawl configuration is incomplete.",
+        },
+        500,
+      );
+    }
+
+    const crawlSource =
+      currentCrawl.weapon_source as
+        CrawlWeaponSource;
+
+    if (
+      crawlSource !== "coil" &&
+      crawlSource !== "contest" &&
+      crawlSource !== "nether"
+    ) {
+      return c.json(
+        {
+          error:
+            "Crawl weapon source is invalid.",
+        },
+        500,
+      );
+    }
+
+    /*
+     * A player may not start another Crawl while an
+     * unresolved secret from a previous run is still
+     * active.
+     */
+    const activePending =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             run_id,
+             expires_at
+           FROM pending_crawl_runs
+           WHERE user_id = ?
+             AND resolved = 0
+             AND expires_at >= ?
+           ORDER BY created_at DESC
+           LIMIT 1`,
+        )
+        .bind(
+          session.user_id,
+          nowSeconds,
+        )
+        .first<{
+          run_id: string;
+          expires_at: number;
+        }>();
+
+    if (activePending) {
+      return c.json(
+        {
+          error:
+            "A Crawl secret is already waiting to be resolved.",
+
+          pendingRunId:
+            activePending.run_id,
+
+          expiresAt:
+            activePending.expires_at,
+        },
+        409,
+      );
+    }
+
+    /*
+     * Old resolved/expired rows are transient state
+     * and can be discarded before a new run.
+     */
+    await c.env.DB
+      .prepare(
+        `DELETE FROM pending_crawl_runs
+         WHERE user_id = ?
+           AND (
+             resolved <> 0
+             OR expires_at < ?
+           )`,
+      )
+      .bind(
+        session.user_id,
+        nowSeconds,
+      )
+      .run();
+
+    const cooldown =
+      await c.env.DB
+        .prepare(
+          `SELECT timestamp
+           FROM player_cooldowns
+           WHERE user_id = ?
+             AND activity = ?
+           LIMIT 1`,
+        )
+        .bind(
+          session.user_id,
+          CRAWL_COOLDOWN_KEY,
+        )
+        .first<{
+          timestamp: number;
+        }>();
+
+    const readyAt =
+      Number(
+        cooldown?.timestamp ?? 0,
+      );
+
+    if (
+      Number.isFinite(readyAt) &&
+      readyAt > nowSeconds
+    ) {
+      return c.json(
+        {
+          error:
+            "Crawl is on cooldown.",
+
+          limit: {
+            kind:
+              "cooldown" as const,
+
+            cooldownSeconds:
+              CRAWL_COOLDOWN_SECONDS,
+
+            remainingSeconds:
+              Math.max(
+                0,
+                readyAt - nowSeconds,
+              ),
+
+            readyAt,
+          },
+        },
+        429,
+      );
+    }
+
+    const crawlActivity:
+      CrawlActivity = {
+        id:
+          currentCrawl.id,
+
+        name:
+          currentCrawl.name,
+
+        weaponSource:
+          crawlSource,
+
+        encounters:
+          currentCrawl.encounters,
+      };
+
+    /*
+     * All encounter reward RNG and secret RNG happen
+     * once, on the Worker.
+     */
+    const initialRun =
+      runCrawl(
+        crawlActivity,
+      );
+
+    const nextReadyAt =
+      nowSeconds +
+      CRAWL_COOLDOWN_SECONDS;
+
+    const cooldownWrite =
+      c.env.DB
+        .prepare(
+          `INSERT INTO player_cooldowns
+            (
+              user_id,
+              activity,
+              timestamp
+            )
+           VALUES (?, ?, ?)
+           ON CONFLICT(
+             user_id,
+             activity
+           )
+           DO UPDATE SET
+             timestamp =
+               excluded.timestamp`,
+        )
+        .bind(
+          session.user_id,
+          CRAWL_COOLDOWN_KEY,
+          nextReadyAt,
+        );
+
+    /*
+     * SECRET PROC
+     *
+     * Do not persist rewards yet. Store the private
+     * run in D1 and return only the sanitized public
+     * challenge.
+     */
+    if (
+      initialRun.secret.triggered &&
+      initialRun.secret.challenge
+    ) {
+      const runId =
+        crypto.randomUUID();
+
+      const expiresAt =
+        nowSeconds +
+        initialRun.secret.timeoutSeconds;
+
+      await c.env.DB.batch([
+        cooldownWrite,
+
+        c.env.DB
+          .prepare(
+            `INSERT INTO pending_crawl_runs
+              (
+                run_id,
+                user_id,
+                activity_id,
+                activity_name,
+                weapon_source,
+                run_data,
+                created_at,
+                expires_at,
+                resolved
+              )
+             VALUES (
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               ?,
+               0
+             )`,
+          )
+          .bind(
+            runId,
+            session.user_id,
+            currentCrawl.id,
+            currentCrawl.name,
+            crawlSource,
+            JSON.stringify(
+              initialRun,
+            ),
+            nowSeconds,
+            expiresAt,
+          ),
+      ]);
+
+      return c.json({
+        authenticated: true,
+        success: true,
+
+        player: {
+          name:
+            session.global_name ||
+            session.username,
+
+          level:
+            profile.level,
+        },
+
+        limit: {
+          kind:
+            "cooldown" as const,
+
+          cooldownSeconds:
+            CRAWL_COOLDOWN_SECONDS,
+
+          remainingSeconds:
+            CRAWL_COOLDOWN_SECONDS,
+
+          readyAt:
+            nextReadyAt,
+        },
+
+        pendingSecret: true,
+
+        runId,
+
+        expiresAt,
+
+        result:
+          getPublicCrawlRun(
+            initialRun,
+          ),
+      });
+    }
+
+    /*
+     * NO SECRET
+     *
+     * The run can be finalized immediately.
+     */
+    const catalog =
+      await c.env.DB
+        .prepare(
+          `SELECT
+             name,
+             emoji_id,
+             rarity
+           FROM weapons
+           WHERE source = ?
+           ORDER BY name`,
+        )
+        .bind(
+          crawlSource,
+        )
+        .all<CrawlWeaponCatalogEntry>();
+
+    const owned =
+      await c.env.DB
+        .prepare(
+          `SELECT weapon_name
+           FROM player_weapons
+           WHERE user_id = ?`,
+        )
+        .bind(
+          session.user_id,
+        )
+        .all<{
+          weapon_name: string;
+        }>();
+
+    const ownedWeaponNames =
+      (owned.results ?? [])
+        .map(
+          (row) =>
+            row.weapon_name,
+        );
+
+    const finalResult =
+      finalizeCrawlWithoutSecret(
+        initialRun,
+        catalog.results ?? [],
+        ownedWeaponNames,
+      );
+
+    const writes =
+      buildCrawlFinalWrites(
+        c.env.DB,
+        session.user_id,
+        finalResult,
+      );
+
+    writes.unshift(
+      cooldownWrite,
+    );
+
+    await c.env.DB.batch(
+      writes,
+    );
+
+    return c.json({
+      authenticated: true,
+      success: true,
+
+      player: {
+        name:
+          session.global_name ||
+          session.username,
+
+        level:
+          profile.level,
+      },
+
+      limit: {
+        kind:
+          "cooldown" as const,
+
+        cooldownSeconds:
+          CRAWL_COOLDOWN_SECONDS,
+
+        remainingSeconds:
+          CRAWL_COOLDOWN_SECONDS,
+
+        readyAt:
+          nextReadyAt,
+      },
+
+      pendingSecret: false,
+
+      result:
+        getPublicCrawlRun(
+          finalResult,
+        ),
     });
   }
 
