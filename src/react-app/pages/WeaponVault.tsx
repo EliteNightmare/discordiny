@@ -25,13 +25,18 @@ type WeaponVaultProps = {
   activitySlug?: string;
 };
 
+type WeaponOwnership = {
+  owned: boolean;
+  masterwork: number;
+};
+
 type WeaponData = {
   name: string;
   rarity: string | null;
   source: string | null;
   activityType: string | null;
-  owned: boolean;
-  masterwork: number;
+  normal: WeaponOwnership;
+  adept: WeaponOwnership;
 };
 
 type WeaponResponse = {
@@ -46,10 +51,27 @@ type ProfileResponse = {
   upgradeMaterials: Record<string, number>;
 };
 
-type VisibleWeapon =
-  WeaponData & {
-    image: string | null;
-  };
+type VisibleWeapon = {
+  name: string;
+  catalogName: string;
+  rarity: string | null;
+  source: string | null;
+  activityType: string | null;
+  owned: boolean;
+  masterwork: number;
+  image: string | null;
+};
+
+type MasterworkResponse = {
+  success?: boolean;
+  error?: string;
+  weaponName?: string;
+  masterwork?: number;
+  maxMasterwork?: number;
+  cost?: Record<string, number>;
+};
+
+const MAX_MASTERWORK = 77;
 
 /*
  * Weapon icons.
@@ -260,6 +282,18 @@ function WeaponVault({
   const [gridKey, setGridKey] =
     useState(0);
 
+  const [selectedWeapon, setSelectedWeapon] =
+    useState<VisibleWeapon | null>(null);
+
+  const [masterworking, setMasterworking] =
+    useState(false);
+
+  const [masterworkError, setMasterworkError] =
+    useState("");
+
+  const [masterworkCost, setMasterworkCost] =
+    useState<Record<string, number>>({});
+
   useEffect(() => {
     if (!weaponSource) {
       setLoading(false);
@@ -363,46 +397,161 @@ function WeaponVault({
           return [];
         }
 
-        const filteredWeapons =
-          weapons.filter(
-            (weapon) => {
-              const adept =
-                isAdeptWeapon(
-                  weapon.name,
-                );
+        return weapons.map((weapon) => {
+          const ownership =
+            tier === "adept"
+              ? weapon.adept
+              : weapon.normal;
 
-              if (
-                tier ===
-                "adept"
-              ) {
-                return adept;
-              }
+          const displayName =
+            tier === "adept"
+              ? `${weapon.name} (Adept)`
+              : weapon.name;
 
-              return !adept;
-            },
-          );
-
-        return filteredWeapons.map(
-          (weapon) => {
-            const image =
-              findWeaponImage(
-                weaponSource,
-                weapon.name,
-              );
-
-            return {
-              ...weapon,
-              image,
-            };
-          },
-        );
+          return {
+            name: displayName,
+            catalogName: weapon.name,
+            rarity: weapon.rarity,
+            source: weapon.source,
+            activityType: weapon.activityType,
+            owned: ownership.owned,
+            masterwork: ownership.masterwork,
+            image: findWeaponImage(
+              weaponSource,
+              displayName,
+            ) ?? findWeaponImage(
+              weaponSource,
+              weapon.name,
+            ),
+          };
+        });
       },
-      [
-        weapons,
-        weaponSource,
-        tier,
-      ],
+      [weapons, weaponSource, tier],
     );
+
+  const collectionOwned =
+    visibleWeapons.filter(
+      (weapon) => weapon.owned,
+    ).length;
+
+  const collectionTotal =
+    visibleWeapons.length;
+
+  async function masterworkWeapon() {
+    if (
+      !selectedWeapon ||
+      !selectedWeapon.owned ||
+      selectedWeapon.masterwork >= MAX_MASTERWORK
+    ) {
+      return;
+    }
+
+    try {
+      setMasterworking(true);
+      setMasterworkError("");
+
+      const response = await fetch(
+        "/api/game/weapons/masterwork",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            weaponName: selectedWeapon.name,
+          }),
+        },
+      );
+
+      const result =
+        (await response.json()) as MasterworkResponse;
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.error ?? "Masterwork failed.",
+        );
+      }
+
+      const [weaponResponse, profileResponse] =
+        await Promise.all([
+          fetch(
+            `/api/game/weapons?source=${encodeURIComponent(
+              weaponSource as string,
+            )}`,
+            { credentials: "include" },
+          ),
+          fetch("/api/game/profile", {
+            credentials: "include",
+          }),
+        ]);
+
+      const weaponResult =
+        (await weaponResponse.json()) as WeaponResponse;
+      const profileResult =
+        (await profileResponse.json()) as ProfileResponse;
+
+      setWeapons(weaponResult.weapons ?? []);
+      setProfile(profileResult);
+
+      setSelectedWeapon((current) =>
+        current
+          ? {
+              ...current,
+              masterwork: result.masterwork ?? current.masterwork,
+            }
+          : current,
+      );
+
+      const nextMasterwork = result.masterwork ?? selectedWeapon.masterwork;
+      if (nextMasterwork < MAX_MASTERWORK) {
+        const previewResponse = await fetch(
+          `/api/game/weapons/masterwork?weaponName=${encodeURIComponent(selectedWeapon.name)}`,
+          { credentials: "include" },
+        );
+        const previewResult =
+          (await previewResponse.json()) as MasterworkResponse;
+        setMasterworkCost(previewResult.cost ?? {});
+      } else {
+        setMasterworkCost({});
+      }
+    } catch (err) {
+      setMasterworkError(
+        err instanceof Error
+          ? err.message
+          : "Masterwork failed.",
+      );
+    } finally {
+      setMasterworking(false);
+    }
+  }
+
+  async function selectWeaponForMasterwork(weapon: VisibleWeapon) {
+    if (!weapon.owned) return;
+
+    setSelectedWeapon(weapon);
+    setMasterworkError("");
+    setMasterworkCost({});
+
+    if (weapon.masterwork >= MAX_MASTERWORK) return;
+
+    try {
+      const response = await fetch(
+        `/api/game/weapons/masterwork?weaponName=${encodeURIComponent(weapon.name)}`,
+        { credentials: "include" },
+      );
+      const result =
+        (await response.json()) as MasterworkResponse;
+      if (!response.ok) {
+        throw new Error(result.error ?? "Failed to load Masterwork cost.");
+      }
+      setMasterworkCost(result.cost ?? {});
+    } catch (err) {
+      setMasterworkError(
+        err instanceof Error ? err.message : "Failed to load Masterwork cost.",
+      );
+    }
+  }
 
   function navigate(
     path: string,
@@ -546,7 +695,7 @@ function WeaponVault({
                     </h1>
 
                     <p>
-                      Weapon Collection
+                      Weapon Collection · {collectionOwned}/{collectionTotal} OWNED
                     </p>
                   </div>
 
@@ -620,8 +769,13 @@ function WeaponVault({
                 0 ? (
                   visibleWeapons.map(
                     (weapon) => {
-                      const itemClass =
-                        weapon.owned
+                      const maxed =
+                        weapon.owned &&
+                        weapon.masterwork >= MAX_MASTERWORK;
+
+                      const itemClass = maxed
+                        ? "weapon-vault-item weapon-vault-item-owned weapon-vault-item-maxed"
+                        : weapon.owned
                           ? "weapon-vault-item weapon-vault-item-owned"
                           : "weapon-vault-item weapon-vault-item-locked";
 
@@ -633,6 +787,22 @@ function WeaponVault({
                           className={
                             itemClass
                           }
+                          role={weapon.owned ? "button" : undefined}
+                          tabIndex={weapon.owned ? 0 : -1}
+                          onClick={() => {
+                            if (weapon.owned) {
+                              void selectWeaponForMasterwork(weapon);
+                            }
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              weapon.owned &&
+                              (event.key === "Enter" || event.key === " ")
+                            ) {
+                              event.preventDefault();
+                              void selectWeaponForMasterwork(weapon);
+                            }
+                          }}
                         >
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
@@ -667,10 +837,11 @@ function WeaponVault({
                             </strong>
 
                             <span>
-                              {tier ===
-                              "adept"
-                                ? "Adept"
-                                : "Normal"}
+                              {weapon.owned
+                                ? `MASTERWORK ${weapon.masterwork}/${MAX_MASTERWORK}`
+                                : tier === "adept"
+                                  ? "ADEPT · NOT OWNED"
+                                  : "NORMAL · NOT OWNED"}
                             </span>
                           </div>
                         </div>
@@ -689,6 +860,97 @@ function WeaponVault({
                   </div>
                 )}
               </div>
+
+              {selectedWeapon && (
+                <div
+                  className="weapon-masterwork-backdrop"
+                  onMouseDown={(event) => {
+                    if (event.target === event.currentTarget) {
+                      setSelectedWeapon(null);
+                    }
+                  }}
+                >
+                  <section
+                    className={
+                      selectedWeapon.masterwork >= MAX_MASTERWORK
+                        ? "weapon-masterwork-modal weapon-masterwork-modal-maxed"
+                        : "weapon-masterwork-modal"
+                    }
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`${selectedWeapon.name} masterwork`}
+                  >
+                    <button
+                      type="button"
+                      className="weapon-masterwork-close"
+                      onClick={() => setSelectedWeapon(null)}
+                    >
+                      ×
+                    </button>
+
+                    {selectedWeapon.image && (
+                      <img
+                        src={selectedWeapon.image}
+                        alt=""
+                        className="weapon-masterwork-image"
+                      />
+                    )}
+
+                    <span className="weapon-masterwork-eyebrow">
+                      WEAPON MASTERWORK
+                    </span>
+                    <h2>{selectedWeapon.name}</h2>
+                    <strong className="weapon-masterwork-rank">
+                      {selectedWeapon.masterwork} / {MAX_MASTERWORK}
+                    </strong>
+
+                    <div className="weapon-masterwork-track">
+                      <i
+                        style={{
+                          width: `${Math.min(100, selectedWeapon.masterwork / MAX_MASTERWORK * 100)}%`,
+                        }}
+                      />
+                    </div>
+
+                    {selectedWeapon.masterwork >= MAX_MASTERWORK ? (
+                      <div className="weapon-masterwork-complete">
+                        MAXIMUM MASTERWORK ACHIEVED
+                      </div>
+                    ) : (
+                      <>
+                        <div className="weapon-masterwork-cost">
+                          <span>NEXT RANK COST</span>
+                          {Object.entries(masterworkCost).map(([name, amount]) => (
+                            <div key={name}>
+                              <strong>{name}</strong>
+                              <b>{amount.toLocaleString()}</b>
+                            </div>
+                          ))}
+                        </div>
+                        <p>
+                          Upgrade this weapon one Masterwork rank.
+                          The server calculates and spends the required materials.
+                        </p>
+                        {masterworkError && (
+                          <div className="weapon-masterwork-error">
+                            {masterworkError}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          className="weapon-masterwork-upgrade"
+                          disabled={masterworking}
+                          onClick={() => void masterworkWeapon()}
+                        >
+                          {masterworking
+                            ? "UPGRADING..."
+                            : `UPGRADE TO ${selectedWeapon.masterwork + 1}`}
+                        </button>
+                      </>
+                    )}
+                  </section>
+                </div>
+              )}
             </section>
           </VaultTransition>
         </ArsenalLayout>
