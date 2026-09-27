@@ -1099,33 +1099,129 @@ to {
 
 .activity-run-coil-bubble {
   position: absolute;
-  top: 4px;
+  top: 2px;
   left: 50%;
-  min-width: 150px;
-  max-width: 78%;
-  padding: 14px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  color: #101319;
-  background: rgba(255, 255, 255, 0.94);
+  min-width: 180px;
+  max-width: 82%;
+  padding: 16px 22px;
+  overflow: hidden;
+  border: 1px solid rgba(152, 255, 236, 0.58);
+  border-radius: 2px 12px 3px 10px;
+  color: rgba(220, 255, 247, 0.98);
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(115, 255, 225, 0.035) 0,
+      rgba(115, 255, 225, 0.035) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    linear-gradient(
+      135deg,
+      rgba(4, 31, 32, 0.96),
+      rgba(6, 15, 24, 0.96) 58%,
+      rgba(24, 8, 29, 0.94)
+    );
+  box-shadow:
+    0 0 0 1px rgba(104, 255, 226, 0.08) inset,
+    0 0 22px rgba(58, 255, 215, 0.16),
+    -5px 0 18px rgba(255, 55, 195, 0.08);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: clamp(1rem, 2.2vw, 1.45rem);
   font-weight: 900;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
   text-align: center;
-  transform: translateX(-50%);
+  text-shadow:
+    1px 0 rgba(255, 58, 196, 0.58),
+    -1px 0 rgba(58, 255, 224, 0.7),
+    0 0 9px rgba(105, 255, 230, 0.34);
+  transform: translateX(-50%) skewX(-1deg);
+  animation:
+    ar-coil-vex-flicker 2.8s steps(1, end) infinite,
+    ar-coil-vex-float 3.6s ease-in-out infinite;
+}
+
+.activity-run-coil-bubble::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0 8%,
+      rgba(107, 255, 228, 0.13) 8% 9%,
+      transparent 9% 68%,
+      rgba(255, 65, 201, 0.1) 68% 69%,
+      transparent 69%
+    );
+  background-size: 170% 100%;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: ar-coil-vex-scan 2.1s linear infinite;
 }
 
 .activity-run-coil-bubble::after {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -10px;
+  bottom: -9px;
   width: 18px;
   height: 18px;
-  background: inherit;
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-  transform: translateX(-50%) rotate(45deg);
+  border-right: 1px solid rgba(152, 255, 236, 0.58);
+  border-bottom: 1px solid rgba(152, 255, 236, 0.58);
+  background: rgba(5, 24, 29, 0.98);
+  box-shadow: 5px 5px 12px rgba(58, 255, 215, 0.08);
+  transform: translateX(-50%) rotate(45deg) skew(-5deg, -5deg);
+}
+
+@keyframes ar-coil-vex-scan {
+  from {
+    background-position: 130% 0;
+  }
+
+  to {
+    background-position: -70% 0;
+  }
+}
+
+@keyframes ar-coil-vex-flicker {
+  0%,
+  91%,
+  100% {
+    opacity: 1;
+    filter: none;
+  }
+
+  92% {
+    opacity: 0.78;
+    filter: hue-rotate(22deg) brightness(1.35);
+  }
+
+  93% {
+    opacity: 1;
+    filter: none;
+  }
+
+  96% {
+    transform: translateX(calc(-50% + 2px)) skewX(-2deg);
+  }
+
+  97% {
+    transform: translateX(calc(-50% - 1px)) skewX(1deg);
+  }
+}
+
+@keyframes ar-coil-vex-float {
+  0%,
+  100% {
+    margin-top: 0;
+  }
+
+  50% {
+    margin-top: -3px;
+  }
 }
 
 .activity-run-coil-secret form {
