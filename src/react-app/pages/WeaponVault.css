@@ -919,3 +919,55 @@
 .weapon-masterwork-cost > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 10px; }
 .weapon-masterwork-cost > div strong { font-weight: 650; color: rgba(255,255,255,.7); }
 .weapon-masterwork-cost > div b { color: #ffe18a; font-weight: 850; }
+
+/* =========================================================
+   MASTERWORK MULTI-UPGRADE ACTIONS
+========================================================= */
+
+.weapon-masterwork-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.weapon-masterwork-actions .weapon-masterwork-upgrade {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.weapon-masterwork-upgrade-max {
+  border-color: rgba(255, 205, 82, 0.4);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 205, 82, 0.2),
+      rgba(139, 92, 19, 0.18)
+    );
+  color: #ffe29a;
+  box-shadow:
+    inset 0 0 18px rgba(255, 200, 68, 0.06),
+    0 0 18px rgba(255, 190, 45, 0.05);
+}
+
+.weapon-masterwork-upgrade-max:hover:not(:disabled) {
+  border-color: rgba(255, 218, 120, 0.72);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 211, 92, 0.3),
+      rgba(159, 103, 18, 0.24)
+    );
+}
+
+@media (max-width: 520px) {
+  .weapon-masterwork-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .weapon-masterwork-upgrade-max {
+    grid-column: 1 / -1;
+  }
+}
+
