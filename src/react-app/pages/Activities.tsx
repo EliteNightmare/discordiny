@@ -2224,7 +2224,7 @@ export default function Activities() {
                     status={
                       strikeCooldownRemaining >
                       0
-                        ? `◷ ${formatRotationTime(
+                        ? `COOLDOWN ${formatCooldownTime(
                             strikeCooldownRemaining,
                           )}`
                         : "READY"
@@ -2269,7 +2269,7 @@ export default function Activities() {
                     status={
                       nightfallCooldownRemaining >
                       0
-                        ? `◷ ${formatRotationTime(
+                        ? `COOLDOWN ${formatCooldownTime(
                             nightfallCooldownRemaining,
                           )}`
                         : "READY"
@@ -2315,7 +2315,7 @@ export default function Activities() {
                     status={
                       gmCooldownRemaining >
                       0
-                        ? `◷ ${formatRotationTime(
+                        ? `COOLDOWN ${formatCooldownTime(
                             gmCooldownRemaining,
                           )}`
                         : `READY · LVL ${
