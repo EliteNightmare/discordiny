@@ -66,7 +66,9 @@ type MasterworkResponse = {
   success?: boolean;
   error?: string;
   weaponName?: string;
+  previousMasterwork?: number;
   masterwork?: number;
+  ranksGained?: number;
   maxMasterwork?: number;
   cost?: Record<string, number>;
 };
@@ -395,14 +397,19 @@ function WeaponVault({
               ? weapon.adept
               : weapon.normal;
 
+          const baseName =
+            weapon.name
+              .replace(/\s*\(Adept\)\s*$/i, "")
+              .trim();
+
           const displayName =
             tier === "adept"
-              ? `${weapon.name} (Adept)`
-              : weapon.name;
+              ? `${baseName} (Adept)`
+              : baseName;
 
           return {
             name: displayName,
-            catalogName: weapon.name,
+            catalogName: baseName,
             rarity: weapon.rarity,
             source: weapon.source,
             activityType: weapon.activityType,
@@ -429,7 +436,7 @@ function WeaponVault({
   const collectionTotal =
     visibleWeapons.length;
 
-  async function masterworkWeapon() {
+  async function masterworkWeapon(amount: 1 | 10 | "max") {
     if (
       !selectedWeapon ||
       !selectedWeapon.owned ||
@@ -452,6 +459,7 @@ function WeaponVault({
           },
           body: JSON.stringify({
             weaponName: selectedWeapon.name,
+            amount,
           }),
         },
       );
@@ -920,24 +928,47 @@ function WeaponVault({
                           ))}
                         </div>
                         <p>
-                          Upgrade this weapon one Masterwork rank.
-                          The server calculates and spends the required materials.
+                          Choose how far to Masterwork this weapon.
+                          +1 and +10 require the full cumulative cost.
+                          MAX spends only enough to reach the highest rank
+                          your current materials can afford.
                         </p>
                         {masterworkError && (
                           <div className="weapon-masterwork-error">
                             {masterworkError}
                           </div>
                         )}
-                        <button
-                          type="button"
-                          className="weapon-masterwork-upgrade"
-                          disabled={masterworking}
-                          onClick={() => void masterworkWeapon()}
-                        >
-                          {masterworking
-                            ? "UPGRADING..."
-                            : `UPGRADE TO ${selectedWeapon.masterwork + 1}`}
-                        </button>
+                        <div className="weapon-masterwork-actions">
+                          <button
+                            type="button"
+                            className="weapon-masterwork-upgrade"
+                            disabled={masterworking}
+                            onClick={() => void masterworkWeapon(1)}
+                          >
+                            {masterworking ? "..." : "+1"}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="weapon-masterwork-upgrade"
+                            disabled={
+                              masterworking ||
+                              selectedWeapon.masterwork >= MAX_MASTERWORK
+                            }
+                            onClick={() => void masterworkWeapon(10)}
+                          >
+                            {masterworking ? "..." : "+10"}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="weapon-masterwork-upgrade weapon-masterwork-upgrade-max"
+                            disabled={masterworking}
+                            onClick={() => void masterworkWeapon("max")}
+                          >
+                            {masterworking ? "UPGRADING..." : "MAX"}
+                          </button>
+                        </div>
                       </>
                     )}
                   </section>
