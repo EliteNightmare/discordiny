@@ -45,7 +45,7 @@
 
 export const CRAWL_COOLDOWN_SECONDS = 120;
 
-export const CRAWL_SECRET_CHANCE = 0.10;
+export const CRAWL_SECRET_CHANCE = 1.00;
 
 export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
 
