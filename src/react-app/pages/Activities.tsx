@@ -1503,6 +1503,31 @@ export default function Activities() {
     );
   }
 
+  function openCrawlActivity(
+    activity: Activity | null,
+  ) {
+    if (!activity) {
+      return;
+    }
+
+    const source =
+      activity.weapon_source
+        ?.trim()
+        .toLowerCase();
+
+    if (
+      source !== "coil" &&
+      source !== "contest" &&
+      source !== "nether"
+    ) {
+      return;
+    }
+
+    setSelectedEndgameActivity(
+      activity,
+    );
+  }
+
   if (loading) {
     return (
       <div className="activities-screen">
@@ -2379,6 +2404,14 @@ export default function Activities() {
                           .activity,
                       )
                     }
+                    status="READY"
+                    onClick={() =>
+                      openCrawlActivity(
+                        data.rotation
+                          .crawl
+                          .activity,
+                      )
+                    }
                   />
                 </div>
               </section>
@@ -2663,6 +2696,15 @@ export default function Activities() {
               ? getDailyShowdownBanner(
                   selectedEndgameActivity,
                 )
+              : ["coil", "contest", "nether"].includes(
+                    selectedEndgameActivity
+                      .weapon_source
+                      ?.trim()
+                      .toLowerCase() ?? "",
+                  )
+                ? getGeneralActivityBanner(
+                    selectedEndgameActivity,
+                  )
               : selectedEndgameActivity
                     .reward_table ===
                   "pinnacle"
