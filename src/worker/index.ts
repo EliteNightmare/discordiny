@@ -4182,6 +4182,11 @@ app.get("/api/game/activities", async (c) => {
       nowSeconds,
     );
 
+  const dailyShowdownChargeKey =
+    getDailyShowdownChargeKey(
+      nowSeconds,
+    );
+
   const endgameCooldownRows =
     await c.env.DB
       .prepare(
@@ -4190,7 +4195,7 @@ app.get("/api/game/activities", async (c) => {
            timestamp
          FROM player_cooldowns
          WHERE user_id = ?
-           AND activity IN (?, ?, ?, ?, ?, ?, ?, ?)`,
+           AND activity IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         session.user_id,
@@ -4202,6 +4207,8 @@ app.get("/api/game/activities", async (c) => {
         VANGUARD_NIGHTFALL_COOLDOWN_KEY,
         VANGUARD_GM_COOLDOWN_KEY,
         INFILTRATION_COOLDOWN_KEY,
+        SHOWDOWN_COOLDOWN_KEY,
+        dailyShowdownChargeKey,
       )
       .all<{
         activity: string;
@@ -4262,11 +4269,6 @@ app.get("/api/game/activities", async (c) => {
     endgameCooldownMap.get(
       SHOWDOWN_COOLDOWN_KEY,
     ) ?? 0;
-  
-  const dailyShowdownChargeKey =
-    getDailyShowdownChargeKey(
-      nowSeconds,
-    );
   
   const dailyShowdownUsed =
     Math.max(
