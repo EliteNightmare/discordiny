@@ -1105,3 +1105,26 @@ strong {
       none !important;
   }
 }
+
+
+/* =========================================================
+   READABILITY PASS
+   ========================================================= */
+.terminal-file-window { width: min(760px, calc(100vw - 60px)); height: min(560px, calc(100dvh - 80px)); }
+.terminal-file-titlebar { min-height: 64px; padding-left: 22px; }
+.terminal-file-system { font-size: .54rem; }
+.terminal-file-title-info strong { font-size: .78rem; line-height: 1.35; }
+.terminal-file-body { padding: 24px 28px 22px; }
+.terminal-file-metadata { gap: 20px; padding-bottom: 18px; }
+.terminal-file-metadata span { font-size: .5rem; }
+.terminal-file-metadata strong { font-size: .62rem; line-height: 1.45; white-space: normal; }
+.terminal-file-content { margin-top: 22px; padding: 2px 18px 12px 2px; }
+.terminal-file-content p { margin-bottom: 9px; color: #bdc9cf; font-size: .86rem; line-height: 1.78; }
+.terminal-file-content p::selection { background: rgba(70, 148, 198, .32); color: #fff; }
+.terminal-file-footer { min-height: 38px; font-size: .48rem; }
+@media (max-width: 700px) {
+  .terminal-file-window { width: calc(100vw - 20px); height: calc(100dvh - 20px); }
+  .terminal-file-body { padding: 18px 16px; }
+  .terminal-file-metadata { grid-template-columns: 1fr; gap: 11px; }
+  .terminal-file-content p { font-size: .82rem; line-height: 1.72; }
+}
