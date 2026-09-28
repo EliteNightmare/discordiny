@@ -1128,3 +1128,126 @@ strong {
   .terminal-file-metadata { grid-template-columns: 1fr; gap: 11px; }
   .terminal-file-content p { font-size: .82rem; line-height: 1.72; }
 }
+
+/* =========================================================
+   DISCORD-STYLE TERMINAL MESSAGE FORMATTING
+   ========================================================= */
+
+/* The JSON message chunks are semantic blocks now, rather than
+   one <p> per source line. This removes the oversized vertical
+   gaps that the old line-by-line renderer created. */
+.terminal-file-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.terminal-message-block {
+  margin: 0;
+  color: #bdc9cf;
+  font-family: "Courier New", Courier, monospace;
+  font-size: .86rem;
+  line-height: 1.58;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.terminal-message-block strong {
+  color: #e2e9ed;
+  font-weight: 800;
+}
+
+.terminal-message-block em {
+  color: #cbd6dc;
+  font-style: italic;
+}
+
+.terminal-discord-inline-code {
+  display: inline;
+  padding: .12em .34em;
+  border: 1px solid rgba(99, 153, 186, .28);
+  border-radius: 3px;
+  background: rgba(5, 11, 15, .72);
+  color: #8fc5e5;
+  font: inherit;
+  font-size: .94em;
+}
+
+.terminal-discord-code-block {
+  margin: 8px 0 2px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  border: 1px solid #273b47;
+  border-left: 3px solid #6399ba;
+  background: rgba(4, 9, 12, .78);
+  color: #b9d0dc;
+  font: inherit;
+  font-size: .82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.terminal-discord-code-block code {
+  font: inherit;
+}
+
+.terminal-message-block del {
+  opacity: .72;
+}
+
+.terminal-discord-spoiler {
+  padding: 0 .18em;
+  border-radius: 2px;
+  background: #080b0d;
+  color: transparent;
+  cursor: help;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.terminal-discord-spoiler:hover,
+.terminal-discord-spoiler:focus {
+  background: #20282d;
+  color: #dce5e9;
+}
+
+/* The old paragraph rule remains in the stylesheet for backwards
+   compatibility, but these blocks are the active message renderer. */
+.terminal-file-content .terminal-message-block {
+  margin-bottom: 0;
+}
+
+@media (max-width: 700px) {
+  .terminal-file-content {
+    gap: 8px;
+  }
+
+  .terminal-message-block {
+    font-size: .82rem;
+    line-height: 1.52;
+  }
+
+  .terminal-discord-code-block {
+    padding: 10px 11px;
+    font-size: .76rem;
+  }
+}
+
+
+/* TRUE MINIMIZED STATE */
+.terminal-file-window.terminal-file-window-minimized {
+  width: 290px !important; height: 46px !important; min-width: 0 !important; min-height: 0 !important;
+  max-width: calc(100vw - 24px) !important; max-height: 46px !important; overflow: hidden !important; background: #0d151a;
+}
+.terminal-file-window.terminal-file-window-minimized .terminal-file-minimized-bar {
+  width: 100%; height: 46px; min-height: 46px; box-sizing: border-box; padding: 0 6px 0 12px;
+}
+.terminal-file-window.terminal-file-window-minimized .terminal-file-minimized-title { min-width: 0; flex: 1 1 auto; }
+.terminal-file-window.terminal-file-window-minimized .terminal-file-minimized-title span { margin-bottom: 1px; }
+@media (max-width: 700px) {
+  .terminal-file-window.terminal-file-window-minimized {
+    right: 10px !important; bottom: 14px !important; left: auto !important; top: auto !important;
+    width: min(290px, calc(100vw - 20px)) !important; height: 46px !important; max-height: 46px !important;
+  }
+}
