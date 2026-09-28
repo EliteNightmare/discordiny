@@ -950,11 +950,6 @@ export default function Activities() {
   } | null>(null);
 
   const [
-    settingExploreMax,
-    setSettingExploreMax,
-  ] = useState(false);
-
-  const [
     selectedEndgameActivity,
     setSelectedEndgameActivity,
   ] = useState<Activity | null>(
@@ -1581,47 +1576,6 @@ export default function Activities() {
       );
     } finally {
       setClaimingExploration(false);
-    }
-  }
-
-  async function setExplorationToMaxForTesting() {
-    if (settingExploreMax) return;
-
-    setSettingExploreMax(true);
-    setError("");
-
-    try {
-      const response = await fetch(
-        "/api/game/explore/test-max",
-        {
-          method: "POST",
-          credentials: "include",
-        },
-      );
-
-      const result =
-        (await response.json()) as {
-          success?: boolean;
-          error?: string;
-        };
-
-      if (!response.ok || !result.success) {
-        throw new Error(
-          result.error ||
-            "Failed to set exploration test timer.",
-        );
-      }
-
-      setExplorationSummary(null);
-      await loadActivities();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to set exploration test timer.",
-      );
-    } finally {
-      setSettingExploreMax(false);
     }
   }
 
@@ -2322,17 +2276,6 @@ export default function Activities() {
                   </div>
 
                   <div className="exploration-claim-actions">
-                    <button
-                      type="button"
-                      className="exploration-test-max-button"
-                      disabled={settingExploreMax || claimingExploration}
-                      onClick={() =>
-                        void setExplorationToMaxForTesting()
-                      }
-                    >
-                      {settingExploreMax ? "SETTING..." : "TEST 24H"}
-                    </button>
-
                   <button
                     type="button"
                     className="exploration-claim-button"
