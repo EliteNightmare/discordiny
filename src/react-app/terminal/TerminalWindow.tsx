@@ -5,6 +5,7 @@ import {
 
 import type {
   MouseEvent as ReactMouseEvent,
+  ReactNode,
 } from "react";
 
 import type {
@@ -12,6 +13,122 @@ import type {
 } from "./terminalFiles";
 
 import "./TerminalWindow.css";
+
+
+
+/* =========================================================
+   DISCORD-STYLE MESSAGE FORMATTING
+   =========================================================
+
+   The original bot messages use Discord markdown. Keep the
+   parser deliberately small and safe: it creates React nodes
+   instead of injecting HTML.
+
+   Supported:
+   **bold**   *italic*   `inline code`
+   ```code blocks```   ~~strike~~   ||spoilers||
+========================================================= */
+
+function renderInlineDiscordMarkup(
+  text: string,
+  keyPrefix = "inline",
+): ReactNode[] {
+  const tokenPattern =
+    /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|~~[^~]+~~|\|\|[^|]+\|\|)/g;
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+  let tokenIndex = 0;
+
+  while ((match = tokenPattern.exec(text)) !== null) {
+    if (match.index > cursor) {
+      nodes.push(text.slice(cursor, match.index));
+    }
+
+    const token = match[0];
+    const key = `${keyPrefix}-${tokenIndex++}`;
+
+    if (token.startsWith("**")) {
+      nodes.push(
+        <strong key={key}>
+          {renderInlineDiscordMarkup(token.slice(2, -2), key)}
+        </strong>,
+      );
+    } else if (token.startsWith("~~")) {
+      nodes.push(<del key={key}>{token.slice(2, -2)}</del>);
+    } else if (token.startsWith("||")) {
+      nodes.push(
+        <span key={key} className="terminal-discord-spoiler">
+          {token.slice(2, -2)}
+        </span>,
+      );
+    } else if (token.startsWith("`")) {
+      nodes.push(
+        <code key={key} className="terminal-discord-inline-code">
+          {token.slice(1, -1)}
+        </code>,
+      );
+    } else {
+      nodes.push(<em key={key}>{token.slice(1, -1)}</em>);
+    }
+
+    cursor = match.index + token.length;
+  }
+
+  if (cursor < text.length) {
+    nodes.push(text.slice(cursor));
+  }
+
+  return nodes;
+}
+
+function renderDiscordText(
+  text: string,
+  keyPrefix: string,
+): ReactNode[] {
+  return text.split("\n").flatMap((line, index, lines) => {
+    const rendered = renderInlineDiscordMarkup(
+      line,
+      `${keyPrefix}-line-${index}`,
+    );
+
+    if (index < lines.length - 1) {
+      rendered.push(<br key={`${keyPrefix}-br-${index}`} />);
+    }
+
+    return rendered;
+  });
+}
+
+function renderDiscordBlock(
+  text: string,
+  keyPrefix: string,
+): ReactNode[] {
+  const pieces = text.split("```");
+
+  return pieces.map((piece, index) => {
+    const key = `${keyPrefix}-piece-${index}`;
+
+    if (index % 2 === 1) {
+      return (
+        <pre key={key} className="terminal-discord-code-block">
+          <code>{piece.replace(/^\n|\n$/g, "")}</code>
+        </pre>
+      );
+    }
+
+    if (!piece) {
+      return null;
+    }
+
+    return (
+      <span key={key} className="terminal-discord-text">
+        {renderDiscordText(piece, key)}
+      </span>
+    );
+  });
+}
 
 export type TerminalWindowPosition = {
   x: number;
@@ -369,7 +486,7 @@ export default function TerminalWindow({
             </span>
 
             <strong>
-              {file.title}
+              {renderDiscordText(file.title, `${file.id}-title`)}
             </strong>
           </div>
 
@@ -450,7 +567,7 @@ export default function TerminalWindow({
           </span>
 
           <strong>
-            {file.title}
+            {renderDiscordText(file.title, `${file.id}-title`)}
           </strong>
         </div>
 
@@ -533,19 +650,17 @@ export default function TerminalWindow({
         </header>
 
         <div className="terminal-file-content">
-          {file.content.map(
-            (
-              line,
-              index,
-            ) => (
-              <p
-                key={`${file.id}-${index}`}
-              >
-                {line ||
-                  "\u00A0"}
-              </p>
-            ),
-          )}
+          {file.content.map((block, index) => (
+            <div
+              className="terminal-message-block"
+              key={`${file.id}-${index}`}
+            >
+              {renderDiscordBlock(
+                block,
+                `${file.id}-${index}`,
+              )}
+            </div>
+          ))}
         </div>
       </section>
 
