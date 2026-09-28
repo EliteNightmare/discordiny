@@ -3070,37 +3070,6 @@ app.post("/api/game/travel", async (c) => {
    normal exploration reward, using its base 25-50 roll.
 ========================================================= */
 
-app.post("/api/game/explore/test-max", async (c) => {
-  const sessionId = getCookie(c, SESSION_COOKIE, "host");
-  if (!sessionId) return c.json({ authenticated: false }, 401);
-
-  const session = await c.env.DB
-    .prepare(`SELECT user_id FROM sessions WHERE id = ? LIMIT 1`)
-    .bind(sessionId)
-    .first<{ user_id: number }>();
-
-  if (!session) return c.json({ authenticated: false }, 401);
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const testLastClaim = nowSeconds - EXPLORE_MAX_SECONDS;
-
-  await c.env.DB
-    .prepare(
-      `INSERT INTO player_cooldowns (user_id, activity, timestamp)
-       VALUES (?, 'explore', ?)
-       ON CONFLICT(user_id, activity)
-       DO UPDATE SET timestamp = excluded.timestamp`,
-    )
-    .bind(session.user_id, testLastClaim)
-    .run();
-
-  return c.json({
-    success: true,
-    lastClaim: testLastClaim,
-    elapsedSeconds: EXPLORE_MAX_SECONDS,
-  });
-});
-
 app.post("/api/game/explore/claim", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
