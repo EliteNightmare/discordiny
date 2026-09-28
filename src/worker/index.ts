@@ -489,10 +489,10 @@ async function getAuthenticatedUserId(c: any) {
        LIMIT 1`,
     )
     .bind(sessionId)
-    .first<{
+    .first() as {
       user_id: number;
       expires_at: string;
-    }>();
+    } | null;
 
   if (!session) return null;
   if (new Date(session.expires_at).getTime() <= Date.now()) {
