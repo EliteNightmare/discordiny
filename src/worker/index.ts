@@ -1651,7 +1651,15 @@ app.get("/api/game/weapons/masterwork", async (c) => {
   const currentMasterwork = Math.max(0, Number(ownedWeapon.masterwork) || 0);
   const baseName = getVaultBaseWeaponName(weaponName);
   const catalogWeapon = await c.env.DB
-    .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
+    .prepare(
+      `SELECT rarity
+       FROM weapons
+       WHERE lower(name) = lower(?)
+          OR lower(name) = lower(?)
+          OR lower(name) = lower(?)
+          OR lower(name) = lower(?)
+       LIMIT 1`,
+    )
     .bind(
       baseName,
       `${baseName} (Adept)`,
@@ -1749,7 +1757,12 @@ app.post("/api/game/weapons/masterwork", async (c) => {
           OR lower(name) = lower(?)
        LIMIT 1`,
     )
-    .bind(baseName)
+    .bind(
+      baseName,
+      `${baseName} (Adept)`,
+      `${baseName} (Timelost)`,
+      `${baseName} (Harrowed)`,
+    )
     .first<{ rarity: string | null }>();
 
   if (!catalogWeapon) {
