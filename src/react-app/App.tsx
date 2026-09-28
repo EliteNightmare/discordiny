@@ -11,6 +11,7 @@ import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
 import WeaponVault from "./pages/WeaponVault";
 import Terminal from "./pages/Terminal";
+import Root from "./pages/Root";
 
 import SiteGate, {
   shouldGateSite,
@@ -55,6 +56,26 @@ function App() {
     "terminal.discordiny.com"
   ) {
     return <Terminal />;
+  }
+
+  /*
+   * ROOT SUBDOMAIN
+   *
+   * ROOT only renders on the
+   * designated ROOT access path.
+   */
+  if (
+    hostname ===
+    "root.discordiny.com"
+  ) {
+    if (
+      path ===
+      "/5dfg46df4gs4gs6"
+    ) {
+      return <Root />;
+    }
+
+    return null;
   }
 
   /*
