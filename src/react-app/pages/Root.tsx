@@ -31,7 +31,8 @@ const ASSET=(value?:string|null)=>{
   const i=value.toLowerCase().indexOf(marker);
   return i>=0?"/assets/root/"+value.slice(i+marker.length):null;
 };
-const keyNorm=(s:string)=>s.replaceAll("#U26a0#Ufe0f","⚠️").toLocaleLowerCase();
+const keyNorm = (s: string) =>
+  s.replace(/#U26a0#Ufe0f/g, "⚠️").toLocaleLowerCase();
 function getRecord(path:string){
   const exact=ROOT_FILES[path]; if(exact)return exact;
   const k=Object.keys(ROOT_FILES).find(x=>keyNorm(x)===keyNorm(path));
