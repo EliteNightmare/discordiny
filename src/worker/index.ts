@@ -1473,7 +1473,7 @@ function getVaultMasterworkCost(
         .toLowerCase();
 
   const cost: Record<string, number> = {
-    Glimmer: 250 * (currentLevel + 1),
+    Glimmer: 2500 * (currentLevel + 1),
   };
 
   if (effectiveRarity === "exotic") {
@@ -1493,6 +1493,13 @@ function getVaultMasterworkCost(
       (currentLevel * 2 + 3) * 3;
     cost["Enhancement Prism"] =
       (currentLevel + 1) * 3;
+    cost["Ascendant Shard"] =
+      (currentLevel + 1) * 2;
+
+    if (currentLevel >= 3) {
+      cost["Ascendant Alloy"] =
+        currentLevel - 2;
+    }
   }
 
   return cost;
@@ -1651,15 +1658,7 @@ app.get("/api/game/weapons/masterwork", async (c) => {
   const currentMasterwork = Math.max(0, Number(ownedWeapon.masterwork) || 0);
   const baseName = getVaultBaseWeaponName(weaponName);
   const catalogWeapon = await c.env.DB
-    .prepare(
-      `SELECT rarity
-       FROM weapons
-       WHERE lower(name) = lower(?)
-          OR lower(name) = lower(?)
-          OR lower(name) = lower(?)
-          OR lower(name) = lower(?)
-       LIMIT 1`,
-    )
+    .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
     .bind(
       baseName,
       `${baseName} (Adept)`,
@@ -1757,12 +1756,7 @@ app.post("/api/game/weapons/masterwork", async (c) => {
           OR lower(name) = lower(?)
        LIMIT 1`,
     )
-    .bind(
-      baseName,
-      `${baseName} (Adept)`,
-      `${baseName} (Timelost)`,
-      `${baseName} (Harrowed)`,
-    )
+    .bind(baseName)
     .first<{ rarity: string | null }>();
 
   if (!catalogWeapon) {
