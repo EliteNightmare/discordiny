@@ -320,6 +320,9 @@ app.post("/api/terminal/execute", async c => {
       relicTransition:progress.advanced ? {from:2,to:3} : null
     });
   }
+  let requestedRelicTransition:null|{from:number;to:number}=null;
+  if(code.toUpperCase()==="ASCENSION.RELIC-OVERRIDE.KEY=WHM742") requestedRelicTransition={from:3,to:4};
+  if(code.toUpperCase()==="RED-CORAL.RELIC-OVERRIDE.KEY=CVB786") requestedRelicTransition={from:4,to:5};
   const file=await c.env.DB.prepare(`SELECT id,code,title,subtitle,classification,content FROM terminal_files WHERE lower(code)=lower(?) LIMIT 1`).bind(code).first() as {id:number;code:string;title:string;subtitle:string;classification:string;content:string}|null;
   if(!file) return c.json({success:false,error:"ACCESS CODE NOT RECOGNIZED"},404);
   await c.env.DB.prepare(`INSERT INTO player_terminal_files (user_id,file_id,discovered_at) VALUES (?,?,?) ON CONFLICT(user_id,file_id) DO NOTHING`).bind(u.user_id,file.id,new Date().toISOString()).run();
@@ -337,6 +340,11 @@ app.post("/api/terminal/execute", async c => {
     relic=progress.relic;
     relicAdvanced=progress.advanced;
     if(progress.advanced) relicTransition={from:1,to:2};
+  } else if(requestedRelicTransition){
+    const progress=await advanceRelicPhase(c,u.user_id,requestedRelicTransition.from,requestedRelicTransition.to);
+    relic=progress.relic;
+    relicAdvanced=progress.advanced;
+    if(progress.advanced) relicTransition=requestedRelicTransition;
   }
 
   return c.json({success:true,type:"file",file,unknownSignalResolved,relic,relicAdvanced,relicTransition});
@@ -374,7 +382,31 @@ app.get("/api/terminal/admin/users/:id/discoveries", async c => {
   const target=await c.env.DB.prepare(`SELECT id,discord_id,username,global_name,avatar FROM users WHERE id=? LIMIT 1`).bind(userId).first();
   if(!target) return c.json({error:"USER NOT FOUND"},404);
   const discoveries=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.code,terminal_files.title,terminal_files.subtitle,terminal_files.classification,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC,terminal_files.id DESC`).bind(userId).all();
-  return c.json({success:true,user:target,discoveries:discoveries.results});
+  const relic=await getRelicPublicState(c,userId);
+  return c.json({success:true,user:target,discoveries:discoveries.results,relic});
+});
+
+app.put("/api/terminal/admin/users/:id/relic", async c => {
+  const u=await getTerminalUser(c);
+  if(!u||u.user_id!==TERMINAL_ADMIN_USER_ID) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  const userId=Number(c.req.param("id"));
+  if(!Number.isInteger(userId)||userId<=0) return c.json({error:"INVALID USER ID"},400);
+  const target=await c.env.DB.prepare(`SELECT id FROM users WHERE id=? LIMIT 1`).bind(userId).first();
+  if(!target) return c.json({error:"USER NOT FOUND"},404);
+  let body:{phase?:number}; try{body=await c.req.json()}catch{return c.json({error:"INVALID RELIC REQUEST"},400)}
+  const phase=Number(body.phase);
+  if(!Number.isInteger(phase)||phase<1||phase>5) return c.json({error:"RELIC PHASE MUST BE BETWEEN 1 AND 5"},400);
+
+  const current=await ensureRelicProgress(c,userId);
+  const now=new Date().toISOString();
+  await c.env.DB.prepare(`
+    UPDATE player_relic_progress
+    SET phase=?, updated_at=?,
+        completed_at=CASE WHEN ?=5 THEN COALESCE(completed_at, ?) ELSE NULL END
+    WHERE user_id=?
+  `).bind(phase,now,phase,now,userId).run();
+
+  return c.json({success:true,relic:relicPublicState({...current,phase,completed_at:phase===5?(current.completed_at??now):null})});
 });
 
 app.delete("/api/terminal/admin/users/:id/discoveries/:fileId", async c => {
