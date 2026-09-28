@@ -1215,3 +1215,7 @@
     transition: none;
   }
 }
+
+.siva-terminal-access { position:absolute; right:28px; bottom:28px; z-index:20; min-width:150px; min-height:44px; padding:0 22px; border:1px solid rgba(186,211,224,.42); background:rgba(7,14,18,.88); color:#dce9ef; font:800 .66rem/1 "Courier New",monospace; letter-spacing:.22em; cursor:pointer; }
+.siva-terminal-access:hover { border-color:rgba(222,240,248,.72); background:rgba(12,24,30,.94); }
+@media(max-width:700px){.siva-terminal-access{right:18px;bottom:18px;min-width:132px}}
