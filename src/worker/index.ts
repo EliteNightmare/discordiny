@@ -154,6 +154,111 @@ async function ensureTerminalRow(c:any,userId:number){
   await c.env.DB.prepare(`INSERT INTO player_terminal_access (user_id,terminal_unlocked,root_unlocked) VALUES (?,0,0) ON CONFLICT(user_id) DO NOTHING`).bind(userId).run();
 }
 
+const RELIC_EMBLEM_CODE = "EAJD-E24A-8J4K";
+const RELIC_TYPE = "01100001 01100101 01110011 00110010 00110101 00110110";
+const RELIC_KEY = "CONSUME";
+const RELIC_CIPHER = "UPoq6U77vCS13V+u9NQfIw==";
+const RELIC_PHASE_NAMES = ["", "Awakened Relic", "Cracked Relic", "Restored Relic", "Enhanced Relic", "Perfected Relic"] as const;
+
+function createRelicRevealOrder() {
+  const order = Array.from({ length: 12 }, (_, i) => i);
+  const random = new Uint32Array(12);
+  crypto.getRandomValues(random);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = random[i] % (i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  return order;
+}
+
+function parseRelicRevealOrder(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    const value = JSON.parse(raw);
+    if (!Array.isArray(value) || value.length !== 12) return null;
+    const order = value.map(Number);
+    const unique = new Set(order);
+    if (unique.size !== 12 || order.some(n => !Number.isInteger(n) || n < 0 || n > 11)) return null;
+    return order;
+  } catch {
+    return null;
+  }
+}
+
+async function ensureRelicProgress(c: any, userId: number) {
+  await c.env.DB.prepare(`
+    INSERT INTO player_relic_progress (user_id, phase, reveal_order)
+    VALUES (?, 1, '')
+    ON CONFLICT(user_id) DO NOTHING
+  `).bind(userId).run();
+
+  let row = await c.env.DB.prepare(`
+    SELECT phase, reveal_order, completed_at
+    FROM player_relic_progress
+    WHERE user_id=?
+    LIMIT 1
+  `).bind(userId).first() as { phase:number; reveal_order:string; completed_at:string|null } | null;
+
+  let order = parseRelicRevealOrder(row?.reveal_order);
+  if (!order) {
+    order = createRelicRevealOrder();
+    await c.env.DB.prepare(`
+      UPDATE player_relic_progress
+      SET reveal_order=?, updated_at=CURRENT_TIMESTAMP
+      WHERE user_id=?
+    `).bind(JSON.stringify(order), userId).run();
+    row = { phase: row?.phase ?? 1, reveal_order: JSON.stringify(order), completed_at: row?.completed_at ?? null };
+  }
+
+  const phase = Math.max(1, Math.min(5, Number(row?.phase ?? 1)));
+  return { phase, order, completed_at: row?.completed_at ?? null };
+}
+
+function relicPublicState(progress: { phase:number; order:number[]; completed_at:string|null }) {
+  const compact = RELIC_EMBLEM_CODE.replace(/-/g, "");
+  const revealCount = progress.phase === 1 ? 0 : Math.min(12, (progress.phase - 1) * 3);
+  const revealed = new Set(progress.order.slice(0, revealCount));
+  const chars = Array.from(compact, (ch, i) => revealed.has(i) ? ch : "□");
+  const maskedCode = `${chars.slice(0,4).join("")}-${chars.slice(4,8).join("")}-${chars.slice(8,12).join("")}`;
+  return {
+    phase: progress.phase,
+    phaseName: RELIC_PHASE_NAMES[progress.phase],
+    maskedCode,
+    revealedCount,
+    complete: progress.phase === 5,
+    final: progress.phase === 5 ? {
+      type: RELIC_TYPE,
+      key: RELIC_KEY,
+      cipher: RELIC_CIPHER,
+    } : null,
+  };
+}
+
+async function getRelicPublicState(c: any, userId: number) {
+  return relicPublicState(await ensureRelicProgress(c, userId));
+}
+
+async function applyRelicProgressFromFile(c: any, userId: number, content: string) {
+  const match = content.match(/R\.E\.L\.I\.C\.\/PHASE\s*==\s*([1-5])/i);
+  const current = await ensureRelicProgress(c, userId);
+  if (!match) return relicPublicState(current);
+
+  const target = Number(match[1]);
+  if (target === current.phase + 1) {
+    const now = new Date().toISOString();
+    await c.env.DB.prepare(`
+      UPDATE player_relic_progress
+      SET phase=?,
+          updated_at=?,
+          completed_at=CASE WHEN ?=5 THEN COALESCE(completed_at, ?) ELSE completed_at END
+      WHERE user_id=?
+    `).bind(target, now, target, now, userId).run();
+    return relicPublicState({ ...current, phase: target, completed_at: target === 5 ? (current.completed_at ?? now) : current.completed_at });
+  }
+
+  return relicPublicState(current);
+}
+
 app.get("/api/terminal/status", async c => {
   const u=await getTerminalUser(c);
   if(!u) return c.json({authenticated:false,terminalUnlocked:false,rootUnlocked:false,isAdmin:false});
@@ -177,7 +282,17 @@ app.get("/api/terminal/library", async c => {
   const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked,unknown_signal_resolved FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number;unknown_signal_resolved:number}|null;
   if(!x?.terminal_unlocked) return c.json({authenticated:true,terminalUnlocked:false,error:"TERMINAL NOT DISCOVERED"},403);
   const f=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.code,terminal_files.title,terminal_files.subtitle,terminal_files.classification,terminal_files.content,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC`).bind(u.user_id).all();
-  return c.json({authenticated:true,terminalUnlocked:true,rootUnlocked:!!x.root_unlocked,unknownSignalResolved:!!x.unknown_signal_resolved,isAdmin:u.user_id===1,files:f.results,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
+  const relic=await getRelicPublicState(c,u.user_id);
+  return c.json({authenticated:true,terminalUnlocked:true,rootUnlocked:!!x.root_unlocked,unknownSignalResolved:!!x.unknown_signal_resolved,isAdmin:u.user_id===1,files:f.results,relic,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
+});
+
+app.get("/api/terminal/relic", async c => {
+  const u=await getTerminalUser(c);
+  if(!u) return c.json({success:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
+  await ensureTerminalRow(c,u.user_id);
+  const access=await c.env.DB.prepare(`SELECT terminal_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number}|null;
+  if(!access?.terminal_unlocked) return c.json({success:false,error:"TERMINAL NOT DISCOVERED"},403);
+  return c.json({success:true,relic:await getRelicPublicState(c,u.user_id)});
 });
 
 app.post("/api/terminal/execute", async c => {
@@ -200,7 +315,8 @@ app.post("/api/terminal/execute", async c => {
     await c.env.DB.prepare(`UPDATE player_terminal_access SET unknown_signal_resolved=1 WHERE user_id=?`).bind(u.user_id).run();
   }
 
-  return c.json({success:true,type:"file",file,unknownSignalResolved});
+  const relic=await applyRelicProgressFromFile(c,u.user_id,file.content);
+  return c.json({success:true,type:"file",file,unknownSignalResolved,relic});
 });
 
 app.post("/api/terminal/root-access", async c => {
