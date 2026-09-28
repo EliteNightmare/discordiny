@@ -2175,6 +2175,7 @@ export const ROOT_FILES: Record<string, any> = {
   },
   "PERSONNEL/Whm.-BRAY.id": {
     "title": "PERSONNEL/Whm.-BRAY.id",
+    "description": "USERNAME CIPHER == HEXAHUE || BLACK-WHITE == PERIOD",
     "authorization": {
       "required_level": 1,
       "status": "UNCORRUPTED"
