@@ -8,21 +8,10 @@ import "./Vault.css";
 
 type VaultProfileResponse = {
   authenticated: boolean;
-  currencies: Record<string, number>;
-  upgradeMaterials: Record<string, number>;
-};
 
-type VaultIndexResponse = {
-  authenticated: boolean;
-  maxMasterwork: number;
-  collection: {
-    owned: number;
-    total: number;
-    percentage: number;
-    maxed: number;
-    normal: { owned: number; total: number };
-    adept: { owned: number; total: number };
-  };
+  currencies: Record<string, number>;
+
+  upgradeMaterials: Record<string, number>;
 };
 
 const VAULT_CATEGORIES = [
@@ -30,11 +19,6 @@ const VAULT_CATEGORIES = [
     name: "Destinations",
     path: "/vault/destinations",
     description: "Destination weapon collections",
-  },
-  {
-    name: "Fishing",
-    path: "/vault/fishing",
-    description: "Fishing weapon collections",
   },
   {
     name: "Dungeons",
@@ -77,6 +61,11 @@ const VAULT_CATEGORIES = [
     description: "Crawl weapon collections",
   },
   {
+    name: "Fishing",
+    path: "/vault/fishing",
+    description: "Fishing weapon collections",
+  },
+  {
     name: "Events",
     path: "/vault/events",
     description: "Event weapon collections",
@@ -87,9 +76,6 @@ function Vault() {
   const [profile, setProfile] =
     useState<VaultProfileResponse | null>(null);
 
-  const [index, setIndex] =
-    useState<VaultIndexResponse | null>(null);
-
   const [loading, setLoading] =
     useState(true);
 
@@ -99,22 +85,19 @@ function Vault() {
   useEffect(() => {
     async function loadVault() {
       try {
-        const [profileResponse, indexResponse] =
-          await Promise.all([
-            fetch("/api/game/profile", { credentials: "include" }),
-            fetch("/api/game/vault/index", { credentials: "include" }),
-          ]);
+        const response = await fetch(
+          "/api/game/profile",
+          {
+            credentials: "include",
+          },
+        );
 
         const result =
-          (await profileResponse.json()) as VaultProfileResponse;
-        const indexResult =
-          (await indexResponse.json()) as VaultIndexResponse;
+          (await response.json()) as VaultProfileResponse;
 
         if (
-          !profileResponse.ok ||
-          !result.authenticated ||
-          !indexResponse.ok ||
-          !indexResult.authenticated
+          !response.ok ||
+          !result.authenticated
         ) {
           throw new Error(
             "You must be logged in to view your Vault.",
@@ -122,7 +105,6 @@ function Vault() {
         }
 
         setProfile(result);
-        setIndex(indexResult);
       } catch (err) {
         setError(
           err instanceof Error
@@ -202,14 +184,6 @@ function Vault() {
                     Browse your Legendary weapon
                     collections by source.
                   </p>
-
-                  {index && (
-                    <div className="vault-index-summary">
-                      <strong>{index.collection.owned}/{index.collection.total}</strong>
-                      <span>COLLECTION · {index.collection.percentage.toFixed(1)}%</span>
-                      <small>{index.collection.maxed} weapons at MW {index.maxMasterwork}</small>
-                    </div>
-                  )}
                 </div>
               </div>
 
