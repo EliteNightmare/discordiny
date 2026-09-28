@@ -1590,3 +1590,141 @@ UNKNOWN SIGNAL // PERMANENT AUTPOST PUZZLE   ===================================
   }
 
 }
+
+
+/* =========================================================
+   UNKNOWN SIGNAL // TERMINAL STEP 1 CLUES + RESOLVED STATE
+   ========================================================= */
+
+.terminal-autopost-clue {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 10px;
+  border-left: 1px solid rgba(180, 31, 40, 0.38);
+  background: rgba(38, 5, 8, 0.34);
+}
+
+.terminal-autopost-clue span {
+  color: #7c5559;
+  font-size: 0.4rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.terminal-autopost-clue strong {
+  width: fit-content;
+  color: #dc5960;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 8px rgba(255, 34, 46, 0.14);
+  animation: terminal-autopost-clue-glitch 3.6s steps(1, end) infinite;
+}
+
+@keyframes terminal-autopost-clue-glitch {
+  0%, 88%, 100% { transform: translate(0); }
+  90% { transform: translate(-2px, 1px); }
+  93% { transform: translate(3px, -1px); }
+  96% { transform: translate(-1px, 0); }
+}
+
+.terminal-autopost-resolved {
+  border-color: rgba(48, 180, 102, 0.58);
+  border-left-color: #36d77b;
+  background:
+    radial-gradient(circle at 85% 15%, rgba(30, 184, 93, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(4, 31, 18, 0.94), rgba(7, 14, 11, 0.96));
+  box-shadow:
+    inset 0 0 30px rgba(20, 190, 87, 0.07),
+    0 0 20px rgba(19, 170, 77, 0.06);
+}
+
+.terminal-autopost-resolved::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0 3px,
+    rgba(63, 225, 127, 0.06) 3px 4px
+  );
+}
+
+.terminal-autopost-resolved::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(46, 216, 113, 0.3),
+    transparent
+  );
+}
+
+.terminal-autopost-resolved .terminal-autopost-scan {
+  background: rgba(49, 220, 117, 0.09);
+  box-shadow: 0 0 16px rgba(49, 220, 117, 0.18);
+}
+
+.terminal-autopost-resolved .terminal-autopost-live-dot {
+  background: #49e88b;
+  box-shadow: 0 0 9px rgba(61, 230, 132, 0.72);
+}
+
+.terminal-autopost-resolved .terminal-autopost-kicker,
+.terminal-autopost-resolved .terminal-autopost-copy span,
+.terminal-autopost-resolved .terminal-autopost-footer span,
+.terminal-autopost-resolved .terminal-autopost-payload small,
+.terminal-autopost-resolved .terminal-autopost-clue span {
+  color: #5b9471;
+}
+
+.terminal-autopost-resolved .terminal-autopost-title {
+  color: #64ee9b;
+  text-shadow:
+    -2px 0 rgba(0, 76, 33, 0.8),
+    2px 0 rgba(69, 238, 139, 0.15);
+}
+
+.terminal-autopost-resolved .terminal-autopost-title::before {
+  color: #207f48;
+}
+
+.terminal-autopost-resolved .terminal-autopost-title::after {
+  color: #a0f7c2;
+}
+
+.terminal-autopost-resolved .terminal-autopost-divider {
+  background: linear-gradient(
+    90deg,
+    rgba(56, 211, 117, 0.65),
+    rgba(56, 211, 117, 0.07)
+  );
+}
+
+.terminal-autopost-resolved .terminal-autopost-copy strong,
+.terminal-autopost-resolved .terminal-autopost-payload code,
+.terminal-autopost-resolved .terminal-autopost-clue strong,
+.terminal-autopost-resolved .terminal-autopost-footer b {
+  color: #67e99b;
+}
+
+.terminal-autopost-resolved .terminal-autopost-payload {
+  border-color: rgba(45, 190, 103, 0.28);
+  background: rgba(3, 31, 16, 0.58);
+}
+
+.terminal-autopost-resolved .terminal-autopost-payload code::before {
+  color: rgba(67, 224, 128, 0.42);
+}
+
+.terminal-autopost-resolved .terminal-autopost-clue {
+  border-left-color: rgba(52, 198, 110, 0.35);
+  background: rgba(5, 35, 19, 0.3);
+}
+
+.terminal-autopost-resolved .terminal-autopost-corruption {
+  color: rgba(81, 225, 137, 0.42);
+}
+
+.terminal-autopost-resolved .terminal-autopost-footer {
+  border-top-color: rgba(52, 198, 110, 0.2);
+}
