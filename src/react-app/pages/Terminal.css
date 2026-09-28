@@ -2188,3 +2188,64 @@ UNKNOWN SIGNAL // PERMANENT AUTPOST PUZZLE   ===================================
     grid-template-columns:1fr;
   }
 }
+
+
+/* =========================================================
+   R.E.L.I.C. // SIVA CORRUPTION SWARM
+========================================================= */
+.relic-swarm-overlay{
+  position:fixed;
+  z-index:10050;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+  background:rgba(5,0,1,.12);
+  animation:relic-swarm-entry 2.3s steps(2,end) both;
+}
+.relic-swarm-vignette{
+  position:absolute;inset:-12%;
+  background:radial-gradient(circle at 50% 48%,transparent 0 18%,rgba(120,0,10,.12) 42%,rgba(0,0,0,.78) 82%);
+  animation:relic-swarm-vignette 180ms steps(2,end) infinite;
+}
+.relic-swarm-core{
+  position:absolute;left:50%;top:50%;width:12px;height:12px;border-radius:50%;
+  background:#ef2639;box-shadow:0 0 20px #e3152b,0 0 70px rgba(220,15,35,.65);
+  transform:translate(-50%,-50%);
+  animation:relic-swarm-core 650ms cubic-bezier(.2,.8,.2,1) infinite alternate;
+}
+.relic-swarm-overlay i{
+  --angle:calc(var(--i) * 29deg);
+  --radius:calc(80px + (var(--i) % 9) * 31px);
+  --delay:calc((var(--i) % 11) * -73ms);
+  position:absolute;left:50%;top:50%;width:5px;height:5px;
+  background:#df1c30;box-shadow:0 0 9px rgba(239,30,52,.9);
+  transform-origin:0 0;
+  animation:relic-swarm-particle 950ms var(--delay) cubic-bezier(.2,.7,.2,1) infinite;
+}
+.relic-swarm-overlay i:nth-of-type(3n){width:2px;height:12px}
+.relic-swarm-overlay i:nth-of-type(4n){clip-path:polygon(50% 0,100% 100%,0 100%);width:8px;height:8px}
+.relic-swarm-overlay i:nth-of-type(5n){animation-duration:1250ms}
+.relic-swarm-copy{
+  position:absolute;left:50%;top:50%;width:min(92vw,720px);
+  transform:translate(-50%,-50%);
+  display:grid;gap:10px;text-align:center;
+  font-family:"Courier New",monospace;text-transform:uppercase;
+  text-shadow:0 0 12px rgba(232,24,44,.75);
+}
+.relic-swarm-copy span{color:#8f3842;font-size:.58rem;font-weight:900;letter-spacing:.22em}
+.relic-swarm-copy strong{color:#f0d9dc;font-size:clamp(.72rem,2.3vw,1.18rem);letter-spacing:.09em}
+.relic-swarm-copy b{color:#ef2639;font-size:.66rem;letter-spacing:.3em;animation:relic-swarm-success 650ms steps(2,end) infinite}
+@keyframes relic-swarm-particle{
+  0%{opacity:0;transform:rotate(var(--angle)) translateX(12px) scale(.3)}
+  14%{opacity:1}
+  70%{opacity:.95;transform:rotate(calc(var(--angle) + 220deg)) translateX(var(--radius)) scale(1.15)}
+  100%{opacity:0;transform:rotate(calc(var(--angle) + 420deg)) translateX(calc(var(--radius) * .22)) scale(.15)}
+}
+@keyframes relic-swarm-core{from{transform:translate(-50%,-50%) scale(.6)}to{transform:translate(-50%,-50%) scale(1.8)}}
+@keyframes relic-swarm-vignette{0%,100%{opacity:.75}50%{opacity:1;transform:scale(1.015)}}
+@keyframes relic-swarm-success{0%,76%{opacity:1}77%,86%{opacity:.2}87%,100%{opacity:1}}
+@keyframes relic-swarm-entry{0%{opacity:0}8%{opacity:1}88%{opacity:1}100%{opacity:0}}
+@media(max-width:800px){
+  .relic-swarm-copy{width:88vw;padding:0 12px}
+  .relic-swarm-copy strong{line-height:1.55}
+}
