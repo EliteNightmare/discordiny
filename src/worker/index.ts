@@ -120,6 +120,24 @@ app.get("/api/", (c) => {
 });
 
 /* =========================================================
+   TERMINAL - ACCOUNT ASSOCIATION
+========================================================= */
+
+async function getDiscordinyAccountId(c: any) {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return null;
+
+  const session = await c.env.DB
+    .prepare(`SELECT user_id, expires_at FROM sessions WHERE id = ? LIMIT 1`)
+    .bind(sessionId)
+    .first() as { user_id: number; expires_at: string } | null;
+
+  if (!session) return null;
+  if (new Date(session.expires_at).getTime() <= Date.now()) return null;
+  return session.user_id;
+}
+
+/* =========================================================
    TERMINAL - CREATE INSTANCE
 ========================================================= */
 
@@ -132,6 +150,8 @@ const TERMINAL_SESSION_LIFETIME_SECONDS =
 app.post(
   "/api/terminal/create",
   async (c) => {
+    const accountUserId = await getDiscordinyAccountId(c);
+
     /*
      * Generate the instance key on the
      * server. The browser never chooses it.
@@ -180,13 +200,15 @@ app.post(
          (
            instance_key,
            expires_at,
-           consumed
+           consumed,
+           user_id
          )
-         VALUES (?, ?, 0)`,
+         VALUES (?, ?, 0, ?)`,
       )
       .bind(
         instanceKey,
         expiresAt,
+        accountUserId,
       )
       .run();
 
@@ -242,6 +264,18 @@ app.post("/api/terminal/connect", async (c) => {
 
   const now =
     new Date().toISOString();
+
+  const terminalInstance = await c.env.DB
+    .prepare(
+      `SELECT user_id
+       FROM terminal_instances
+       WHERE instance_key = ?
+         AND consumed = 0
+         AND expires_at > ?
+       LIMIT 1`,
+    )
+    .bind(instanceKey, now)
+    .first() as { user_id: number | null } | null;
 
   /*
    * Consume the one-time instance key.
@@ -317,13 +351,15 @@ app.post("/api/terminal/connect", async (c) => {
       `INSERT INTO terminal_sessions
        (
          session_id,
-         expires_at
+         expires_at,
+         user_id
        )
-       VALUES (?, ?)`,
+       VALUES (?, ?, ?)`,
     )
     .bind(
       sessionId,
       sessionExpiresAt,
+      terminalInstance?.user_id ?? null,
     )
     .run();
 
@@ -473,32 +509,27 @@ const TERMINAL_ROOT_URL =
   "https://root.discordiny.com/5dfg46df4gs4gs6";
 
 async function getAuthenticatedUserId(c: any) {
-  const sessionId = getCookie(
-    c,
-    SESSION_COOKIE,
-    "host",
-  );
+  const cookieHeader = c.req.header("Cookie") ?? "";
+  const terminalSessionId = cookieHeader
+    .split(";")
+    .map((part: string) => part.trim())
+    .find((part: string) => part.startsWith("discordiny_terminal_session="))
+    ?.slice("discordiny_terminal_session=".length) ?? null;
 
-  if (!sessionId) return null;
+  if (!terminalSessionId) return null;
 
   const session = await c.env.DB
     .prepare(
       `SELECT user_id, expires_at
-       FROM sessions
-       WHERE id = ?
+       FROM terminal_sessions
+       WHERE session_id = ?
        LIMIT 1`,
     )
-    .bind(sessionId)
-    .first() as {
-      user_id: number;
-      expires_at: string;
-    } | null;
+    .bind(terminalSessionId)
+    .first() as { user_id: number | null; expires_at: string } | null;
 
-  if (!session) return null;
-  if (new Date(session.expires_at).getTime() <= Date.now()) {
-    return null;
-  }
-
+  if (!session || !session.user_id) return null;
+  if (new Date(session.expires_at).getTime() <= Date.now()) return null;
   return session.user_id;
 }
 
