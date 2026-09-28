@@ -120,483 +120,116 @@ app.get("/api/", (c) => {
 });
 
 /* =========================================================
-   TERMINAL - ACCOUNT ASSOCIATION
+   TERMINAL - ACCOUNT LIBRARY
 ========================================================= */
+const TERMINAL_ORIGIN = "https://terminal.discordiny.com";
+const TERMINAL_URL = "https://terminal.discordiny.com/";
+const TERMINAL_ROOT_CODE = "ROOT.INITIATE.KEY=8556";
+const TERMINAL_ROOT_URL = "https://root.discordiny.com/5dfg46df4gs4gs6";
+const TERMINAL_ADMIN_USER_ID = 1;
 
-async function getDiscordinyAccountId(c: any) {
+function terminalCors(c: any) {
+  if (c.req.header("Origin") === TERMINAL_ORIGIN) {
+    c.header("Access-Control-Allow-Origin", TERMINAL_ORIGIN);
+    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Vary", "Origin");
+  }
+}
+app.options("/api/terminal/*", (c) => {
+  terminalCors(c);
+  c.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  c.header("Access-Control-Allow-Headers", "Content-Type");
+  return c.body(null, 204);
+});
+app.use("/api/terminal/*", async (c, next) => { await next(); terminalCors(c); });
+
+async function getTerminalUser(c: any) {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return null;
-
-  const session = await c.env.DB
-    .prepare(`SELECT user_id, expires_at FROM sessions WHERE id = ? LIMIT 1`)
-    .bind(sessionId)
-    .first() as { user_id: number; expires_at: string } | null;
-
-  if (!session) return null;
-  if (new Date(session.expires_at).getTime() <= Date.now()) return null;
-  return session.user_id;
+  const row = await c.env.DB.prepare(`SELECT sessions.user_id, sessions.expires_at, users.discord_id, users.username, users.global_name, users.avatar FROM sessions INNER JOIN users ON users.id=sessions.user_id WHERE sessions.id=? LIMIT 1`).bind(sessionId).first() as {user_id:number;expires_at:string;discord_id:string;username:string;global_name:string|null;avatar:string|null}|null;
+  if (!row || new Date(row.expires_at).getTime() <= Date.now()) return null;
+  return row;
+}
+async function ensureTerminalRow(c:any,userId:number){
+  await c.env.DB.prepare(`INSERT INTO player_terminal_access (user_id,terminal_unlocked,root_unlocked) VALUES (?,0,0) ON CONFLICT(user_id) DO NOTHING`).bind(userId).run();
 }
 
-/* =========================================================
-   TERMINAL - CREATE INSTANCE
-========================================================= */
-
-const TERMINAL_INSTANCE_LIFETIME_SECONDS =
-  30;
-
-const TERMINAL_SESSION_LIFETIME_SECONDS =
-  60 * 60;
-
-app.post(
-  "/api/terminal/create",
-  async (c) => {
-    const accountUserId = await getDiscordinyAccountId(c);
-
-    /*
-     * Generate the instance key on the
-     * server. The browser never chooses it.
-     *
-     * Two UUIDs are combined so the key is
-     * long and impractical to guess.
-     */
-    const instanceKey =
-      `${crypto.randomUUID()}${crypto.randomUUID()}`
-        .replaceAll("-", "");
-
-    /*
-     * The generated URL only has a short
-     * window in which it may establish a
-     * terminal connection.
-     */
-    const expiresAt =
-      new Date(
-        Date.now() +
-          TERMINAL_INSTANCE_LIFETIME_SECONDS *
-            1000,
-      ).toISOString();
-
-    /*
-     * Clean up old terminal instances.
-     *
-     * These are temporary records, so there
-     * is no reason to keep expired ones.
-     */
-    await c.env.DB
-      .prepare(
-        `DELETE FROM terminal_instances
-         WHERE expires_at <= ?`,
-      )
-      .bind(
-        new Date().toISOString(),
-      )
-      .run();
-
-    /*
-     * Store the new instance.
-     */
-    await c.env.DB
-      .prepare(
-        `INSERT INTO terminal_instances
-         (
-           instance_key,
-           expires_at,
-           consumed,
-           user_id
-         )
-         VALUES (?, ?, 0, ?)`,
-      )
-      .bind(
-        instanceKey,
-        expiresAt,
-        accountUserId,
-      )
-      .run();
-
-    /*
-     * Return only the generated key.
-     *
-     * React will eventually use this to
-     * redirect to:
-     *
-     * terminal.discordiny.com/INSTANCEKEY
-     */
-    return c.json({
-      success: true,
-      instanceKey,
-      expiresAt,
-    });
-  },
-);
-
-/* =========================================================
-   TERMINAL - CONNECT TO INSTANCE
-========================================================= */
-
-app.post("/api/terminal/connect", async (c) => {
-  let body: {
-    instanceKey?: string;
-  };
-
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json(
-      {
-        success: false,
-        error: "Invalid request.",
-      },
-      400,
-    );
-  }
-
-  const instanceKey =
-    body.instanceKey?.trim();
-
-  if (!instanceKey) {
-    return c.json(
-      {
-        success: false,
-        error: "Missing instance key.",
-      },
-      400,
-    );
-  }
-
-  const now =
-    new Date().toISOString();
-
-  const terminalInstance = await c.env.DB
-    .prepare(
-      `SELECT user_id
-       FROM terminal_instances
-       WHERE instance_key = ?
-         AND consumed = 0
-         AND expires_at > ?
-       LIMIT 1`,
-    )
-    .bind(instanceKey, now)
-    .first() as { user_id: number | null } | null;
-
-  /*
-   * Consume the one-time instance key.
-   */
-  const result =
-    await c.env.DB
-      .prepare(
-        `UPDATE terminal_instances
-         SET
-           consumed = 1,
-           consumed_at = ?
-         WHERE instance_key = ?
-           AND consumed = 0
-           AND expires_at > ?`,
-      )
-      .bind(
-        now,
-        instanceKey,
-        now,
-      )
-      .run();
-
-  /*
-   * Nothing changed:
-   * invalid, expired, or already consumed.
-   */
-  if (
-    !result.meta.changes ||
-    result.meta.changes !== 1
-  ) {
-    return c.json(
-      {
-        success: false,
-        error:
-          "Terminal instance invalid or expired.",
-      },
-      403,
-    );
-  }
-
-  /*
-   * The instance was successfully consumed.
-   *
-   * Now create a separate terminal session.
-   */
-  const sessionId =
-    `${crypto.randomUUID()}${crypto.randomUUID()}`
-      .replaceAll("-", "");
-
-  const sessionExpiresAt =
-    new Date(
-      Date.now() +
-        TERMINAL_SESSION_LIFETIME_SECONDS *
-          1000,
-    ).toISOString();
-
-  /*
-   * Clean expired terminal sessions.
-   */
-  await c.env.DB
-    .prepare(
-      `DELETE FROM terminal_sessions
-       WHERE expires_at <= ?`,
-    )
-    .bind(now)
-    .run();
-
-  /*
-   * Store the new terminal session.
-   */
-  await c.env.DB
-    .prepare(
-      `INSERT INTO terminal_sessions
-       (
-         session_id,
-         expires_at,
-         user_id
-       )
-       VALUES (?, ?, ?)`,
-    )
-    .bind(
-      sessionId,
-      sessionExpiresAt,
-      terminalInstance?.user_id ?? null,
-    )
-    .run();
-
-  /*
-   * Give the browser an HttpOnly terminal
-   * session cookie.
-   *
-   * IMPORTANT:
-   * Domain=.discordiny.com allows the
-   * cookie created by the API to also be
-   * available on terminal.discordiny.com.
-   */
-  c.header(
-    "Set-Cookie",
-    [
-      `discordiny_terminal_session=${sessionId}`,
-      "Path=/",
-      "Domain=.discordiny.com",
-      "HttpOnly",
-      "Secure",
-      "SameSite=Lax",
-      `Max-Age=${TERMINAL_SESSION_LIFETIME_SECONDS}`,
-    ].join("; "),
-  );
-
-  return c.json({
-    success: true,
-    expiresAt:
-      sessionExpiresAt,
-  });
+app.get("/api/terminal/status", async c => {
+  const u=await getTerminalUser(c);
+  if(!u) return c.json({authenticated:false,terminalUnlocked:false,rootUnlocked:false,isAdmin:false});
+  await ensureTerminalRow(c,u.user_id);
+  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number}|null;
+  return c.json({authenticated:true,terminalUnlocked:!!x?.terminal_unlocked,rootUnlocked:!!x?.root_unlocked,isAdmin:u.user_id===1,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
 });
 
-/* =========================================================
-   TERMINAL - CHECK SESSION
-========================================================= */
-
-app.get("/api/terminal/session", async (c) => {
-  /*
-   * Read the terminal session cookie.
-   */
-  const cookieHeader =
-    c.req.header("Cookie") ?? "";
-
-  const cookies =
-    cookieHeader
-      .split(";")
-      .map((cookie) =>
-        cookie.trim(),
-      );
-
-  const sessionCookie =
-    cookies.find((cookie) =>
-      cookie.startsWith(
-        "discordiny_terminal_session=",
-      ),
-    );
-
-  if (!sessionCookie) {
-    return c.json({
-      authenticated: false,
-    });
-  }
-
-  const sessionId =
-    sessionCookie
-      .slice(
-        "discordiny_terminal_session="
-          .length,
-      )
-      .trim();
-
-  if (!sessionId) {
-    return c.json({
-      authenticated: false,
-    });
-  }
-
-  const now =
-    new Date().toISOString();
-
-  /*
-   * Find an active terminal session.
-   */
-  const session =
-    await c.env.DB
-      .prepare(
-        `SELECT
-           session_id,
-           expires_at
-         FROM terminal_sessions
-         WHERE session_id = ?
-           AND expires_at > ?
-         LIMIT 1`,
-      )
-      .bind(
-        sessionId,
-        now,
-      )
-      .first<{
-        session_id: string;
-        expires_at: string;
-      }>();
-
-  /*
-   * Cookie exists, but its session doesn't.
-   *
-   * It may have expired or otherwise be
-   * invalid.
-   */
-  if (!session) {
-    /*
-     * Remove the invalid cookie from the
-     * browser as well.
-     */
-    c.header(
-      "Set-Cookie",
-      [
-        "discordiny_terminal_session=",
-        "Path=/",
-        "Domain=.discordiny.com",
-        "HttpOnly",
-        "Secure",
-        "SameSite=Lax",
-        "Max-Age=0",
-      ].join("; "),
-    );
-
-    return c.json({
-      authenticated: false,
-    });
-  }
-
-  return c.json({
-    authenticated: true,
-    expiresAt:
-      session.expires_at,
-  });
+app.post("/api/terminal/unlock", async c => {
+  const u=await getTerminalUser(c);
+  if(!u) return c.json({success:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
+  const now=new Date().toISOString();
+  await c.env.DB.prepare(`INSERT INTO player_terminal_access (user_id,terminal_unlocked,root_unlocked,terminal_unlocked_at) VALUES (?,1,0,?) ON CONFLICT(user_id) DO UPDATE SET terminal_unlocked=1, terminal_unlocked_at=COALESCE(player_terminal_access.terminal_unlocked_at,excluded.terminal_unlocked_at)`).bind(u.user_id,now).run();
+  return c.json({success:true,redirectUrl:TERMINAL_URL});
 });
 
-/* =========================================================
-   TERMINAL - ROOT / SIVA UNLOCK
-========================================================= */
-
-const TERMINAL_ROOT_CODE = "ROOT.INITIALIZE.KEY=8556";
-const TERMINAL_ROOT_UNLOCK_KEY = "root_siva";
-const TERMINAL_ROOT_URL =
-  "https://root.discordiny.com/5dfg46df4gs4gs6";
-
-async function getAuthenticatedUserId(c: any) {
-  const cookieHeader = c.req.header("Cookie") ?? "";
-  const terminalSessionId = cookieHeader
-    .split(";")
-    .map((part: string) => part.trim())
-    .find((part: string) => part.startsWith("discordiny_terminal_session="))
-    ?.slice("discordiny_terminal_session=".length) ?? null;
-
-  if (!terminalSessionId) return null;
-
-  const session = await c.env.DB
-    .prepare(
-      `SELECT user_id, expires_at
-       FROM terminal_sessions
-       WHERE session_id = ?
-       LIMIT 1`,
-    )
-    .bind(terminalSessionId)
-    .first() as { user_id: number | null; expires_at: string } | null;
-
-  if (!session || !session.user_id) return null;
-  if (new Date(session.expires_at).getTime() <= Date.now()) return null;
-  return session.user_id;
-}
-
-app.get("/api/terminal/root-status", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-
-  if (!userId) {
-    return c.json({ authenticated: false, unlocked: false }, 401);
-  }
-
-  const unlock = await c.env.DB
-    .prepare(
-      `SELECT 1 AS unlocked
-       FROM player_terminal_unlocks
-       WHERE user_id = ?
-         AND unlock_key = ?
-       LIMIT 1`,
-    )
-    .bind(userId, TERMINAL_ROOT_UNLOCK_KEY)
-    .first<{ unlocked: number }>();
-
-  return c.json({
-    authenticated: true,
-    unlocked: Boolean(unlock),
-  });
+app.get("/api/terminal/library", async c => {
+  const u=await getTerminalUser(c);
+  if(!u) return c.json({authenticated:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
+  await ensureTerminalRow(c,u.user_id);
+  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number}|null;
+  if(!x?.terminal_unlocked) return c.json({authenticated:true,terminalUnlocked:false,error:"TERMINAL NOT DISCOVERED"},403);
+  const f=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.title,terminal_files.subtitle,terminal_files.classification,terminal_files.content,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC`).bind(u.user_id).all();
+  return c.json({authenticated:true,terminalUnlocked:true,rootUnlocked:!!x.root_unlocked,isAdmin:u.user_id===1,files:f.results,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
 });
 
-app.post("/api/terminal/root-initialize", async (c) => {
-  const userId = await getAuthenticatedUserId(c);
-
-  if (!userId) {
-    return c.json(
-      { success: false, error: "ACCOUNT AUTHENTICATION REQUIRED" },
-      401,
-    );
+app.post("/api/terminal/execute", async c => {
+  const u=await getTerminalUser(c); if(!u) return c.json({success:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
+  let body:{code?:string}; try{body=await c.req.json()}catch{return c.json({success:false,error:"INVALID TERMINAL REQUEST"},400)}
+  const code=body.code?.trim(); if(!code) return c.json({success:false,error:"ACCESS CODE REQUIRED"},400);
+  await ensureTerminalRow(c,u.user_id);
+  const access=await c.env.DB.prepare(`SELECT terminal_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number}|null;
+  if(!access?.terminal_unlocked) return c.json({success:false,error:"TERMINAL NOT DISCOVERED"},403);
+  if(code.toUpperCase()===TERMINAL_ROOT_CODE){
+    await c.env.DB.prepare(`UPDATE player_terminal_access SET root_unlocked=1,root_unlocked_at=COALESCE(root_unlocked_at,?) WHERE user_id=?`).bind(new Date().toISOString(),u.user_id).run();
+    return c.json({success:true,type:"root",rootUnlocked:true,redirectUrl:TERMINAL_ROOT_URL});
   }
+  const file=await c.env.DB.prepare(`SELECT id,title,subtitle,classification,content FROM terminal_files WHERE lower(code)=lower(?) LIMIT 1`).bind(code).first() as {id:number;title:string;subtitle:string;classification:string;content:string}|null;
+  if(!file) return c.json({success:false,error:"ACCESS CODE NOT RECOGNIZED"},404);
+  await c.env.DB.prepare(`INSERT INTO player_terminal_files (user_id,file_id,discovered_at) VALUES (?,?,?) ON CONFLICT(user_id,file_id) DO NOTHING`).bind(u.user_id,file.id,new Date().toISOString()).run();
+  return c.json({success:true,type:"file",file});
+});
 
-  let body: { code?: string };
-  try {
-    body = await c.req.json();
-  } catch {
-    return c.json({ success: false, error: "INVALID ROOT REQUEST" }, 400);
-  }
+app.post("/api/terminal/root-access", async c => {
+  const u=await getTerminalUser(c); if(!u) return c.json({success:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
+  const x=await c.env.DB.prepare(`SELECT root_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {root_unlocked:number}|null;
+  if(!x?.root_unlocked) return c.json({success:false,error:"ROOT ACCESS NOT DISCOVERED"},403);
+  return c.json({success:true,redirectUrl:TERMINAL_ROOT_URL});
+});
 
-  if (body.code?.trim() !== TERMINAL_ROOT_CODE) {
-    return c.json({ success: false, error: "ROOT INITIALIZATION REFUSED" }, 403);
-  }
+app.get("/api/terminal/admin/files", async c => {
+  const u=await getTerminalUser(c); if(!u||u.user_id!==TERMINAL_ADMIN_USER_ID) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  const f=await c.env.DB.prepare(`SELECT id,code,title,subtitle,classification,content,created_by,created_at,updated_at FROM terminal_files ORDER BY updated_at DESC,id DESC`).all();
+  return c.json({success:true,files:f.results});
+});
+app.post("/api/terminal/admin/files", async c => {
+  const u=await getTerminalUser(c); if(!u||u.user_id!==1) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  let b:{code?:string;title?:string;subtitle?:string;classification?:string;content?:string}; try{b=await c.req.json()}catch{return c.json({error:"INVALID FILE REQUEST"},400)}
+  const code=b.code?.trim(),title=b.title?.trim(); if(!code||!title)return c.json({error:"ACCESS CODE AND TITLE ARE REQUIRED"},400);
+  try{const r=await c.env.DB.prepare(`INSERT INTO terminal_files (code,title,subtitle,classification,content,created_by) VALUES (?,?,?,?,?,?)`).bind(code,title,b.subtitle?.trim()??"",b.classification?.trim()??"",b.content??"",u.user_id).run();return c.json({success:true,id:r.meta.last_row_id})}catch{return c.json({error:"ACCESS CODE ALREADY EXISTS OR FILE COULD NOT BE CREATED"},409)}
+});
+app.put("/api/terminal/admin/files/:id", async c => {
+  const u=await getTerminalUser(c); if(!u||u.user_id!==1)return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403); const id=Number(c.req.param("id"));
+  let b:{code?:string;title?:string;subtitle?:string;classification?:string;content?:string};try{b=await c.req.json()}catch{return c.json({error:"INVALID FILE REQUEST"},400)}
+  if(!b.code?.trim()||!b.title?.trim())return c.json({error:"ACCESS CODE AND TITLE ARE REQUIRED"},400);
+  try{const r=await c.env.DB.prepare(`UPDATE terminal_files SET code=?,title=?,subtitle=?,classification=?,content=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(b.code.trim(),b.title.trim(),b.subtitle?.trim()??"",b.classification?.trim()??"",b.content??"",id).run();return r.meta.changes?c.json({success:true}):c.json({error:"FILE NOT FOUND"},404)}catch{return c.json({error:"ACCESS CODE ALREADY EXISTS OR FILE COULD NOT BE UPDATED"},409)}
+});
+app.delete("/api/terminal/admin/files/:id", async c => {
+  const u=await getTerminalUser(c);if(!u||u.user_id!==1)return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);const id=Number(c.req.param("id"));
+  const r=await c.env.DB.prepare(`DELETE FROM terminal_files WHERE id=?`).bind(id).run();return r.meta.changes?c.json({success:true}):c.json({error:"FILE NOT FOUND"},404);
+});
 
-  await c.env.DB
-    .prepare(
-      `INSERT INTO player_terminal_unlocks
-       (user_id, unlock_key, unlocked_at)
-       VALUES (?, ?, ?)
-       ON CONFLICT(user_id, unlock_key) DO NOTHING`,
-    )
-    .bind(
-      userId,
-      TERMINAL_ROOT_UNLOCK_KEY,
-      new Date().toISOString(),
-    )
-    .run();
-
-  return c.json({
-    success: true,
-    unlocked: true,
-    redirectUrl: TERMINAL_ROOT_URL,
-  });
+app.get("/5dfg46df4gs4gs6", c => {
+  const host=c.req.header("Host")?.split(":")[0]?.toLowerCase();
+  if(host!=="root.discordiny.com") return c.notFound();
+  return c.html(`<!doctype html><html><head><meta charset="utf-8"><title></title></head><body></body></html>`);
 });
 
 /* =========================================================
