@@ -127,9 +127,7 @@ export default function SivaBoot({
       }
 
       triggered.current = true;
-
       setTerminalTriggered(true);
-
       setStatus(
         "SIVA ACCESS VECTOR DETECTED",
       );
@@ -148,14 +146,14 @@ export default function SivaBoot({
       try {
         const response =
           await fetch(
-            "/api/terminal/create",
+            "/api/terminal/unlock",
             {
               method: "POST",
-
               headers: {
                 "Content-Type":
                   "application/json",
               },
+              credentials: "include",
             },
           );
 
@@ -164,11 +162,11 @@ export default function SivaBoot({
 
         if (
           !response.ok ||
-          !data.success ||
-          !data.instanceKey
+          !data.success
         ) {
           throw new Error(
-            "Unable to create terminal instance.",
+            data.error ??
+              "Unable to unlock terminal.",
           );
         }
 
@@ -176,32 +174,20 @@ export default function SivaBoot({
           "OPENING SIVA TERMINAL",
         );
 
-        window.location.href =
-          `https://terminal.discordiny.com/${encodeURIComponent(
-            data.instanceKey,
-          )}`;
+        window.location.assign(
+          data.redirectUrl ??
+            "https://terminal.discordiny.com/",
+        );
       } catch {
         triggered.current = false;
-
         setTerminalTriggered(false);
-
         heldKeys.current.clear();
-
         resetMobileSequence();
-
         setStatus(
           "SYSTEM READY",
         );
-
-        window.setTimeout(
-          () => {
-            onComplete();
-          },
-          500,
-        );
       }
     }, [
-      onComplete,
       resetMobileSequence,
     ]);
 
@@ -583,6 +569,34 @@ export default function SivaBoot({
         </span>
       </div>
 
+      <div
+        className="siva-hold-hint siva-hold-hint-one"
+        aria-hidden="true"
+      >
+        HOLD SHIFT + S I V A
+      </div>
+
+      <div
+        className="siva-hold-hint siva-hold-hint-two"
+        aria-hidden="true"
+      >
+        HOLD SHIFT + S I V A
+      </div>
+
+      <div
+        className="siva-hold-hint siva-hold-hint-three"
+        aria-hidden="true"
+      >
+        HOLD SHIFT + S I V A
+      </div>
+
+      <div
+        className="siva-hold-hint siva-hold-hint-four"
+        aria-hidden="true"
+      >
+        HOLD SHIFT + S I V A
+      </div>
+
       {/*
        * Main boot content
        */}
@@ -622,12 +636,6 @@ export default function SivaBoot({
           %
         </div>
 
-        <div
-          className="siva-terminal-hint"
-          aria-hidden="true"
-        >
-          SHIFT + S I V A
-        </div>
       </section>
 
       <footer className="siva-footer">
