@@ -159,6 +159,7 @@ export default function Terminal() {
     const [adminUserMatches, setAdminUserMatches] = useState<AdminUser[]>([]);
     const [adminSelectedUser, setAdminSelectedUser] = useState<AdminUser | null>(null);
     const [adminDiscoveries, setAdminDiscoveries] = useState<AdminDiscovery[]>([]);
+    const [adminTargetRelic, setAdminTargetRelic] = useState<RelicState | null>(null);
     const [adminUserMessage, setAdminUserMessage] = useState("");
     const [adminUserSearching, setAdminUserSearching] = useState(false);
     const [backwashActive, setBackwashActive] = useState(false), [backwashPhase, setBackwashPhase] = useState(0);
@@ -281,6 +282,14 @@ export default function Terminal() {
             if (d.relicAdvanced && d.relicTransition?.from === 1 && d.relicTransition?.to === 2) {
                 runRelicSwarm("R.E.L.I.C. PHASE 02 // CORRUPTION ACCEPTED");
             }
+            if (d.relicAdvanced && d.relicTransition?.from === 3 && d.relicTransition?.to === 4) {
+                runRelicSwarm("R.E.L.I.C. PHASE 04 // OVERRIDE ACCEPTED");
+                window.setTimeout(() => setMessage("SUCCESS!"), 2100);
+            }
+            if (d.relicAdvanced && d.relicTransition?.from === 4 && d.relicTransition?.to === 5) {
+                runRelicSwarm("R.E.L.I.C. CRACKED!", 3300);
+                window.setTimeout(() => setMessage("SUCCESS!"), 3000);
+            }
 
             if (d.file) {
                 const discoveredFile: FileRow = d.file;
@@ -321,6 +330,7 @@ export default function Terminal() {
         setAdminUserMessage("");
         setAdminSelectedUser(null);
         setAdminDiscoveries([]);
+        setAdminTargetRelic(null);
         try {
             const r = await request(`/api/terminal/admin/users?name=${encodeURIComponent(name)}`);
             const d = await r.json();
@@ -352,6 +362,28 @@ export default function Terminal() {
             return;
         }
         setAdminDiscoveries(d.discoveries ?? []);
+            setAdminTargetRelic(d.relic ?? null);
+    }
+    async function setAdminRelicPhase(phase: number) {
+        if (!adminSelectedUser) return;
+        setAdminUserMessage("");
+        try {
+            const r = await request(`/api/terminal/admin/users/${adminSelectedUser.id}/relic`, {
+                method: "PUT",
+                body: JSON.stringify({ phase }),
+            });
+            const d = await r.json();
+            if (!r.ok || !d.success) {
+                setAdminUserMessage(d.error ?? "R.E.L.I.C. PHASE UPDATE FAILED");
+                return;
+            }
+            setAdminTargetRelic(d.relic ?? null);
+            if (adminSelectedUser.id === user?.id && d.relic) setRelic(d.relic);
+            setAdminUserMessage(`R.E.L.I.C. PHASE SET TO ${phase}`);
+        }
+        catch {
+            setAdminUserMessage("R.E.L.I.C. PHASE UPDATE FAILED");
+        }
     }
     async function resetAdminDiscovery(discovery: AdminDiscovery) {
         if (!adminSelectedUser)
@@ -404,7 +436,9 @@ export default function Terminal() {
           <form className="terminal-admin-user-search" onSubmit={searchAdminUsers}><label>USER NAME<input value={adminUserName} onChange={e => setAdminUserName(e.target.value)} placeholder="USERNAME OR DISPLAY NAME" autoComplete="off"/></label><button disabled={adminUserSearching || !adminUserName.trim()}>{adminUserSearching ? "SEARCHING..." : "FIND USER"}</button></form>
           <div className="terminal-message">{adminUserMessage || "\u00a0"}</div>
           {adminUserMatches.length > 0 ? <div className="terminal-admin-user-matches">{adminUserMatches.map(target => <button type="button" key={target.id} className={adminSelectedUser?.id === target.id ? "terminal-admin-user-match active" : "terminal-admin-user-match"} onClick={() => void selectAdminUser(target)}><strong>{target.global_name || target.username}</strong><span>@{target.username}</span><small>USER ID {target.id}</small></button>)}</div> : null}
-          {adminSelectedUser ? <div className="terminal-admin-user-discoveries"><div className="terminal-admin-user-selected"><div><span>SELECTED ACCOUNT</span><strong>{adminSelectedUser.global_name || adminSelectedUser.username}</strong><small>@{adminSelectedUser.username} // USER ID {adminSelectedUser.id}</small></div><b>{adminDiscoveries.length} DISCOVERED</b></div>{adminDiscoveries.length === 0 ? <div className="terminal-empty">NO TERMINAL FILES DISCOVERED</div> : adminDiscoveries.map(discovery => <div className="terminal-admin-discovery-row" key={discovery.id}><div><strong>{discovery.title}</strong><span>CODE // {discovery.code}</span><small>{discovery.classification || "UNCLASSIFIED"}</small></div><button type="button" onClick={() => void resetAdminDiscovery(discovery)}>RESET DISCOVERY</button></div>)}</div> : null}
+          {adminSelectedUser ? <div className="terminal-admin-user-discoveries"><div className="terminal-admin-user-selected"><div><span>SELECTED ACCOUNT</span><strong>{adminSelectedUser.global_name || adminSelectedUser.username}</strong><small>@{adminSelectedUser.username} // USER ID {adminSelectedUser.id}</small></div><b>{adminDiscoveries.length} DISCOVERED</b></div>
+            <div className="terminal-admin-relic-control"><div><span>PROJECT R.E.L.I.C.</span><strong>CURRENT PHASE {adminTargetRelic?.phase ?? "—"} / 5</strong><small>{adminTargetRelic?.phaseName ?? "LOADING RELIC STATE"}</small></div><div className="terminal-admin-relic-buttons">{[1,2,3,4,5].map(phase => <button type="button" key={phase} className={adminTargetRelic?.phase === phase ? "active" : ""} onClick={() => void setAdminRelicPhase(phase)}>PHASE {phase}</button>)}</div></div>
+            {adminDiscoveries.length === 0 ? <div className="terminal-empty">NO TERMINAL FILES DISCOVERED</div> : adminDiscoveries.map(discovery => <div className="terminal-admin-discovery-row" key={discovery.id}><div><strong>{discovery.title}</strong><span>CODE // {discovery.code}</span><small>{discovery.classification || "UNCLASSIFIED"}</small></div><button type="button" onClick={() => void resetAdminDiscovery(discovery)}>RESET DISCOVERY</button></div>)}</div> : null}
         </section></div>
             : current ? <><div className="terminal-reader-header"><div><span>{current.classification || "UNCLASSIFIED"}</span><h1>{current.title}</h1>{current.subtitle ? <p>{current.subtitle}</p> : null}</div><small>RECORD {String(current.id).padStart(4, "0")}</small></div><div className="terminal-document">{document(current.content)}</div></>
                 : <div className="terminal-reader-empty"><img src={cbcLogo} alt=""/><span>CLOVIS BRAY // ARCHIVE</span><p>ENTER AN ACCESS CODE OR SELECT A DISCOVERED FILE.</p></div>}</article>
