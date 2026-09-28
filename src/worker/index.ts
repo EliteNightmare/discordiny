@@ -226,6 +226,607 @@ app.delete("/api/terminal/admin/files/:id", async c => {
   const r=await c.env.DB.prepare(`DELETE FROM terminal_files WHERE id=?`).bind(id).run();return r.meta.changes?c.json({success:true}):c.json({error:"FILE NOT FOUND"},404);
 });
 
+
+/* =========================================================
+   ROOT - LIVE FILESYSTEM + DISCORDINY ADMIN
+========================================================= */
+
+const ROOT_ORIGIN = "https://root.discordiny.com";
+const ROOT_ADMIN_USER_ID = 1;
+
+const ROOT_LOGINS = [
+  {
+    name: "ADMIN",
+    username: "admin",
+    password: "admin",
+    level: 1,
+  },
+  {
+    name: "WILHELMINA",
+    username: "wlhlm.bray",
+    password: "XJ57-4BA6-QSM9",
+    level: 2,
+  },
+  {
+    name: "CLOVIS",
+    username: "The Lord of Logic, King of Code",
+    password:
+      "Tell yourself a story... Let the story twist in unlikely directions",
+    level: 3,
+  },
+] as const;
+
+function rootCors(c: any) {
+  if (c.req.header("Origin") === ROOT_ORIGIN) {
+    c.header("Access-Control-Allow-Origin", ROOT_ORIGIN);
+    c.header("Access-Control-Allow-Credentials", "true");
+    c.header("Vary", "Origin");
+  }
+}
+
+app.options("/api/root/*", (c) => {
+  rootCors(c);
+  c.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
+  c.header("Access-Control-Allow-Headers", "Content-Type");
+  return c.body(null, 204);
+});
+
+app.use("/api/root/*", async (c, next) => {
+  await next();
+  rootCors(c);
+});
+
+function normalizeRootFsPath(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/{2,}/g, "/");
+}
+
+function validRootFsPath(value: string): boolean {
+  if (!value || value.length > 500) return false;
+  const parts = value.split("/");
+  return parts.every(
+    (part) =>
+      part.length > 0 &&
+      part.length <= 120 &&
+      part !== "." &&
+      part !== ".." &&
+      !/[\u0000-\u001f]/.test(part),
+  );
+}
+
+function normalizeRootAssetReference(value: unknown): string | null {
+  const path = normalizeRootFsPath(value);
+  if (!path) return null;
+
+  const lower = path.toLowerCase();
+  if (lower.startsWith("assets/root/")) {
+    return path.slice("assets/root/".length);
+  }
+
+  if (lower.startsWith("discordiny/assets/root/")) {
+    return path.slice("discordiny/assets/root/".length);
+  }
+
+  return path;
+}
+
+async function requireRootAdmin(c: any) {
+  const user = await getTerminalUser(c);
+  if (!user || user.user_id !== ROOT_ADMIN_USER_ID) {
+    return null;
+  }
+  return user;
+}
+
+app.get("/api/root/status", async (c) => {
+  const user = await getTerminalUser(c);
+
+  if (!user) {
+    return c.json({
+      authenticated: false,
+      isAdmin: false,
+      savedAuthorizationLevel: 0,
+    });
+  }
+
+  const saved = await c.env.DB.prepare(
+    `SELECT authorization_level
+     FROM player_root_authorization
+     WHERE user_id = ?
+     LIMIT 1`,
+  ).bind(user.user_id).first<{ authorization_level: number }>();
+
+  return c.json({
+    authenticated: true,
+    isAdmin: user.user_id === ROOT_ADMIN_USER_ID,
+    savedAuthorizationLevel: Math.max(
+      0,
+      Math.min(3, Number(saved?.authorization_level) || 0),
+    ),
+    user: {
+      id: user.user_id,
+      discord_id: user.discord_id,
+      username: user.username,
+      global_name: user.global_name,
+      avatar: user.avatar,
+    },
+  });
+});
+
+app.post("/api/root/login", async (c) => {
+  const user = await getTerminalUser(c);
+
+  if (!user) {
+    return c.json(
+      {
+        success: false,
+        error: "DISCORDINY ACCOUNT AUTHENTICATION REQUIRED",
+      },
+      401,
+    );
+  }
+
+  let body: { username?: string; password?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json(
+      { success: false, error: "INVALID ROOT LOGIN REQUEST" },
+      400,
+    );
+  }
+
+  const username = String(body.username ?? "").trim();
+  const password = String(body.password ?? "").trim();
+
+  const rootLogin = ROOT_LOGINS.find(
+    (candidate) =>
+      candidate.username === username &&
+      candidate.password === password,
+  );
+
+  if (!rootLogin) {
+    return c.json(
+      {
+        success: false,
+        error: "AUTHENTICATION FAILURE // INVALID ROOT CREDENTIALS",
+      },
+      401,
+    );
+  }
+
+  const now = new Date().toISOString();
+
+  await c.env.DB.prepare(
+    `INSERT INTO player_root_authorization (
+       user_id,
+       authorization_level,
+       first_authorized_at,
+       last_authorized_at
+     )
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(user_id) DO UPDATE SET
+       authorization_level =
+         MAX(player_root_authorization.authorization_level,
+             excluded.authorization_level),
+       last_authorized_at = excluded.last_authorized_at`,
+  ).bind(
+    user.user_id,
+    rootLogin.level,
+    now,
+    now,
+  ).run();
+
+  const saved = await c.env.DB.prepare(
+    `SELECT authorization_level
+     FROM player_root_authorization
+     WHERE user_id = ?
+     LIMIT 1`,
+  ).bind(user.user_id).first<{ authorization_level: number }>();
+
+  return c.json({
+    success: true,
+    name: rootLogin.name,
+    authorizationLevel: rootLogin.level,
+    savedAuthorizationLevel: Math.max(
+      rootLogin.level,
+      Number(saved?.authorization_level) || 0,
+    ),
+  });
+});
+
+app.post("/api/root/resume", async (c) => {
+  const user = await getTerminalUser(c);
+
+  if (!user) {
+    return c.json(
+      {
+        success: false,
+        error: "DISCORDINY ACCOUNT AUTHENTICATION REQUIRED",
+      },
+      401,
+    );
+  }
+
+  const saved = await c.env.DB.prepare(
+    `SELECT authorization_level
+     FROM player_root_authorization
+     WHERE user_id = ?
+     LIMIT 1`,
+  ).bind(user.user_id).first<{ authorization_level: number }>();
+
+  const level = Math.max(
+    0,
+    Math.min(3, Number(saved?.authorization_level) || 0),
+  );
+
+  if (level < 1) {
+    return c.json(
+      {
+        success: false,
+        error: "NO SAVED ROOT AUTHORIZATION",
+      },
+      404,
+    );
+  }
+
+  const name =
+    level >= 3
+      ? "CLOVIS"
+      : level >= 2
+        ? "WILHELMINA"
+        : "ADMIN";
+
+  return c.json({
+    success: true,
+    name,
+    authorizationLevel: level,
+  });
+});
+
+app.get("/api/root/content", async (c) => {
+  const [directories, files] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT id, path, created_by, created_at, updated_at
+       FROM root_directories
+       ORDER BY path COLLATE NOCASE ASC`,
+    ).all(),
+    c.env.DB.prepare(
+      `SELECT
+         id,
+         directory_path,
+         filename,
+         title,
+         description,
+         embed_description,
+         authorization_level,
+         authorization_status,
+         fields_json,
+         images_json,
+         created_by,
+         created_at,
+         updated_at
+       FROM root_files
+       ORDER BY directory_path COLLATE NOCASE ASC,
+                filename COLLATE NOCASE ASC`,
+    ).all(),
+  ]);
+
+  return c.json({
+    success: true,
+    directories: directories.results,
+    files: files.results,
+  });
+});
+
+app.post("/api/root/admin/directories", async (c) => {
+  const user = await requireRootAdmin(c);
+  if (!user) {
+    return c.json({ error: "ADMINISTRATOR ACCESS REQUIRED" }, 403);
+  }
+
+  let body: { path?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "INVALID DIRECTORY REQUEST" }, 400);
+  }
+
+  const path = normalizeRootFsPath(body.path);
+  if (!validRootFsPath(path)) {
+    return c.json({ error: "INVALID DIRECTORY PATH" }, 400);
+  }
+
+  const parts = path.split("/");
+  const statements = parts.map((_, index) => {
+    const currentPath = parts.slice(0, index + 1).join("/");
+    return c.env.DB.prepare(
+      `INSERT INTO root_directories
+         (path, created_by, created_at, updated_at)
+       VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+       ON CONFLICT(path) DO NOTHING`,
+    ).bind(currentPath, user.user_id);
+  });
+
+  await c.env.DB.batch(statements);
+  return c.json({ success: true, path });
+});
+
+app.delete("/api/root/admin/directories", async (c) => {
+  const user = await requireRootAdmin(c);
+  if (!user) {
+    return c.json({ error: "ADMINISTRATOR ACCESS REQUIRED" }, 403);
+  }
+
+  let body: { path?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "INVALID DIRECTORY REQUEST" }, 400);
+  }
+
+  const path = normalizeRootFsPath(body.path);
+  if (!validRootFsPath(path)) {
+    return c.json({ error: "INVALID DIRECTORY PATH" }, 400);
+  }
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(
+      `DELETE FROM root_files
+       WHERE directory_path = ?
+          OR directory_path LIKE ?`,
+    ).bind(path, `${path}/%`),
+    c.env.DB.prepare(
+      `DELETE FROM root_directories
+       WHERE path = ?
+          OR path LIKE ?`,
+    ).bind(path, `${path}/%`),
+  ]);
+
+  return c.json({ success: true });
+});
+
+app.post("/api/root/admin/files", async (c) => {
+  const user = await requireRootAdmin(c);
+  if (!user) {
+    return c.json({ error: "ADMINISTRATOR ACCESS REQUIRED" }, 403);
+  }
+
+  let body: {
+    directoryPath?: string;
+    filename?: string;
+    title?: string;
+    description?: string;
+    embedDescription?: string;
+    authorizationLevel?: number;
+    authorizationStatus?: string;
+    fields?: unknown[];
+    images?: unknown[];
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "INVALID FILE REQUEST" }, 400);
+  }
+
+  const directoryPath = normalizeRootFsPath(body.directoryPath);
+  const filename = String(body.filename ?? "").trim();
+
+  if (
+    (directoryPath && !validRootFsPath(directoryPath)) ||
+    !filename ||
+    filename.length > 160 ||
+    filename === "." ||
+    filename === ".." ||
+    /[\/\\\u0000-\u001f]/.test(filename)
+  ) {
+    return c.json({ error: "INVALID FILE PATH" }, 400);
+  }
+
+  const level = Math.max(
+    1,
+    Math.min(3, Math.trunc(Number(body.authorizationLevel) || 1)),
+  );
+  const status =
+    String(body.authorizationStatus ?? "AUTHORIZED").trim() ||
+    "AUTHORIZED";
+
+  const fields = Array.isArray(body.fields) ? body.fields : [];
+  const images = (Array.isArray(body.images) ? body.images : [])
+    .map(normalizeRootAssetReference)
+    .filter((value): value is string => Boolean(value));
+
+  if (directoryPath) {
+    const parts = directoryPath.split("/");
+    await c.env.DB.batch(
+      parts.map((_, index) =>
+        c.env.DB.prepare(
+          `INSERT INTO root_directories
+             (path, created_by, created_at, updated_at)
+           VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT(path) DO NOTHING`,
+        ).bind(parts.slice(0, index + 1).join("/"), user.user_id),
+      ),
+    );
+  }
+
+  try {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO root_files (
+         directory_path,
+         filename,
+         title,
+         description,
+         embed_description,
+         authorization_level,
+         authorization_status,
+         fields_json,
+         images_json,
+         created_by,
+         created_at,
+         updated_at
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    ).bind(
+      directoryPath,
+      filename,
+      String(body.title ?? "").trim(),
+      String(body.description ?? ""),
+      String(body.embedDescription ?? ""),
+      level,
+      status,
+      JSON.stringify(fields),
+      JSON.stringify(images),
+      user.user_id,
+    ).run();
+
+    return c.json({
+      success: true,
+      id: result.meta.last_row_id,
+    });
+  } catch {
+    return c.json(
+      { error: "FILE ALREADY EXISTS OR COULD NOT BE CREATED" },
+      409,
+    );
+  }
+});
+
+app.put("/api/root/admin/files/:id", async (c) => {
+  const user = await requireRootAdmin(c);
+  if (!user) {
+    return c.json({ error: "ADMINISTRATOR ACCESS REQUIRED" }, 403);
+  }
+
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) {
+    return c.json({ error: "INVALID FILE ID" }, 400);
+  }
+
+  let body: {
+    directoryPath?: string;
+    filename?: string;
+    title?: string;
+    description?: string;
+    embedDescription?: string;
+    authorizationLevel?: number;
+    authorizationStatus?: string;
+    fields?: unknown[];
+    images?: unknown[];
+  };
+
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: "INVALID FILE REQUEST" }, 400);
+  }
+
+  const directoryPath = normalizeRootFsPath(body.directoryPath);
+  const filename = String(body.filename ?? "").trim();
+
+  if (
+    (directoryPath && !validRootFsPath(directoryPath)) ||
+    !filename ||
+    filename.length > 160 ||
+    filename === "." ||
+    filename === ".." ||
+    /[\/\\\u0000-\u001f]/.test(filename)
+  ) {
+    return c.json({ error: "INVALID FILE PATH" }, 400);
+  }
+
+  const level = Math.max(
+    1,
+    Math.min(3, Math.trunc(Number(body.authorizationLevel) || 1)),
+  );
+  const status =
+    String(body.authorizationStatus ?? "AUTHORIZED").trim() ||
+    "AUTHORIZED";
+  const fields = Array.isArray(body.fields) ? body.fields : [];
+  const images = (Array.isArray(body.images) ? body.images : [])
+    .map(normalizeRootAssetReference)
+    .filter((value): value is string => Boolean(value));
+
+  if (directoryPath) {
+    const parts = directoryPath.split("/");
+    await c.env.DB.batch(
+      parts.map((_, index) =>
+        c.env.DB.prepare(
+          `INSERT INTO root_directories
+             (path, created_by, created_at, updated_at)
+           VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+           ON CONFLICT(path) DO NOTHING`,
+        ).bind(parts.slice(0, index + 1).join("/"), user.user_id),
+      ),
+    );
+  }
+
+  try {
+    const result = await c.env.DB.prepare(
+      `UPDATE root_files
+       SET directory_path = ?,
+           filename = ?,
+           title = ?,
+           description = ?,
+           embed_description = ?,
+           authorization_level = ?,
+           authorization_status = ?,
+           fields_json = ?,
+           images_json = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+    ).bind(
+      directoryPath,
+      filename,
+      String(body.title ?? "").trim(),
+      String(body.description ?? ""),
+      String(body.embedDescription ?? ""),
+      level,
+      status,
+      JSON.stringify(fields),
+      JSON.stringify(images),
+      id,
+    ).run();
+
+    return result.meta.changes
+      ? c.json({ success: true })
+      : c.json({ error: "FILE NOT FOUND" }, 404);
+  } catch {
+    return c.json(
+      { error: "FILE ALREADY EXISTS OR COULD NOT BE UPDATED" },
+      409,
+    );
+  }
+});
+
+app.delete("/api/root/admin/files/:id", async (c) => {
+  const user = await requireRootAdmin(c);
+  if (!user) {
+    return c.json({ error: "ADMINISTRATOR ACCESS REQUIRED" }, 403);
+  }
+
+  const id = Number(c.req.param("id"));
+  if (!Number.isInteger(id) || id <= 0) {
+    return c.json({ error: "INVALID FILE ID" }, 400);
+  }
+
+  const result = await c.env.DB.prepare(
+    `DELETE FROM root_files WHERE id = ?`,
+  ).bind(id).run();
+
+  return result.meta.changes
+    ? c.json({ success: true })
+    : c.json({ error: "FILE NOT FOUND" }, 404);
+});
+
+
 app.get("/5dfg46df4gs4gs6", c => {
   const host=c.req.header("Host")?.split(":")[0]?.toLowerCase();
   if(host!=="root.discordiny.com") return c.notFound();
