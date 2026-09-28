@@ -399,3 +399,240 @@
     animation: none;
   }
 }
+
+
+/* =========================================================
+   HOMEPAGE EVENT CARD — REFINED STRUCTURE
+========================================================= */
+
+.home-event-banner {
+  width: min(800px, 100%);
+  min-height: 246px;
+  border-radius: 18px;
+  border-color: rgba(194, 37, 48, 0.46);
+  background:
+    linear-gradient(
+      108deg,
+      rgba(9, 10, 13, 0.985) 0%,
+      rgba(17, 10, 12, 0.975) 58%,
+      rgba(62, 7, 13, 0.94) 100%
+    );
+  box-shadow:
+    0 26px 72px rgba(0, 0, 0, 0.46),
+    0 0 40px rgba(129, 8, 18, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.home-event-banner:hover {
+  border-color: rgba(230, 54, 66, 0.72);
+  box-shadow:
+    0 30px 82px rgba(0, 0, 0, 0.5),
+    0 0 46px rgba(156, 12, 24, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.home-event-topline {
+  min-height: 42px;
+  padding: 0 20px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.home-event-body {
+  min-height: 154px;
+  padding: 28px 32px;
+}
+
+.home-event-copy {
+  position: relative;
+  padding-left: 17px;
+}
+
+.home-event-copy::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 0;
+  width: 2px;
+  border-radius: 99px;
+  background: linear-gradient(
+    180deg,
+    #e03a46,
+    rgba(224, 58, 70, 0.14)
+  );
+  box-shadow: 0 0 12px rgba(224, 58, 70, 0.22);
+}
+
+.home-event-eyebrow {
+  margin-bottom: 8px;
+}
+
+.home-event-description {
+  max-width: 470px;
+  margin-top: 12px;
+}
+
+.home-event-siva {
+  margin-right: 10px;
+}
+
+.home-event-footer {
+  min-height: 46px;
+  padding: 0 20px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(89, 7, 14, 0.24),
+      rgba(89, 7, 14, 0.08)
+    );
+}
+
+/* =========================================================
+   PRIMARY ENTER DISCORDINY CTA
+========================================================= */
+
+.home-start-area {
+  width: min(480px, 100%);
+  margin-top: 48px;
+}
+
+.home-start-label {
+  margin-bottom: 12px;
+}
+
+.discordiny-enter-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 78px;
+  padding: 0 24px 0 27px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  color: #101115;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(222, 225, 229, 0.95)
+    );
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.discordiny-enter-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -35%;
+  width: 25%;
+  height: 100%;
+  opacity: 0;
+  transform: skewX(-20deg);
+  background: rgba(255, 255, 255, 0.75);
+  transition:
+    left 0.38s ease,
+    opacity 0.18s ease;
+}
+
+.discordiny-enter-button:hover {
+  transform: translateY(-2px);
+  background:
+    linear-gradient(
+      135deg,
+      #ffffff,
+      #eceef1
+    );
+  box-shadow:
+    0 23px 54px rgba(0, 0, 0, 0.4),
+    0 0 28px rgba(255, 255, 255, 0.08);
+}
+
+.discordiny-enter-button:hover::before {
+  left: 115%;
+  opacity: 0.55;
+}
+
+.discordiny-enter-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.discordiny-enter-copy small {
+  color: rgba(16, 17, 21, 0.52);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.discordiny-enter-copy strong {
+  font-size: 1.05rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+}
+
+.discordiny-enter-arrow {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 1px solid rgba(16, 17, 21, 0.14);
+  border-radius: 50%;
+  background: rgba(16, 17, 21, 0.06);
+  font-size: 1.25rem;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.discordiny-enter-button:hover .discordiny-enter-arrow {
+  transform: translateX(3px);
+  background: rgba(16, 17, 21, 0.1);
+}
+
+@media (max-width: 640px) {
+  .home-event-banner {
+    border-radius: 14px;
+  }
+
+  .home-event-body {
+    padding: 24px 21px;
+  }
+
+  .home-event-copy {
+    padding-left: 13px;
+  }
+
+  .home-start-area {
+    width: min(400px, 100%);
+    margin-top: 38px;
+  }
+
+  .discordiny-enter-button {
+    min-height: 72px;
+    padding: 0 18px 0 21px;
+    border-radius: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discordiny-enter-button::before {
+    display: none;
+  }
+}
