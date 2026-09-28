@@ -19,6 +19,144 @@ import SiteGate, {
 
 import SivaBoot from "./components/SivaBoot";
 
+function RootUnauthorized() {
+  return (
+    <main
+      style={{
+        minHeight: "100dvh",
+        background: "#050000",
+        color: "#b97a6e",
+        fontFamily:
+          '"Courier New", Courier, monospace',
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        style={{
+          position: "relative",
+          height: "25px",
+          borderBottom:
+            "1px solid #2b1715",
+          background: "#160d0c",
+          color: "#817168",
+          fontSize: "9px",
+          letterSpacing: "0.04em",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "9px",
+            display: "flex",
+            gap: "5px",
+            transform:
+              "translateY(-50%)",
+          }}
+        >
+          <i
+            style={{
+              width: "9px",
+              height: "9px",
+              borderRadius: "50%",
+              background: "#e56845",
+            }}
+          />
+          <i
+            style={{
+              width: "9px",
+              height: "9px",
+              borderRadius: "50%",
+              background: "#d99739",
+            }}
+          />
+          <i
+            style={{
+              width: "9px",
+              height: "9px",
+              borderRadius: "50%",
+              background: "#69925b",
+            }}
+          />
+        </div>
+
+        <span
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform:
+              "translate(-50%, -50%)",
+            opacity: 0.85,
+            whiteSpace: "nowrap",
+          }}
+        >
+          *@3t@mainframe
+        </span>
+      </div>
+
+      <section
+        style={{
+          minHeight:
+            "calc(100dvh - 25px)",
+          padding: "12vh 9vw",
+          background:
+            "radial-gradient(ellipse at 45% 30%, rgba(52, 0, 0, 0.18), #050000 68%)",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "720px",
+            borderLeft:
+              "2px solid #5d211d",
+            paddingLeft: "20px",
+          }}
+        >
+          <div
+            style={{
+              color: "#ff5548",
+              fontSize: "18px",
+              letterSpacing: "0.06em",
+              marginBottom: "28px",
+              textShadow:
+                "0 0 7px #7a0c06",
+            }}
+          >
+            ERROR // INVALID ROOT ENDPOINT
+          </div>
+
+          <div
+            style={{
+              color: "#d4473c",
+              fontSize: "14px",
+              lineHeight: 1.9,
+              letterSpacing: "0.05em",
+            }}
+          >
+            UNAUTHORIZED ACCESS DETECTED
+            <br />
+            REQUEST ORIGIN FLAGGED
+            <br />
+            ACCESS PURGED
+            <br />
+            ROUTE INVALIDATED
+            <br />
+            <br />
+            <span
+              style={{
+                color: "#71322d",
+              }}
+            >
+              CONNECTION TERMINATED
+            </span>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function App() {
   const hostname =
     window.location.hostname;
@@ -61,8 +199,10 @@ function App() {
   /*
    * ROOT SUBDOMAIN
    *
-   * ROOT only renders on the
-   * designated ROOT access path.
+   * Only the designated ROOT access
+   * path renders the ROOT terminal.
+   * Every other ROOT path is treated
+   * as an unauthorized endpoint.
    */
   if (
     hostname ===
@@ -75,7 +215,7 @@ function App() {
       return <Root />;
     }
 
-    return null;
+    return <RootUnauthorized />;
   }
 
   /*
@@ -141,7 +281,7 @@ function App() {
 
   const vaultCategoryMatch =
     path.match(
-      /^\/vault\/([^/]+)\/?$/
+      /^\/vault\/([^/]+)\/?$/,
     );
 
   if (vaultCategoryMatch) {
