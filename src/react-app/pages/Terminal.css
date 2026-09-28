@@ -2249,3 +2249,35 @@ UNKNOWN SIGNAL // PERMANENT AUTPOST PUZZLE   ===================================
   .relic-swarm-copy{width:88vw;padding:0 12px}
   .relic-swarm-copy strong{line-height:1.55}
 }
+
+
+/* =========================================================
+   ADMIN // R.E.L.I.C. PHASE CONTROL
+========================================================= */
+.terminal-admin-relic-control{
+  display:grid;
+  grid-template-columns:minmax(180px,1fr) minmax(280px,2fr);
+  gap:18px;
+  align-items:center;
+  padding:14px;
+  margin:10px 0 14px;
+  border:1px solid rgba(195,38,50,.28);
+  background:rgba(62,8,14,.14);
+}
+.terminal-admin-relic-control>div:first-child{display:grid;gap:5px}
+.terminal-admin-relic-control span{color:#a43b45;font-size:.48rem;font-weight:900;letter-spacing:.14em}
+.terminal-admin-relic-control strong{color:#dfc8cb;font-size:.67rem;letter-spacing:.08em}
+.terminal-admin-relic-control small{color:#75565a;font-size:.48rem;letter-spacing:.08em}
+.terminal-admin-relic-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.terminal-admin-relic-buttons button{
+  min-height:34px;border:1px solid #4b292e;background:#120b0d;color:#89636a;
+  font-size:.48rem;font-weight:900;letter-spacing:.06em;cursor:pointer;
+}
+.terminal-admin-relic-buttons button:hover,.terminal-admin-relic-buttons button.active{
+  border-color:#b52b39;color:#efcdd1;background:rgba(116,16,26,.22);
+}
+@media(max-width:800px){
+  .terminal-admin-relic-control{grid-template-columns:1fr}
+  .terminal-admin-relic-buttons{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .terminal-admin-relic-buttons button{font-size:.42rem;padding:4px 2px}
+}
