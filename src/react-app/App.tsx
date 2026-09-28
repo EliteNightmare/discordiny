@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Profile from "./pages/Profile";
 import Account from "./pages/Account";
 import Activities from "./pages/Activities";
+import Events from "./pages/Events";
 import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
 import WeaponVault from "./pages/WeaponVault";
@@ -255,6 +256,10 @@ function App() {
 
   if (path === "/activities") {
     return <Activities />;
+  }
+
+  if (path === "/events") {
+    return <Events />;
   }
 
   if (path === "/vault") {
