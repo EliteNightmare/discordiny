@@ -380,6 +380,18 @@ export default function Root() {
   );
   const fileImage = assetUrl(record?.image);
 
+  /*
+   * Clovis Bray I has a second physical image stored directly in
+   * src/react-app/assets/root/clovisbarcode.png.
+   *
+   * Keep this as a normal <img> so the browser's native context menu
+   * remains available (right-click -> Save image as...).
+   */
+  const clovisBarcodeImage =
+    logicalPath === "PERSONNEL/C.-BRAY-I.id"
+      ? assetUrl("clovisbarcode.png")
+      : null;
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -542,6 +554,17 @@ export default function Root() {
                     src={fileImage}
                     alt=""
                   />
+                ) : null}
+
+                {clovisBarcodeImage ? (
+                  <div className="root-clovis-barcode">
+                    <img
+                      className="root-file-image root-barcode-image"
+                      src={clovisBarcodeImage}
+                      alt="Clovis Bray I barcode"
+                      draggable
+                    />
+                  </div>
                 ) : null}
 
                 <div className="root-fields">
