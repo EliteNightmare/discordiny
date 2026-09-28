@@ -2,6 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, ReactNode } from "react";
 import cbcLogo from "../assets/cbclogo.png";
 import discordIcon from "../assets/discord_icon.png";
+import relicStage1 from "../assets/root/relic/stage1.png";
+import relicStage2 from "../assets/root/relic/stage2.png";
+import relicStage3 from "../assets/root/relic/stage3.png";
+import relicStage4 from "../assets/root/relic/stage4.png";
+import relicStage5 from "../assets/root/relic/stage5.png";
 import "./Terminal.css";
 const API = "https://discordiny.com";
 const ROOT = "https://root.discordiny.com/5dfg46df4gs4gs6";
@@ -45,6 +50,19 @@ type AdminDiscovery = {
     classification: string;
     discovered_at: string;
 };
+type RelicState = {
+    phase: number;
+    phaseName: string;
+    maskedCode: string;
+    revealedCount: number;
+    complete: boolean;
+    final: null | {
+        type: string;
+        key: string;
+        cipher: string;
+    };
+};
+const relicStageImages = [relicStage1, relicStage2, relicStage3, relicStage4, relicStage5];
 function inline(text: string): ReactNode[] {
     const re = /(\*\*[^*]+\*\*|~~[^~]+~~|\|\|[^|]+\|\||`[^`\n]+`|\*[^*\n]+\*)/g;
     return text.split(re).filter(Boolean).map((p, i) => {
@@ -147,6 +165,7 @@ export default function Terminal() {
     const input = useRef<HTMLInputElement>(null), backwashTimers = useRef<number[]>([]);
     const current = useMemo(() => files.find(f => f.id === selected) ?? null, [files, selected]);
     const [unknownSignalResolved, setUnknownSignalResolved] = useState(false);
+    const [relic, setRelic] = useState<RelicState | null>(null);
     const request = (path: string, init?: RequestInit) => fetch(API + path, { ...init, credentials: "include", headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...(init?.headers ?? {}) } });
     async function load() {
         const r = await request("/api/terminal/library"), d = await r.json();
@@ -163,6 +182,7 @@ export default function Terminal() {
         setFiles(next);
         setRootUnlocked(!!d.rootUnlocked);
         setUnknownSignalResolved(!!d.unknownSignalResolved);
+        setRelic(d.relic ?? null);
         setAdmin(!!d.isAdmin);
         setSelected(x => x !== null && next.some(f => f.id === x) ? x : (next[0]?.id ?? null));
         setLoading(false);
@@ -220,6 +240,9 @@ export default function Terminal() {
             }
             if (d.unknownSignalResolved) {
                 setUnknownSignalResolved(true);
+            }
+            if (d.relic) {
+                setRelic(d.relic);
             }
 
             if (d.file) {
@@ -347,6 +370,18 @@ export default function Terminal() {
         </section></div>
             : current ? <><div className="terminal-reader-header"><div><span>{current.classification || "UNCLASSIFIED"}</span><h1>{current.title}</h1>{current.subtitle ? <p>{current.subtitle}</p> : null}</div><small>RECORD {String(current.id).padStart(4, "0")}</small></div><div className="terminal-document">{document(current.content)}</div></>
                 : <div className="terminal-reader-empty"><img src={cbcLogo} alt=""/><span>CLOVIS BRAY // ARCHIVE</span><p>ENTER AN ACCESS CODE OR SELECT A DISCOVERED FILE.</p></div>}</article>
+      {relic ? <aside className={relic.complete ? "terminal-relic terminal-relic-complete" : "terminal-relic"} aria-label="Project R.E.L.I.C. progression">
+        <div className="terminal-relic-scan" aria-hidden="true"/>
+        <div className="terminal-relic-heading"><span>PROJECT R.E.L.I.C.</span><b>PHASE {String(relic.phase).padStart(2, "0")} / 05</b></div>
+        <div className="terminal-relic-image-wrap"><img src={relicStageImages[Math.max(0, Math.min(4, relic.phase - 1))]} alt={`R.E.L.I.C. ${relic.phaseName}`}/></div>
+        <div className="terminal-relic-phase"><small>CURRENT STATE</small><strong>{relic.phaseName}</strong></div>
+        <div className="terminal-relic-code"><small>EMBLEM DECRYPTION // {relic.revealedCount}/12</small><code>{relic.maskedCode}</code></div>
+        {relic.complete && relic.final ? <div className="terminal-relic-final">
+          <div><small>TYPE</small><code>{relic.final.type}</code></div>
+          <div><small>KEY</small><code>{relic.final.key}</code></div>
+          <div><small>CIPHER</small><code>{relic.final.cipher}</code></div>
+        </div> : <div className="terminal-relic-locked">ADDITIONAL DATA LOCKED // ADVANCE R.E.L.I.C. PHASE</div>}
+      </aside> : null}
     </section></main>;
 }
 
