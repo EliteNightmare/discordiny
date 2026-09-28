@@ -238,25 +238,29 @@ async function getRelicPublicState(c: any, userId: number) {
   return relicPublicState(await ensureRelicProgress(c, userId));
 }
 
-async function applyRelicProgressFromFile(c: any, userId: number, content: string) {
-  const match = content.match(/R\.E\.L\.I\.C\.\/PHASE\s*==\s*([1-5])/i);
+async function advanceRelicPhase(c: any, userId: number, fromPhase: number, toPhase: number) {
   const current = await ensureRelicProgress(c, userId);
-  if (!match) return relicPublicState(current);
-
-  const target = Number(match[1]);
-  if (target === current.phase + 1) {
-    const now = new Date().toISOString();
-    await c.env.DB.prepare(`
-      UPDATE player_relic_progress
-      SET phase=?,
-          updated_at=?,
-          completed_at=CASE WHEN ?=5 THEN COALESCE(completed_at, ?) ELSE completed_at END
-      WHERE user_id=?
-    `).bind(target, now, target, now, userId).run();
-    return relicPublicState({ ...current, phase: target, completed_at: target === 5 ? (current.completed_at ?? now) : current.completed_at });
+  if (current.phase !== fromPhase) {
+    return { relic: relicPublicState(current), advanced: false };
   }
 
-  return relicPublicState(current);
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    UPDATE player_relic_progress
+    SET phase=?,
+        updated_at=?,
+        completed_at=CASE WHEN ?=5 THEN COALESCE(completed_at, ?) ELSE completed_at END
+    WHERE user_id=? AND phase=?
+  `).bind(toPhase, now, toPhase, now, userId, fromPhase).run();
+
+  return {
+    relic: relicPublicState({
+      ...current,
+      phase: toPhase,
+      completed_at: toPhase === 5 ? (current.completed_at ?? now) : current.completed_at,
+    }),
+    advanced: true,
+  };
 }
 
 app.get("/api/terminal/status", async c => {
@@ -306,6 +310,16 @@ app.post("/api/terminal/execute", async c => {
     await c.env.DB.prepare(`UPDATE player_terminal_access SET root_unlocked=1,root_unlocked_at=COALESCE(root_unlocked_at,?) WHERE user_id=?`).bind(new Date().toISOString(),u.user_id).run();
     return c.json({success:true,type:"root",rootUnlocked:true,redirectUrl:TERMINAL_ROOT_URL});
   }
+  if(code.toUpperCase()==="BACKWASH"){
+    const progress=await advanceRelicPhase(c,u.user_id,2,3);
+    return c.json({
+      success:true,
+      type:"backwash",
+      relic:progress.relic,
+      relicAdvanced:progress.advanced,
+      relicTransition:progress.advanced ? {from:2,to:3} : null
+    });
+  }
   const file=await c.env.DB.prepare(`SELECT id,code,title,subtitle,classification,content FROM terminal_files WHERE lower(code)=lower(?) LIMIT 1`).bind(code).first() as {id:number;code:string;title:string;subtitle:string;classification:string;content:string}|null;
   if(!file) return c.json({success:false,error:"ACCESS CODE NOT RECOGNIZED"},404);
   await c.env.DB.prepare(`INSERT INTO player_terminal_files (user_id,file_id,discovered_at) VALUES (?,?,?) ON CONFLICT(user_id,file_id) DO NOTHING`).bind(u.user_id,file.id,new Date().toISOString()).run();
@@ -315,8 +329,17 @@ app.post("/api/terminal/execute", async c => {
     await c.env.DB.prepare(`UPDATE player_terminal_access SET unknown_signal_resolved=1 WHERE user_id=?`).bind(u.user_id).run();
   }
 
-  const relic=await applyRelicProgressFromFile(c,u.user_id,file.content);
-  return c.json({success:true,type:"file",file,unknownSignalResolved,relic});
+  let relic=await getRelicPublicState(c,u.user_id);
+  let relicAdvanced=false;
+  let relicTransition:null|{from:number;to:number}=null;
+  if(file.code.toUpperCase()==="CBME"){
+    const progress=await advanceRelicPhase(c,u.user_id,1,2);
+    relic=progress.relic;
+    relicAdvanced=progress.advanced;
+    if(progress.advanced) relicTransition={from:1,to:2};
+  }
+
+  return c.json({success:true,type:"file",file,unknownSignalResolved,relic,relicAdvanced,relicTransition});
 });
 
 app.post("/api/terminal/root-access", async c => {
