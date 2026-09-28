@@ -824,3 +824,36 @@ button:active {
       );
   }
 }
+
+
+/* =========================================================
+   ROOT / SIVA QUICK ACCESS
+   ========================================================= */
+.cbc-root-access {
+  position: relative;
+  width: min(520px, 100%);
+  margin: 34px 0 4px;
+  padding: 15px 18px 14px;
+  overflow: hidden;
+  border: 1px solid rgba(238, 37, 37, 0.72);
+  background: linear-gradient(135deg, rgba(48, 5, 7, 0.96), rgba(12, 5, 7, 0.98));
+  color: #ffdddd;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 0 28px rgba(208, 20, 25, 0.14), inset 3px 0 0 #d9272e;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.cbc-root-access::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .3;
+  background: repeating-linear-gradient(0deg, transparent 0 5px, rgba(255,0,0,.12) 6px, transparent 7px);
+}
+.cbc-root-access:hover { transform: translateY(-2px); border-color: #ff4148; box-shadow: 0 0 42px rgba(208,20,25,.24), inset 3px 0 0 #ff3038; }
+.cbc-root-access:focus-visible { outline: 2px solid #ff4c52; outline-offset: 4px; }
+.cbc-root-access span,.cbc-root-access strong,.cbc-root-access small { position: relative; z-index: 1; display: block; }
+.cbc-root-access-kicker { color: #b93b40; font-size: .5rem; font-weight: 900; letter-spacing: .22em; }
+.cbc-root-access strong { margin-top: 5px; color: #ff434a; font-family: "Courier New", Courier, monospace; font-size: .9rem; letter-spacing: .16em; text-shadow: 2px 0 rgba(255,0,0,.2), -2px 0 rgba(255,255,255,.04); }
+.cbc-root-access small { margin-top: 5px; color: #79484b; font-size: .46rem; font-weight: 800; letter-spacing: .15em; }
