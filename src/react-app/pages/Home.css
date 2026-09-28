@@ -636,3 +636,241 @@
     display: none;
   }
 }
+
+
+/* =========================================================
+   HOMEPAGE TWO-CARD LAYOUT
+========================================================= */
+
+.home-page {
+  align-items: flex-start;
+  padding-top: 122px;
+  padding-bottom: 70px;
+}
+
+.home-content {
+  width: min(800px, 100%);
+}
+
+.home-card-stack {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.home-feature-card {
+  width: min(800px, 100%);
+  min-height: 246px;
+  flex: 0 0 auto;
+}
+
+/* =========================================================
+   ENTER DISCORDINY CARD
+========================================================= */
+
+.home-entry-card {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  color: #fff;
+  background:
+    linear-gradient(
+      108deg,
+      rgba(10, 12, 16, 0.985) 0%,
+      rgba(15, 18, 24, 0.975) 58%,
+      rgba(31, 37, 48, 0.94) 100%
+    );
+  box-shadow:
+    0 26px 72px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.home-entry-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 30px 82px rgba(0, 0, 0, 0.48),
+    0 0 34px rgba(255, 255, 255, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.home-entry-card::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgba(255, 255, 255, 0.014) 3px 4px
+    );
+  pointer-events: none;
+}
+
+.home-entry-grid {
+  position: absolute;
+  z-index: -1;
+  top: -48%;
+  right: -5%;
+  width: 47%;
+  aspect-ratio: 1;
+  transform: rotate(16deg);
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle, #000 20%, transparent 70%);
+}
+
+.home-entry-topline {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.42);
+  background: rgba(0, 0, 0, 0.14);
+  font-family: "Courier New", monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.home-entry-topline > span:last-child {
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.home-entry-body {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 154px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 32px;
+  text-align: center;
+}
+
+.home-entry-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home-entry-eyebrow {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 0.59rem;
+  font-weight: 850;
+  letter-spacing: 0.19em;
+}
+
+.home-entry-copy strong {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.home-entry-description {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.home-entry-footer {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 0 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.88);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.06),
+      rgba(255, 255, 255, 0.025)
+    );
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.17em;
+}
+
+.home-entry-footer b {
+  font-size: 1rem;
+  transition: transform 0.18s ease;
+}
+
+.home-entry-card:hover .home-entry-footer b {
+  transform: translateX(4px);
+}
+
+/* Center the action rows on BOTH matching cards. */
+.home-event-footer {
+  justify-content: center;
+  gap: 16px;
+}
+
+/* Old standalone CTA is no longer used. */
+.home-start-area,
+.discordiny-enter-button {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .home-page {
+    padding-top: 104px;
+    padding-bottom: 48px;
+  }
+
+  .home-card-stack {
+    gap: 16px;
+  }
+
+  .home-feature-card {
+    min-height: 224px;
+  }
+
+  .home-entry-card {
+    border-radius: 14px;
+  }
+
+  .home-entry-body {
+    min-height: 136px;
+    padding: 24px 21px;
+  }
+
+  .home-entry-copy strong {
+    font-size: clamp(1.8rem, 9vw, 2.6rem);
+  }
+
+  .home-entry-topline {
+    font-size: 0.48rem;
+  }
+}
