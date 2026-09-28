@@ -196,6 +196,63 @@ function buildRuntimeTree(
   return root;
 }
 
+
+function getStaticNode(parts: string[]): NavNode | null {
+  let node = ROOT_LAYOUT as unknown as NavNode;
+
+  for (const part of parts) {
+    const next = node.directories.find(
+      (directory) => directory.name === part,
+    );
+    if (!next) return null;
+    node = next.node;
+  }
+
+  return node;
+}
+
+function rootRecordToDraft(
+  logicalPath: string,
+  record: RootRecord,
+): AdminDraft {
+  const parts = logicalPath.split("/");
+  const filename = parts.pop() ?? "";
+  const directoryPath = parts.join("/");
+
+  const imageValues: unknown[] = [];
+  if (record.image) imageValues.push(record.image);
+  if (Array.isArray(record.images)) imageValues.push(...record.images);
+
+  if (
+    logicalPath === "PERSONNEL/C.-BRAY-I.id" &&
+    !imageValues.some(
+      (value) =>
+        normalizeRootAssetPath(value)?.toLocaleLowerCase() ===
+        "clovisbarcode.png",
+    )
+  ) {
+    imageValues.push("clovisbarcode.png");
+  }
+
+  return {
+    id: null,
+    directoryPath,
+    filename,
+    title: String(record.title ?? ""),
+    description: String(record.description ?? ""),
+    embedDescription: String(record.embed?.description ?? ""),
+    authorizationLevel: clampAuthorizationLevel(
+      record.authorization?.required_level,
+    ),
+    authorizationStatus: authorizationStatus(record),
+    fieldsText: JSON.stringify(record.embed?.fields ?? [], null, 2),
+    imagesText: imageValues
+      .map((value) => normalizeRootAssetPath(value))
+      .filter((value): value is string => Boolean(value))
+      .join("\\n"),
+  };
+}
+
 function getNode(root: NavNode, parts: string[]): NavNode | null {
   let node = root;
   for (const part of parts) {
@@ -528,6 +585,14 @@ function AdminPanel({
     const prefix = selectedPath ? `${selectedPath}/` : "";
     const names = new Set<string>();
 
+    const staticNode = getStaticNode(
+      selectedPath.split("/").filter(Boolean),
+    );
+
+    for (const directory of staticNode?.directories ?? []) {
+      names.add(directory.name);
+    }
+
     for (const row of directories) {
       if (!row.path.startsWith(prefix)) continue;
       const rest = row.path.slice(prefix.length);
@@ -537,9 +602,36 @@ function AdminPanel({
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [directories, selectedPath]);
 
-  const childFiles = files.filter(
-    (item) => item.directory_path === selectedPath,
-  );
+  const childFiles = useMemo(() => {
+    const staticNode = getStaticNode(
+      selectedPath.split("/").filter(Boolean),
+    );
+
+    const names = new Set<string>(staticNode?.files ?? []);
+    for (const file of files) {
+      if (file.directory_path === selectedPath) {
+        names.add(file.filename);
+      }
+    }
+
+    return [...names]
+      .sort((a, b) => a.localeCompare(b))
+      .map((filename) => {
+        const live = files.find(
+          (file) =>
+            file.directory_path === selectedPath &&
+            file.filename === filename,
+        );
+
+        return {
+          filename,
+          live: live ?? null,
+          isStatic: Boolean(
+            staticNode?.files.includes(filename),
+          ),
+        };
+      });
+  }, [files, selectedPath]);
 
   const previewRecord = useMemo<RootRecord>(() => {
     let fields: RootField[] = [];
@@ -585,6 +677,34 @@ function AdminPanel({
     });
     setPreview(true);
     setMessage("");
+  }
+
+
+  function editExplorerFile(entry: {
+    filename: string;
+    live: DynamicFile | null;
+    isStatic: boolean;
+  }) {
+    if (entry.live) {
+      editFile(entry.live);
+      return;
+    }
+
+    const logicalPath = [selectedPath, entry.filename]
+      .filter(Boolean)
+      .join("/");
+    const record = getRecord(logicalPath, []);
+
+    if (!record) {
+      setMessage(`STATIC FILE COULD NOT BE LOADED // ${logicalPath}`);
+      return;
+    }
+
+    setDraft(rootRecordToDraft(logicalPath, record));
+    setPreview(true);
+    setMessage(
+      "STATIC ROOT FILE LOADED // SAVE TO CREATE AN EDITABLE LIVE OVERRIDE",
+    );
   }
 
   async function request(path: string, init: RequestInit) {
@@ -676,7 +796,11 @@ function AdminPanel({
           body: JSON.stringify(payload),
         },
       );
-      setMessage(draft.id ? "FILE UPDATED" : "FILE CREATED");
+      setMessage(
+        draft.id
+          ? "FILE UPDATED"
+          : "FILE SAVED // LIVE OVERRIDE NOW ACTIVE",
+      );
       await reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "FILE SAVE FAILED");
@@ -709,7 +833,9 @@ function AdminPanel({
         <header>
           <div>
             <strong>ROOT ADMIN // FILESYSTEM EDITOR</strong>
-            <span>DISCORDINY USER ID 1</span>
+            <span>
+              DISCORDINY USER ID 1 // STATIC + LIVE ROOT FILESYSTEM
+            </span>
           </div>
           <button type="button" onClick={close}>[CLOSE]</button>
         </header>
@@ -747,9 +873,18 @@ function AdminPanel({
               </button>
             ))}
 
-            {childFiles.map((file) => (
-              <button type="button" key={file.id} onClick={() => editFile(file)}>
-                [FILE] {file.filename}
+            {childFiles.map((entry) => (
+              <button
+                type="button"
+                key={entry.filename}
+                onClick={() => editExplorerFile(entry)}
+              >
+                [FILE] {entry.filename}
+                {entry.live
+                  ? " [LIVE]"
+                  : entry.isStatic
+                    ? " [STATIC]"
+                    : ""}
               </button>
             ))}
 
