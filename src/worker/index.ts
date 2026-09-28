@@ -464,6 +464,111 @@ app.get("/api/terminal/session", async (c) => {
 });
 
 /* =========================================================
+   TERMINAL - ROOT / SIVA UNLOCK
+========================================================= */
+
+const TERMINAL_ROOT_CODE = "ROOT.INITIALIZE.KEY=8556";
+const TERMINAL_ROOT_UNLOCK_KEY = "root_siva";
+const TERMINAL_ROOT_URL =
+  "https://root.discordiny.com/5dfg46df4gs4gs6";
+
+async function getAuthenticatedUserId(c: any) {
+  const sessionId = getCookie(
+    c,
+    SESSION_COOKIE,
+    "host",
+  );
+
+  if (!sessionId) return null;
+
+  const session = await c.env.DB
+    .prepare(
+      `SELECT user_id, expires_at
+       FROM sessions
+       WHERE id = ?
+       LIMIT 1`,
+    )
+    .bind(sessionId)
+    .first<{
+      user_id: number;
+      expires_at: string;
+    }>();
+
+  if (!session) return null;
+  if (new Date(session.expires_at).getTime() <= Date.now()) {
+    return null;
+  }
+
+  return session.user_id;
+}
+
+app.get("/api/terminal/root-status", async (c) => {
+  const userId = await getAuthenticatedUserId(c);
+
+  if (!userId) {
+    return c.json({ authenticated: false, unlocked: false }, 401);
+  }
+
+  const unlock = await c.env.DB
+    .prepare(
+      `SELECT 1 AS unlocked
+       FROM player_terminal_unlocks
+       WHERE user_id = ?
+         AND unlock_key = ?
+       LIMIT 1`,
+    )
+    .bind(userId, TERMINAL_ROOT_UNLOCK_KEY)
+    .first<{ unlocked: number }>();
+
+  return c.json({
+    authenticated: true,
+    unlocked: Boolean(unlock),
+  });
+});
+
+app.post("/api/terminal/root-initialize", async (c) => {
+  const userId = await getAuthenticatedUserId(c);
+
+  if (!userId) {
+    return c.json(
+      { success: false, error: "ACCOUNT AUTHENTICATION REQUIRED" },
+      401,
+    );
+  }
+
+  let body: { code?: string };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ success: false, error: "INVALID ROOT REQUEST" }, 400);
+  }
+
+  if (body.code?.trim() !== TERMINAL_ROOT_CODE) {
+    return c.json({ success: false, error: "ROOT INITIALIZATION REFUSED" }, 403);
+  }
+
+  await c.env.DB
+    .prepare(
+      `INSERT INTO player_terminal_unlocks
+       (user_id, unlock_key, unlocked_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(user_id, unlock_key) DO NOTHING`,
+    )
+    .bind(
+      userId,
+      TERMINAL_ROOT_UNLOCK_KEY,
+      new Date().toISOString(),
+    )
+    .run();
+
+  return c.json({
+    success: true,
+    unlocked: true,
+    redirectUrl: TERMINAL_ROOT_URL,
+  });
+});
+
+/* =========================================================
    DISCORD LOGIN
 ========================================================= */
 
