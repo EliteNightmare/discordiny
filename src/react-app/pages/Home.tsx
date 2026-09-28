@@ -67,12 +67,16 @@ export default function Home() {
         <div className="home-start-area">
           <span className="home-start-label">BEGIN YOUR JOURNEY</span>
           <button
-            className="start-button"
+            className="discordiny-enter-button"
             type="button"
             onClick={startDiscordLogin}
           >
-            <span className="start-button-title">
-              Enter the World
+            <span className="discordiny-enter-copy">
+              <small>DISCORDINY NETWORK</small>
+              <strong>ENTER DISCORDINY</strong>
+            </span>
+            <span className="discordiny-enter-arrow" aria-hidden="true">
+              →
             </span>
           </button>
         </div>
