@@ -1,101 +1,619 @@
-import { useMemo, useState } from "react";
+import {
+  Fragment,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+
 import "./Root.css";
-import { ROOT_FILES, ROOT_LAYOUT } from "./rootData";
+import {
+  ROOT_DIRECTORY_ASSETS,
+  ROOT_FILES,
+  ROOT_LAYOUT,
+} from "./rootData";
 
-type NavNode = { directories: readonly { name:string; node:NavNode }[]; files: readonly string[] };
-type Login = { name:string; username:string; password:string; level:number };
+type NavNode = {
+  directories: readonly {
+    name: string;
+    node: NavNode;
+  }[];
+  files: readonly string[];
+};
 
-const LOGINS: Login[] = [
-  {name:"ADMIN",username:"admin",password:"admin",level:1},
-  {name:"WILHELMINA",username:"wlhlm.bray",password:"XJ57-4BA6-QSM9",level:2},
-  {name:"CLOVIS",username:"The Lord of Logic, King of Code",password:"Tell yourself a story... Let the story twist in unlikely directions",level:3},
+type RootLogin = {
+  name: string;
+  username: string;
+  password: string;
+  level: number;
+};
+
+type RootField = {
+  name?: unknown;
+  value?: unknown;
+  inline?: unknown;
+};
+
+type RootRecord = {
+  title?: unknown;
+  description?: unknown;
+  image?: unknown;
+  authorization?: {
+    required_level?: unknown;
+    status?: unknown;
+  };
+  embed?: {
+    description?: unknown;
+    fields?: RootField[];
+  };
+};
+
+const LOGINS: RootLogin[] = [
+  {
+    name: "ADMIN",
+    username: "admin",
+    password: "admin",
+    level: 1,
+  },
+  {
+    name: "WILHELMINA",
+    username: "wlhlm.bray",
+    password: "XJ57-4BA6-QSM9",
+    level: 2,
+  },
+  {
+    name: "CLOVIS",
+    username: "The Lord of Logic, King of Code",
+    password:
+      "Tell yourself a story... Let the story twist in unlikely directions",
+    level: 3,
+  },
 ];
 
-const ID_IMAGES:Record<string,string>={
-  "C.-BRAY-I.id":"/assets/root/ids/clovisbrayI.png",
-  "C.-BRAY-II.id":"/assets/root/ids/clovisbrayII.png",
-  "Alt.-BRAY.id":"/assets/root/ids/altonbray.png",
-  "Whm.-BRAY.id":"/assets/root/ids/wilhelminabray.png",
-  "Esb.-BRAY.id":"/assets/root/ids/elsiebray.png",
-  "Ans.-BRAY.id":"/assets/root/ids/anabray.png",
-  "Z.-SHIRAZI.id":"/assets/root/ids/zshirazi.png",
-  "A.-FALTSKOG.id":"/assets/root/ids/afaltskog.png",
-  "H.-ABRAM.id":"/assets/root/ids/habram.png",
-  "H.-RASMUSSEN.id":"/assets/root/ids/hrasmussen.png",
-  "E.-RUIZ.id":"/assets/root/ids/eruiz.png",
-  "J.-WONG.id":"/assets/root/ids/jwong.png",
-};
-const ASSET=(value?:string|null)=>{
-  if(!value)return null;
-  const marker="assets/root/";
-  const i=value.toLowerCase().indexOf(marker);
-  return i>=0?"/assets/root/"+value.slice(i+marker.length):null;
-};
-const keyNorm = (s: string) =>
-  s.replace(/#U26a0#Ufe0f/g, "⚠️").toLocaleLowerCase();
-function getRecord(path:string){
-  const exact=ROOT_FILES[path]; if(exact)return exact;
-  const k=Object.keys(ROOT_FILES).find(x=>keyNorm(x)===keyNorm(path));
-  return k?ROOT_FILES[k]:null;
+const DENIED_STATUSES = new Set([
+  "denied",
+  "unauthorized",
+  "blocked",
+  "revoked",
+  "forbidden",
+  "disabled",
+]);
+
+function normalizeLookupKey(value: string) {
+  return value
+    .replace(/#U26a0#Ufe0f/g, "⚠️")
+    .toLocaleLowerCase();
 }
-function getNode(parts:string[]):NavNode{
-  let node:NavNode=ROOT_LAYOUT as unknown as NavNode;
-  for(const p of parts){
-    const next=node.directories.find(d=>d.name===p);
-    if(!next)break; node=next.node;
+
+function getRecord(path: string): RootRecord | null {
+  const exact = ROOT_FILES[path] as RootRecord | undefined;
+
+  if (exact) {
+    return exact;
   }
+
+  const normalized = normalizeLookupKey(path);
+  const matchingKey = Object.keys(ROOT_FILES).find(
+    (candidate) => normalizeLookupKey(candidate) === normalized,
+  );
+
+  return matchingKey
+    ? (ROOT_FILES[matchingKey] as RootRecord)
+    : null;
+}
+
+function getNode(parts: string[]): NavNode | null {
+  let node = ROOT_LAYOUT as unknown as NavNode;
+
+  for (const part of parts) {
+    const next = node.directories.find(
+      (directory) => directory.name === part,
+    );
+
+    if (!next) {
+      return null;
+    }
+
+    node = next.node;
+  }
+
   return node;
 }
-function inline(s:string){
-  const bits=s.split(/(\*\*.*?\*\*|`.*?`)/g);
-  return bits.map((x,i)=>x.startsWith("**")&&x.endsWith("**")?<strong key={i}>{x.slice(2,-2)}</strong>:x.startsWith("`")&&x.endsWith("`")?<code key={i}>{x.slice(1,-1)}</code>:x);
+
+function clampAuthorizationLevel(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(1, Math.min(3, Math.trunc(value)));
+  }
+
+  const text = String(value ?? "1").trim();
+  const digits = text.match(/\d+/)?.[0];
+  const parsed = digits ? Number.parseInt(digits, 10) : 1;
+
+  return Math.max(1, Math.min(3, parsed || 1));
 }
-function Text({value}:{value:string}){
-  const chunks=value.split(/(```[\s\S]*?```)/g);
-  return <>{chunks.map((x,i)=>x.startsWith("```")?<pre key={i}>{x.slice(3,-3).replace(/^text\n/,"").replace(/^\n/,"")}</pre>:x.split("\n").map((line,j)=><div className="root-line" key={`${i}-${j}`}>{inline(line||"\u00a0")}</div>))}</>;
+
+function authorizationStatus(record: RootRecord | null) {
+  const value = String(
+    record?.authorization?.status ?? "AUTHORIZED",
+  ).trim();
+
+  return value || "AUTHORIZED";
 }
-export default function Root(){
-  const [login,setLogin]=useState<Login|null>(null);
-  const [user,setUser]=useState(""),[pass,setPass]=useState(""),[error,setError]=useState("");
-  const [path,setPath]=useState<string[]>([]),[file,setFile]=useState<string|null>(null);
-  const node=useMemo(()=>getNode(path),[path]);
-  const logical=file?[...path,file].join("/"):null;
-  const data=logical?getRecord(logical):null;
-  const level=Number(data?.authorization?.required_level??1);
-  const allowed=!!login && login.level>=level && !["denied","unauthorized","blocked","revoked","forbidden","disabled"].includes(String(data?.authorization?.status??"").toLowerCase());
 
-  function submit(e:React.FormEvent){e.preventDefault();const found=LOGINS.find(x=>x.username===user.trim()&&x.password===pass.trim());if(!found){setError("AUTHENTICATION FAILURE // INVALID ROOT CREDENTIALS");return}setLogin(found);setError("");}
-  function openDir(name:string){setPath(p=>[...p,name]);setFile(null)}
-  function back(){if(file){setFile(null);return}setPath(p=>p.slice(0,-1))}
-  const image=file?(ID_IMAGES[file]??ASSET(data?.image)):null;
+function authorizationAllowed(record: RootRecord | null) {
+  return !DENIED_STATUSES.has(
+    authorizationStatus(record).toLocaleLowerCase(),
+  );
+}
 
-  if(!login)return <main className="root-shell"><div className="root-browserbar"><i/><i/><i/><span>*@3t@mainframe</span></div><section className="root-login"><div className="root-mark">▮</div><form onSubmit={submit}><div>ROOT ACCESS TERMINAL</div><small>AUTHORIZED INITIALIZATION NODE</small><label>LOGIN<input value={user} onChange={e=>setUser(e.target.value)} autoFocus/></label><label>PASSWORD<input type="password" value={pass} onChange={e=>setPass(e.target.value)}/></label><button>============= ROOT =============</button>{error?<p>{error}</p>:null}</form></section></main>;
+function assetUrl(value: unknown) {
+  if (!value) {
+    return null;
+  }
 
-  return <main className="root-shell">
-    <div className="root-browserbar"><i/><i/><i/><span>*@3t@mainframe</span></div>
-    <div className="root-stage">
-      <div className="root-cursor">▮</div>
-      <header className="root-session"><span>ROOT://{path.join("/")||"MAINFRAME"}</span><span>AUTH LVL {login.level} // {login.name}</span></header>
-      {file?<section className="root-file">
-        <button className="root-link root-back" onClick={back}>[..] RETURN</button>
-        <div className="root-file-title">{logical}</div>
-        {!data?<div className="root-denied">FILE NOT FOUND // ARCHIVE INDEX MISMATCH</div>:!allowed?<div className="root-denied">ACCESS DENIED<br/>LEVEL {level} AUTHORIZATION REQUIRED</div>:<>
-          <div className="root-file-status">{data.authorization?.status??"AUTHORIZED"} // LEVEL {level}</div>
-          {data.title?<h1>{data.title}</h1>:null}
-          {data.description?<div className="root-copy"><Text value={String(data.description)}/></div>:null}
-          {data.embed?.description?<h2>{data.embed.description}</h2>:null}
-          {image?<img className="root-file-image" src={image} alt=""/>:null}
-          <div className="root-fields">{(data.embed?.fields??[]).map((f:any,i:number)=><article key={i}><h3>{f.name}</h3><Text value={String(f.value??"")}/></article>)}</div>
-          {data.content?<div className="root-copy"><Text value={Array.isArray(data.content)?data.content.join("\n"):String(data.content)}/></div>:null}
-        </>}
-      </section>:<section className="root-directory">
-        {path.length?<button className="root-link root-back" onClick={back}>[..] PARENT DIRECTORY</button>:null}
-        <div className="root-list">
-          {node.directories.map(d=><button className="root-link root-dir" key={d.name} onClick={()=>openDir(d.name)}>[DIR] {d.name}/</button>)}
-          {node.files.map(f=>{const rec=getRecord([...path,f].join("/"));const req=Number(rec?.authorization?.required_level??1);return <button className={`root-link root-entry ${req>login.level?"root-locked":""}`} key={f} onClick={()=>setFile(f)}>{f}{req>login.level?<span> [LVL {req}]</span>:""}</button>})}
-        </div>
-      </section>}
-      <footer>BRAYTECH ROOT NETWORK // SESSION ACTIVE</footer>
+  const normalized = String(value)
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
+
+  const marker = "assets/root/";
+  const index = normalized.toLocaleLowerCase().indexOf(marker);
+
+  if (index >= 0) {
+    return `/assets/root/${normalized.slice(index + marker.length)}`;
+  }
+
+  if (!normalized.includes("/")) {
+    return `/assets/root/${normalized}`;
+  }
+
+  return null;
+}
+
+function directoryAsset(path: string[]) {
+  const key = path.join("/");
+  return (
+    ROOT_DIRECTORY_ASSETS[key] ??
+    ROOT_DIRECTORY_ASSETS[""] ??
+    "/assets/root/root.gif"
+  );
+}
+
+function renderInline(value: string): ReactNode[] {
+  const pattern =
+    /(\|\|[^|]+\|\||\*\*[^*]+\*\*|~~[^~]+~~|`[^`]+`|\*[^*]+\*)/g;
+  const pieces = value.split(pattern);
+
+  return pieces.map((piece, index) => {
+    if (piece.startsWith("||") && piece.endsWith("||")) {
+      return (
+        <span className="root-spoiler" key={index}>
+          {piece.slice(2, -2)}
+        </span>
+      );
+    }
+
+    if (piece.startsWith("**") && piece.endsWith("**")) {
+      return <strong key={index}>{piece.slice(2, -2)}</strong>;
+    }
+
+    if (piece.startsWith("~~") && piece.endsWith("~~")) {
+      return <s key={index}>{piece.slice(2, -2)}</s>;
+    }
+
+    if (piece.startsWith("`") && piece.endsWith("`")) {
+      return <code key={index}>{piece.slice(1, -1)}</code>;
+    }
+
+    if (piece.startsWith("*") && piece.endsWith("*")) {
+      return <em key={index}>{piece.slice(1, -1)}</em>;
+    }
+
+    return <Fragment key={index}>{piece}</Fragment>;
+  });
+}
+
+function RootText({ value }: { value: string }) {
+  const chunks = value.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <>
+      {chunks.map((chunk, chunkIndex) => {
+        if (chunk.startsWith("```") && chunk.endsWith("```")) {
+          const code = chunk
+            .slice(3, -3)
+            .replace(/^text\r?\n/i, "")
+            .replace(/^\r?\n/, "")
+            .replace(/\r?\n$/, "");
+
+          return <pre key={chunkIndex}>{code}</pre>;
+        }
+
+        return chunk.split(/\r?\n/).map((line, lineIndex) => (
+          <div
+            className="root-line"
+            key={`${chunkIndex}-${lineIndex}`}
+          >
+            {line ? renderInline(line) : "\u00a0"}
+          </div>
+        ));
+      })}
+    </>
+  );
+}
+
+function RootChrome() {
+  return (
+    <div className="root-browserbar" aria-hidden="true">
+      <span className="root-browser-dots">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="root-browser-title">*@3t@mainframe</span>
     </div>
-  </main>
+  );
+}
+
+function RootLoginScreen({
+  username,
+  password,
+  error,
+  setUsername,
+  setPassword,
+  submit,
+}: {
+  username: string;
+  password: string;
+  error: string;
+  setUsername: (value: string) => void;
+  setPassword: (value: string) => void;
+  submit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <main className="root-shell">
+      <RootChrome />
+
+      <section className="root-login">
+        <div className="root-terminal-marker" aria-hidden="true">
+          ▮
+        </div>
+
+        <form onSubmit={submit}>
+          <div className="root-login-heading">ROOT ACCESS TERMINAL</div>
+          <div className="root-login-subheading">
+            AUTHORIZED INITIALIZATION NODE
+          </div>
+
+          <label>
+            LOGIN
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              autoFocus
+            />
+          </label>
+
+          <label>
+            PASSWORD
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </label>
+
+          <button type="submit">============= ROOT =============</button>
+
+          {error ? <p>{error}</p> : null}
+        </form>
+      </section>
+    </main>
+  );
+}
+
+export default function Root() {
+  const [login, setLogin] = useState<RootLogin | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [path, setPath] = useState<string[]>([]);
+  const [file, setFile] = useState<string | null>(null);
+
+  const node = useMemo(() => getNode(path), [path]);
+  const logicalPath = file ? [...path, file].join("/") : null;
+  const record = logicalPath ? getRecord(logicalPath) : null;
+  const requiredLevel = clampAuthorizationLevel(
+    record?.authorization?.required_level,
+  );
+  const allowed = Boolean(
+    login &&
+      record &&
+      login.level >= requiredLevel &&
+      authorizationAllowed(record),
+  );
+  const fileImage = assetUrl(record?.image);
+  const currentDirectoryImage = directoryAsset(path);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const found = LOGINS.find(
+      (candidate) =>
+        candidate.username === username.trim() &&
+        candidate.password === password.trim(),
+    );
+
+    if (!found) {
+      setError("AUTHENTICATION FAILURE // INVALID ROOT CREDENTIALS");
+      return;
+    }
+
+    setLogin(found);
+    setError("");
+    setPath([]);
+    setFile(null);
+  }
+
+  function openDirectory(name: string) {
+    setPath((current) => [...current, name]);
+    setFile(null);
+  }
+
+  function goBack() {
+    if (file) {
+      setFile(null);
+      return;
+    }
+
+    setPath((current) => current.slice(0, -1));
+  }
+
+  function logout() {
+    setLogin(null);
+    setUsername("");
+    setPassword("");
+    setError("");
+    setPath([]);
+    setFile(null);
+  }
+
+  if (!login) {
+    return (
+      <RootLoginScreen
+        username={username}
+        password={password}
+        error={error}
+        setUsername={setUsername}
+        setPassword={setPassword}
+        submit={submit}
+      />
+    );
+  }
+
+  if (!node) {
+    return (
+      <main className="root-shell">
+        <RootChrome />
+        <section className="root-fatal">
+          <div>ROOT // FILESYSTEM ERROR</div>
+          <p>DIRECTORY INDEX CORRUPTED.</p>
+          <button
+            className="root-link"
+            type="button"
+            onClick={() => {
+              setPath([]);
+              setFile(null);
+            }}
+          >
+            [RETURN TO ROOT]
+          </button>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="root-shell">
+      <RootChrome />
+
+      <div className="root-stage">
+        <div className="root-terminal-marker" aria-hidden="true">
+          ▮
+        </div>
+
+        <header className="root-session">
+          <span>ROOT://{path.join("/") || "MAINFRAME"}</span>
+          <span>
+            AUTHENTICATED // {login.name} // LEVEL {login.level}
+          </span>
+        </header>
+
+        {file ? (
+          <section className="root-file">
+            <nav className="root-file-nav">
+              <button
+                className="root-link root-back"
+                type="button"
+                onClick={goBack}
+              >
+                [..] RETURN TO DIRECTORY
+              </button>
+            </nav>
+
+            <div className="root-pathline">
+              ROOT/{logicalPath}
+            </div>
+
+            {!record ? (
+              <div className="root-denied">
+                <strong>ROOT // FILE ERROR</strong>
+                <br />
+                REQUESTED RESOURCE COULD NOT BE LOCATED OR PARSED.
+              </div>
+            ) : !authorizationAllowed(record) ? (
+              <div className="root-denied">
+                <strong>ACCESS DENIED</strong>
+                <br />
+                RESOURCE AUTHORIZATION STATUS: {authorizationStatus(record)}
+              </div>
+            ) : login.level < requiredLevel ? (
+              <div className="root-denied">
+                <strong>ACCESS DENIED</strong>
+                <br />
+                INSUFFICIENT AUTHORIZATION LEVEL.
+                <br />
+                REQUIRED: LEVEL {requiredLevel}
+                <br />
+                SESSION: LEVEL {login.level}
+              </div>
+            ) : allowed ? (
+              <>
+                <div className="root-file-status">
+                  STATUS: {authorizationStatus(record)} // LEVEL {requiredLevel}
+                </div>
+
+                {record.title ? (
+                  <h1>{String(record.title)}</h1>
+                ) : null}
+
+                {record.description ? (
+                  <div className="root-copy root-description">
+                    <RootText value={String(record.description)} />
+                  </div>
+                ) : null}
+
+                {record.embed?.description ? (
+                  <div className="root-copy root-embed-description">
+                    <RootText
+                      value={String(record.embed.description)}
+                    />
+                  </div>
+                ) : null}
+
+                {fileImage ? (
+                  <img
+                    className="root-file-image"
+                    src={fileImage}
+                    alt=""
+                  />
+                ) : null}
+
+                <div className="root-fields">
+                  {(record.embed?.fields ?? []).map(
+                    (field, index) => (
+                      <article
+                        className={
+                          field.inline
+                            ? "root-field root-field-inline"
+                            : "root-field"
+                        }
+                        key={`${String(field.name ?? "FIELD")}-${index}`}
+                      >
+                        {field.name ? (
+                          <h2>{String(field.name)}</h2>
+                        ) : null}
+                        <div className="root-copy">
+                          <RootText value={String(field.value ?? "")} />
+                        </div>
+                      </article>
+                    ),
+                  )}
+                </div>
+              </>
+            ) : null}
+          </section>
+        ) : (
+          <section className="root-directory">
+            <div className="root-directory-head">
+              <div>
+                <div className="root-pathline">
+                  {path.length
+                    ? `ROOT DIRECTORY // ${path[path.length - 1].toLocaleUpperCase()}`
+                    : "ROOT SYSTEM FILESPACE."}
+                </div>
+
+                <div className="root-directory-controls">
+                  {path.length ? (
+                    <button
+                      className="root-link root-back"
+                      type="button"
+                      onClick={goBack}
+                    >
+                      [..] PARENT DIRECTORY
+                    </button>
+                  ) : (
+                    <button
+                      className="root-link root-back"
+                      type="button"
+                      onClick={logout}
+                    >
+                      [X] LOGOUT
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <img
+                className="root-directory-image"
+                src={currentDirectoryImage}
+                alt=""
+              />
+            </div>
+
+            <div className="root-list" role="navigation">
+              {node.directories.map((directory) => (
+                <button
+                  className="root-link root-dir"
+                  key={directory.name}
+                  type="button"
+                  onClick={() => openDirectory(directory.name)}
+                >
+                  <span className="root-kind">[DIR]</span>{" "}
+                  {directory.name}/
+                </button>
+              ))}
+
+              {node.files.map((filename) => {
+                const candidatePath = [...path, filename].join("/");
+                const candidate = getRecord(candidatePath);
+                const level = clampAuthorizationLevel(
+                  candidate?.authorization?.required_level,
+                );
+                const statusAllowed = authorizationAllowed(candidate);
+                const locked =
+                  !candidate || !statusAllowed || level > login.level;
+
+                return (
+                  <button
+                    className={`root-link root-entry${
+                      locked ? " root-locked" : ""
+                    }`}
+                    key={filename}
+                    type="button"
+                    onClick={() => setFile(filename)}
+                  >
+                    <span className="root-kind">[FILE]</span>{" "}
+                    {filename}
+                    {!candidate ? (
+                      <span className="root-lock-note"> [MISSING]</span>
+                    ) : !statusAllowed ? (
+                      <span className="root-lock-note"> [DENIED]</span>
+                    ) : level > login.level ? (
+                      <span className="root-lock-note"> [LVL {level}]</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <footer>
+          BRAYTECH ROOT NETWORK // SESSION ACTIVE // AUTHORIZATION LEVEL {login.level}
+        </footer>
+      </div>
+    </main>
+  );
 }
