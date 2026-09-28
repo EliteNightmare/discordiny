@@ -61,6 +61,16 @@ export default function Terminal() {
   ] = useState("");
 
   const [
+    rootUnlocked,
+    setRootUnlocked,
+  ] = useState(false);
+
+  const [
+    rootBusy,
+    setRootBusy,
+  ] = useState(false);
+
+  const [
     openFiles,
     setOpenFiles,
   ] = useState<
@@ -117,6 +127,19 @@ export default function Terminal() {
         if (
           sessionData.authenticated
         ) {
+          try {
+            const rootResponse = await fetch(
+              "/api/terminal/root-status",
+              { credentials: "include" },
+            );
+            const rootData = await rootResponse.json();
+            if (!cancelled && rootResponse.ok) {
+              setRootUnlocked(Boolean(rootData.unlocked));
+            }
+          } catch {
+            // ROOT status is optional; terminal admission still succeeds.
+          }
+
           setState("connected");
 
           /*
@@ -200,6 +223,19 @@ export default function Terminal() {
           "",
           "/",
         );
+
+        try {
+          const rootResponse = await fetch(
+            "/api/terminal/root-status",
+            { credentials: "include" },
+          );
+          const rootData = await rootResponse.json();
+          if (!cancelled && rootResponse.ok) {
+            setRootUnlocked(Boolean(rootData.unlocked));
+          }
+        } catch {
+          // ROOT status is optional; terminal admission still succeeds.
+        }
 
         setState("connected");
       } catch {
@@ -511,7 +547,7 @@ export default function Terminal() {
     }
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -521,6 +557,48 @@ export default function Terminal() {
 
     if (!trimmed) {
       return;
+    }
+
+    if (trimmed === "ROOT.INITIALIZE.KEY=8556") {
+      if (rootBusy) {
+        return;
+      }
+
+      setRootBusy(true);
+      setCommandError("");
+
+      try {
+        const response = await fetch(
+          "/api/terminal/root-initialize",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ code: trimmed }),
+          },
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          setCommandError(data.error || "ROOT INITIALIZATION REFUSED");
+          setCommand("");
+          return;
+        }
+
+        setRootUnlocked(true);
+        setCommand("");
+        window.location.assign(data.redirectUrl);
+        return;
+      } catch {
+        setCommandError("ROOT INITIALIZATION FAILED");
+        setCommand("");
+        return;
+      } finally {
+        setRootBusy(false);
+      }
     }
 
     const file =
@@ -718,6 +796,23 @@ export default function Terminal() {
             </span>
           </div>
         </header>
+
+        {rootUnlocked && (
+          <button
+            type="button"
+            className="cbc-root-access"
+            onClick={(event) => {
+              event.stopPropagation();
+              window.location.assign(
+                "https://root.discordiny.com/5dfg46df4gs4gs6",
+              );
+            }}
+          >
+            <span className="cbc-root-access-kicker">SIVA // ROOT CHANNEL</span>
+            <strong>ROOT ACCESS</strong>
+            <small>INITIALIZATION PERSISTED</small>
+          </button>
+        )}
 
         <form
           className="cbc-minimal-prompt"
