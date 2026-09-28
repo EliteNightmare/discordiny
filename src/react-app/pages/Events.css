@@ -562,3 +562,15 @@ button.event-card:hover {
     animation: none;
   }
 }
+
+
+/* TopBar clearance adjustment */
+.events-page {
+  padding-top: 124px;
+}
+
+@media (max-width: 767px) {
+  .events-page {
+    padding-top: 118px;
+  }
+}
