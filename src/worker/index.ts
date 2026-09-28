@@ -215,6 +215,44 @@ app.get("/api/terminal/admin/files", async c => {
   const f=await c.env.DB.prepare(`SELECT id,code,title,subtitle,classification,content,created_by,created_at,updated_at FROM terminal_files ORDER BY updated_at DESC,id DESC`).all();
   return c.json({success:true,files:f.results});
 });
+
+app.get("/api/terminal/admin/users", async c => {
+  const u=await getTerminalUser(c);
+  if(!u||u.user_id!==TERMINAL_ADMIN_USER_ID) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  const name=(c.req.query("name")??"").trim();
+  if(!name) return c.json({success:true,users:[]});
+  const escaped=name.replace(/[\\%_]/g,m=>`\\${m}`);
+  const pattern=`%${escaped}%`;
+  const users=await c.env.DB.prepare(`SELECT id,discord_id,username,global_name,avatar FROM users WHERE username LIKE ? ESCAPE '\\' COLLATE NOCASE OR global_name LIKE ? ESCAPE '\\' COLLATE NOCASE ORDER BY CASE WHEN username = ? COLLATE NOCASE THEN 0 WHEN global_name = ? COLLATE NOCASE THEN 1 ELSE 2 END,username COLLATE NOCASE ASC,id ASC LIMIT 25`).bind(pattern,pattern,name,name).all();
+  return c.json({success:true,users:users.results});
+});
+
+app.get("/api/terminal/admin/users/:id/discoveries", async c => {
+  const u=await getTerminalUser(c);
+  if(!u||u.user_id!==TERMINAL_ADMIN_USER_ID) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  const userId=Number(c.req.param("id"));
+  if(!Number.isInteger(userId)||userId<=0) return c.json({error:"INVALID USER ID"},400);
+  const target=await c.env.DB.prepare(`SELECT id,discord_id,username,global_name,avatar FROM users WHERE id=? LIMIT 1`).bind(userId).first();
+  if(!target) return c.json({error:"USER NOT FOUND"},404);
+  const discoveries=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.code,terminal_files.title,terminal_files.subtitle,terminal_files.classification,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC,terminal_files.id DESC`).bind(userId).all();
+  return c.json({success:true,user:target,discoveries:discoveries.results});
+});
+
+app.delete("/api/terminal/admin/users/:id/discoveries/:fileId", async c => {
+  const u=await getTerminalUser(c);
+  if(!u||u.user_id!==TERMINAL_ADMIN_USER_ID) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
+  const userId=Number(c.req.param("id"));
+  const fileId=Number(c.req.param("fileId"));
+  if(!Number.isInteger(userId)||userId<=0||!Number.isInteger(fileId)||fileId<=0) return c.json({error:"INVALID USER OR FILE ID"},400);
+  const file=await c.env.DB.prepare(`SELECT id,code,title FROM terminal_files WHERE id=? LIMIT 1`).bind(fileId).first() as {id:number;code:string;title:string}|null;
+  if(!file) return c.json({error:"TERMINAL FILE NOT FOUND"},404);
+  const result=await c.env.DB.prepare(`DELETE FROM player_terminal_files WHERE user_id=? AND file_id=?`).bind(userId,fileId).run();
+  if(!result.meta.changes) return c.json({error:"FILE WAS NOT DISCOVERED BY THIS USER"},404);
+  if(file.code.trim().toUpperCase()==="UH3C"){
+    await c.env.DB.prepare(`UPDATE player_terminal_access SET unknown_signal_resolved=0 WHERE user_id=?`).bind(userId).run();
+  }
+  return c.json({success:true,resetFile:{id:file.id,code:file.code,title:file.title}});
+});
 app.post("/api/terminal/admin/files", async c => {
   const u=await getTerminalUser(c); if(!u||u.user_id!==1) return c.json({error:"ADMINISTRATOR ACCESS REQUIRED"},403);
   let b:{code?:string;title?:string;subtitle?:string;classification?:string;content?:string}; try{b=await c.req.json()}catch{return c.json({error:"INVALID FILE REQUEST"},400)}
