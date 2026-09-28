@@ -224,7 +224,7 @@ function relicPublicState(progress: { phase:number; order:number[]; completed_at
     phase: progress.phase,
     phaseName: RELIC_PHASE_NAMES[progress.phase],
     maskedCode,
-    revealedCount,
+    revealedCount: revealCount,
     complete: progress.phase === 5,
     final: progress.phase === 5 ? {
       type: RELIC_TYPE,
