@@ -85,20 +85,29 @@ function UnknownSignalAutopost({ resolved }: { resolved: boolean }) {
                     : "█▓▒░ // 0x?? // S_V_ // █▓▒░"}
             </div>
 
-            <div className="terminal-autopost-payload">
-                <small>INTERCEPTED DATA</small>
-                <code data-text="vQWYX6lGvH4=">vQWYX6lGvH4=</code>
-            </div>
+            {resolved ? (
+                <div className="terminal-autopost-resolved-message">
+                    <strong>INTERCEPTED DATA DECRYPTED: UH3C // REPLICATE</strong>
+                    <p>Please follow Terminal Instructions going forward.</p>
+                </div>
+            ) : (
+                <>
+                    <div className="terminal-autopost-payload">
+                        <small>INTERCEPTED DATA</small>
+                        <code data-text="vQWYX6lGvH4=">vQWYX6lGvH4=</code>
+                    </div>
 
-            <div className="terminal-autopost-clue">
-                <span>CIPHER HINT</span>
-                <strong>TETRAODONTIDAE</strong>
-            </div>
+                    <div className="terminal-autopost-clue">
+                        <span>CIPHER HINT</span>
+                        <strong>TETRAODONTIDAE</strong>
+                    </div>
 
-            <div className="terminal-autopost-clue">
-                <span>KEY</span>
-                <strong>REPLICATE</strong>
-            </div>
+                    <div className="terminal-autopost-clue">
+                        <span>KEY</span>
+                        <strong>REPLICATE</strong>
+                    </div>
+                </>
+            )}
 
             <div className="terminal-autopost-footer">
                 <span>DECRYPTION STATUS</span>
@@ -116,16 +125,7 @@ export default function Terminal() {
     const [backwashActive, setBackwashActive] = useState(false), [backwashPhase, setBackwashPhase] = useState(0);
     const input = useRef<HTMLInputElement>(null), backwashTimers = useRef<number[]>([]);
     const current = useMemo(() => files.find(f => f.id === selected) ?? null, [files, selected]);
-    const uh3cResolved = useMemo(
-        () =>
-            files.some(
-                file =>
-                    file.code?.toUpperCase() === "UH3C" ||
-                    (file.title === "ACCESS CODE DETECTED: WELCOME, Dr. REDACTED" &&
-                        file.classification === "SIVA NODE UNSTABLE"),
-            ),
-        [files],
-    );
+    const [unknownSignalResolved, setUnknownSignalResolved] = useState(false);
     const request = (path: string, init?: RequestInit) => fetch(API + path, { ...init, credentials: "include", headers: { ...(init?.body ? { "Content-Type": "application/json" } : {}), ...(init?.headers ?? {}) } });
     async function load() {
         const r = await request("/api/terminal/library"), d = await r.json();
@@ -141,6 +141,7 @@ export default function Terminal() {
         setUser(d.user ?? null);
         setFiles(next);
         setRootUnlocked(!!d.rootUnlocked);
+        setUnknownSignalResolved(!!d.unknownSignalResolved);
         setAdmin(!!d.isAdmin);
         setSelected(x => x !== null && next.some(f => f.id === x) ? x : (next[0]?.id ?? null));
         setLoading(false);
@@ -196,11 +197,12 @@ export default function Terminal() {
                 window.location.assign(d.redirectUrl ?? ROOT);
                 return;
             }
+            if (d.unknownSignalResolved) {
+                setUnknownSignalResolved(true);
+            }
+
             if (d.file) {
-                const discoveredFile: FileRow =
-                    code.toUpperCase() === "UH3C"
-                        ? { ...d.file, code: "UH3C" }
-                        : d.file;
+                const discoveredFile: FileRow = d.file;
 
                 setFiles(x =>
                     x.some(f => f.id === discoveredFile.id)
@@ -248,7 +250,7 @@ export default function Terminal() {
       </div></header>
     <section className="terminal-command-zone"><form onSubmit={execute}><span>&gt;</span><input ref={input} value={command} onChange={e => { setCommand(e.target.value); if (message)
         setMessage(""); }} placeholder="ENTER TERMINAL CODE" autoComplete="off" autoCapitalize="off" spellCheck={false} disabled={backwashActive}/><button disabled={backwashActive}>EXECUTE</button></form><div className="terminal-message">{message || "\u00a0"}</div></section>
-    <section className="terminal-workspace"><aside className={mobileFilesOpen ? "terminal-library terminal-library-open" : "terminal-library"}><UnknownSignalAutopost resolved={uh3cResolved} /><button type="button" className="terminal-section-heading terminal-library-toggle" onClick={() => setMobileFilesOpen(x => !x)} aria-expanded={mobileFilesOpen}><span>MY FILES</span><span className="terminal-library-toggle-meta"><small>{String(files.length).padStart(2, "0")}</small><b aria-hidden="true">{mobileFilesOpen ? "▲" : "▼"}</b></span></button><div className="terminal-library-list">{files.length === 0 ? <div className="terminal-empty">NO ARCHIVE RECORDS DISCOVERED</div> : files.map(f => <button key={f.id} className={selected === f.id ? "terminal-file-row active" : "terminal-file-row"} onClick={() => { setAdminOpen(false); setSelected(f.id); setMobileFilesOpen(false); }}><span>{f.title}</span><small>{f.classification || "UNCLASSIFIED"}</small></button>)}</div></aside>
+    <section className="terminal-workspace"><aside className={mobileFilesOpen ? "terminal-library terminal-library-open" : "terminal-library"}><UnknownSignalAutopost resolved={unknownSignalResolved} /><button type="button" className="terminal-section-heading terminal-library-toggle" onClick={() => setMobileFilesOpen(x => !x)} aria-expanded={mobileFilesOpen}><span>MY FILES</span><span className="terminal-library-toggle-meta"><small>{String(files.length).padStart(2, "0")}</small><b aria-hidden="true">{mobileFilesOpen ? "▲" : "▼"}</b></span></button><div className="terminal-library-list">{files.length === 0 ? <div className="terminal-empty">NO ARCHIVE RECORDS DISCOVERED</div> : files.map(f => <button key={f.id} className={selected === f.id ? "terminal-file-row active" : "terminal-file-row"} onClick={() => { setAdminOpen(false); setSelected(f.id); setMobileFilesOpen(false); }}><span>{f.title}</span><small className="terminal-file-code">CODE // {f.code || "UNKNOWN"}</small><small>{f.classification || "UNCLASSIFIED"}</small></button>)}</div></aside>
       <article className="terminal-reader">{adminOpen && admin ? <div className="terminal-admin"><div className="terminal-reader-header"><div><span>ADMINISTRATOR // USER 1</span><h1>{draft.id === null ? "CREATE TERMINAL FILE" : "EDIT TERMINAL FILE"}</h1></div><button onClick={() => setAdminOpen(false)}>CLOSE</button></div>
         <form className="terminal-admin-form" onSubmit={save}>{(["code", "title", "subtitle", "classification"] as const).map(k => <label key={k}>{k.toUpperCase()}<input value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} required={k === "code" || k === "title"}/></label>)}<label className="terminal-admin-content">CONTENT<textarea rows={14} value={draft.content} onChange={e => setDraft({ ...draft, content: e.target.value })}/></label><div className="terminal-admin-actions"><button>{draft.id === null ? "CREATE FILE" : "SAVE CHANGES"}</button><button type="button" onClick={() => setDraft(blank)}>CLEAR</button></div></form><div className="terminal-message">{adminMessage || "\u00a0"}</div>
         <div className="terminal-admin-existing"><h2>ALL TERMINAL FILES</h2>{adminFiles.length === 0 ? <div className="terminal-empty">DATABASE EMPTY</div> : adminFiles.map(f => <div className="terminal-admin-file-row" key={f.id}><div><strong>{f.title}</strong><small>{f.code}</small></div><button onClick={() => setDraft({ id: f.id, code: f.code ?? "", title: f.title, subtitle: f.subtitle, classification: f.classification, content: f.content })}>EDIT</button><button onClick={() => remove(f)}>DELETE</button></div>)}</div></div>
