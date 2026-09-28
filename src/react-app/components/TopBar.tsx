@@ -371,6 +371,11 @@ export default function TopBar() {
 
           <button
             type="button"
+            onClick={() =>
+              goTo(
+                "/events",
+              )
+            }
           >
             Events
           </button>
@@ -624,14 +629,15 @@ export default function TopBar() {
               Triumphs
             </button>
 
-            <button
-              type="button"
+            <a
+              href="/events"
+              className="mobile-navigation-link"
               onClick={
                 closeMobileMenu
               }
             >
               Events
-            </button>
+            </a>
 
             {/* Mobile NEWS */}
 
