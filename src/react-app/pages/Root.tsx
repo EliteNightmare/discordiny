@@ -421,11 +421,9 @@ function avatarUrl(user: AccountUser) {
 function RootTopActions({
   status,
   onAdmin,
-  onResume,
 }: {
   status: RootStatus;
   onAdmin: () => void;
-  onResume: () => void;
 }) {
   const user = status.user;
   const avatar = user ? avatarUrl(user) : null;
@@ -961,15 +959,17 @@ function RootLoginScreen({
   submit,
   status,
   onAdmin,
+  onResume,
 }: {
   username: string;
   password: string;
   error: string;
   setUsername: (value: string) => void;
   setPassword: (value: string) => void;
-  submit: (event: FormEvent<HTMLFormElement>) => void;
+  submit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   status: RootStatus;
   onAdmin: () => void;
+  onResume: () => void | Promise<void>;
 }) {
   return (
     <main className="root-shell">
