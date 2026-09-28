@@ -1,518 +1,619 @@
-:root {
-  background: #050000;
+import {
+  Fragment,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+
+import "./Root.css";
+import {
+  ROOT_DIRECTORY_ASSETS,
+  ROOT_FILES,
+  ROOT_LAYOUT,
+} from "./rootData";
+
+type NavNode = {
+  directories: readonly {
+    name: string;
+    node: NavNode;
+  }[];
+  files: readonly string[];
+};
+
+type RootLogin = {
+  name: string;
+  username: string;
+  password: string;
+  level: number;
+};
+
+type RootField = {
+  name?: unknown;
+  value?: unknown;
+  inline?: unknown;
+};
+
+type RootRecord = {
+  title?: unknown;
+  description?: unknown;
+  image?: unknown;
+  authorization?: {
+    required_level?: unknown;
+    status?: unknown;
+  };
+  embed?: {
+    description?: unknown;
+    fields?: RootField[];
+  };
+};
+
+const LOGINS: RootLogin[] = [
+  {
+    name: "ADMIN",
+    username: "admin",
+    password: "admin",
+    level: 1,
+  },
+  {
+    name: "WILHELMINA",
+    username: "wlhlm.bray",
+    password: "XJ57-4BA6-QSM9",
+    level: 2,
+  },
+  {
+    name: "CLOVIS",
+    username: "The Lord of Logic, King of Code",
+    password:
+      "Tell yourself a story... Let the story twist in unlikely directions",
+    level: 3,
+  },
+];
+
+const DENIED_STATUSES = new Set([
+  "denied",
+  "unauthorized",
+  "blocked",
+  "revoked",
+  "forbidden",
+  "disabled",
+]);
+
+function normalizeLookupKey(value: string) {
+  return value
+    .replace(/#U26a0#Ufe0f/g, "⚠️")
+    .toLocaleLowerCase();
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
-  margin: 0;
-  background: #050000;
-}
+function getRecord(path: string): RootRecord | null {
+  const exact = ROOT_FILES[path] as RootRecord | undefined;
 
-.root-shell {
-  min-height: 100dvh;
-  overflow-x: hidden;
-  background: #070000;
-  color: #b97a6e;
-  font-family: "Courier New", Courier, monospace;
-  font-size: 14px;
-  line-height: 1.55;
-}
+  if (exact) {
+    return exact;
+  }
 
-.root-shell * {
-  box-sizing: border-box;
-}
-
-.root-browserbar {
-  position: relative;
-  z-index: 10;
-  height: 25px;
-  border-bottom: 1px solid #2b1715;
-  background: #160d0c;
-  color: #817168;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-}
-
-.root-browser-dots {
-  position: absolute;
-  top: 50%;
-  left: 9px;
-  display: flex;
-  gap: 5px;
-  transform: translateY(-50%);
-}
-
-.root-browser-dots i {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: #e56845;
-}
-
-.root-browser-dots i:nth-child(2) {
-  background: #d99739;
-}
-
-.root-browser-dots i:nth-child(3) {
-  background: #69925b;
-}
-
-.root-browser-title {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.root-stage {
-  position: relative;
-  min-height: calc(100dvh - 25px);
-  padding: 18px 24px 54px;
-  background:
-    radial-gradient(
-      ellipse at 48% 32%,
-      rgba(52, 0, 0, 0.2) 0,
-      rgba(20, 0, 0, 0.28) 30%,
-      rgba(8, 0, 0, 0.92) 67%,
-      #050000 100%
-    );
-}
-
-.root-stage::before,
-.root-login::before {
-  position: fixed;
-  z-index: 20;
-  inset: 25px 0 0;
-  content: "";
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(255, 255, 255, 0.012) 0,
-    rgba(255, 255, 255, 0.012) 1px,
-    transparent 1px,
-    transparent 4px
+  const normalized = normalizeLookupKey(path);
+  const matchingKey = Object.keys(ROOT_FILES).find(
+    (candidate) => normalizeLookupKey(candidate) === normalized,
   );
-  mix-blend-mode: screen;
+
+  return matchingKey
+    ? (ROOT_FILES[matchingKey] as RootRecord)
+    : null;
 }
 
-.root-terminal-marker {
-  position: absolute;
-  top: 14px;
-  left: 12px;
-  color: #ff5548;
-  font-size: 15px;
-  line-height: 1;
-  text-shadow: 0 0 7px #d10b00;
-  animation: rootBlink 1.2s steps(1) infinite;
-}
+function getNode(parts: string[]): NavNode | null {
+  let node = ROOT_LAYOUT as unknown as NavNode;
 
-.root-session {
-  display: flex;
-  gap: 24px;
-  justify-content: space-between;
-  margin: 0 0 28px 24px;
-  color: #68423d;
-  font-size: 10px;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-}
-
-.root-directory,
-.root-file {
-  width: min(980px, 100%);
-  padding-left: 24px;
-}
-
-.root-directory-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(140px, 300px);
-  gap: 28px;
-  align-items: start;
-  margin-bottom: 18px;
-}
-
-.root-directory-image {
-  justify-self: end;
-  width: min(300px, 100%);
-  max-height: 150px;
-  object-fit: contain;
-  object-position: right top;
-  opacity: 0.36;
-  filter: saturate(0.55) brightness(0.55) contrast(1.2);
-}
-
-.root-pathline {
-  margin-bottom: 13px;
-  color: #d18b7e;
-  font-size: 13px;
-  letter-spacing: 0.035em;
-  overflow-wrap: anywhere;
-}
-
-.root-directory-controls,
-.root-file-nav {
-  min-height: 24px;
-  margin-bottom: 8px;
-}
-
-.root-list {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 7px;
-  width: 100%;
-}
-
-.root-link {
-  appearance: none;
-  border: 0;
-  background: none;
-  padding: 0;
-  color: #b66f63;
-  font: inherit;
-  line-height: 1.45;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.root-link:hover,
-.root-link:focus-visible {
-  color: #ff6658;
-  outline: 0;
-  text-shadow: 0 0 7px #b9140b;
-}
-
-.root-dir {
-  color: #cf8274;
-  font-weight: 700;
-}
-
-.root-kind {
-  color: #74423c;
-  font-weight: 400;
-}
-
-.root-back {
-  color: #875048;
-}
-
-.root-entry {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-}
-
-.root-locked {
-  color: #75443e;
-}
-
-.root-lock-note {
-  color: #663631;
-  font-size: 11px;
-}
-
-.root-file-status {
-  margin: 0 0 22px;
-  color: #74433d;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-}
-
-.root-file h1 {
-  margin: 0 0 22px;
-  color: #dc9385;
-  font-size: 20px;
-  font-weight: 400;
-  line-height: 1.25;
-  letter-spacing: 0.02em;
-}
-
-.root-field {
-  margin: 0 0 24px;
-}
-
-.root-field h2 {
-  margin: 0 0 8px;
-  color: #cf8578;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.root-description,
-.root-embed-description {
-  margin-bottom: 20px;
-}
-
-.root-embed-description {
-  color: #c78376;
-}
-
-.root-copy,
-.root-line {
-  color: #b97a6e;
-  line-height: 1.65;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.root-copy strong {
-  color: #d89587;
-}
-
-.root-copy em {
-  color: #c98a7d;
-}
-
-.root-copy s {
-  opacity: 0.65;
-}
-
-.root-copy code {
-  color: #e39a8d;
-  font-family: inherit;
-}
-
-.root-file pre {
-  max-width: 100%;
-  margin: 10px 0 14px;
-  border-left: 2px solid #58231e;
-  background: #0e0302;
-  padding: 11px 13px;
-  color: #b97f74;
-  font: inherit;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.root-spoiler {
-  border-radius: 2px;
-  background: #35100d;
-  color: transparent;
-  text-shadow: none;
-  cursor: default;
-  transition: color 120ms ease;
-}
-
-.root-spoiler:hover,
-.root-spoiler:focus {
-  color: #c98a7d;
-}
-
-.root-file-image {
-  display: block;
-  width: auto;
-  max-width: min(620px, 100%);
-  max-height: 58vh;
-  margin: 16px 0 24px;
-  object-fit: contain;
-  object-position: left center;
-  filter: saturate(0.82) brightness(0.76) contrast(1.08);
-}
-
-.root-denied {
-  margin-top: 18px;
-  color: #e94b3f;
-  font-size: 14px;
-  line-height: 1.8;
-  letter-spacing: 0.04em;
-  text-shadow: 0 0 7px #7a0c06;
-}
-
-.root-stage footer {
-  position: fixed;
-  right: 14px;
-  bottom: 9px;
-  z-index: 5;
-  color: #442a27;
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-align: right;
-}
-
-.root-login {
-  position: relative;
-  min-height: calc(100dvh - 25px);
-  padding: 18px;
-  background:
-    radial-gradient(
-      ellipse at 50% 38%,
-      rgba(46, 0, 0, 0.18),
-      #070000 62%
+  for (const part of parts) {
+    const next = node.directories.find(
+      (directory) => directory.name === part,
     );
+
+    if (!next) {
+      return null;
+    }
+
+    node = next.node;
+  }
+
+  return node;
 }
 
-.root-login form {
-  width: min(430px, calc(100vw - 48px));
-  margin: 16vh auto 0;
-  border-left: 2px solid #682a24;
-  padding: 20px 22px;
-  color: #b96f62;
+function clampAuthorizationLevel(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.max(1, Math.min(3, Math.trunc(value)));
+  }
+
+  const text = String(value ?? "1").trim();
+  const digits = text.match(/\d+/)?.[0];
+  const parsed = digits ? Number.parseInt(digits, 10) : 1;
+
+  return Math.max(1, Math.min(3, parsed || 1));
 }
 
-.root-login-heading {
-  color: #d48476;
-  font-size: 17px;
-  letter-spacing: 0.055em;
+function authorizationStatus(record: RootRecord | null) {
+  const value = String(
+    record?.authorization?.status ?? "AUTHORIZED",
+  ).trim();
+
+  return value || "AUTHORIZED";
 }
 
-.root-login-subheading {
-  margin: 6px 0 24px;
-  color: #6f4943;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+function authorizationAllowed(record: RootRecord | null) {
+  return !DENIED_STATUSES.has(
+    authorizationStatus(record).toLocaleLowerCase(),
+  );
 }
 
-.root-login label {
-  display: block;
-  margin: 14px 0 6px;
-  color: #8f5a52;
-  font-size: 11px;
-  letter-spacing: 0.07em;
+function assetUrl(value: unknown) {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = String(value)
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "");
+
+  const marker = "assets/root/";
+  const index = normalized.toLocaleLowerCase().indexOf(marker);
+
+  if (index >= 0) {
+    return `/assets/root/${normalized.slice(index + marker.length)}`;
+  }
+
+  if (!normalized.includes("/")) {
+    return `/assets/root/${normalized}`;
+  }
+
+  return null;
 }
 
-.root-login input {
-  display: block;
-  width: 100%;
-  margin-top: 5px;
-  border: 0;
-  border-bottom: 1px solid #5a2924;
-  outline: 0;
-  background: #090101;
-  padding: 9px 7px;
-  color: #d28a7e;
-  font: inherit;
-  caret-color: #ff5548;
+function directoryAsset(path: string[]) {
+  const key = path.join("/");
+  return (
+    ROOT_DIRECTORY_ASSETS[key] ??
+    ROOT_DIRECTORY_ASSETS[""] ??
+    "/assets/root/root.gif"
+  );
 }
 
-.root-login input:focus {
-  border-bottom-color: #a94439;
-  box-shadow: 0 6px 10px -10px #ff5548;
+function renderInline(value: string): ReactNode[] {
+  const pattern =
+    /(\|\|[^|]+\|\||\*\*[^*]+\*\*|~~[^~]+~~|`[^`]+`|\*[^*]+\*)/g;
+  const pieces = value.split(pattern);
+
+  return pieces.map((piece, index) => {
+    if (piece.startsWith("||") && piece.endsWith("||")) {
+      return (
+        <span className="root-spoiler" key={index}>
+          {piece.slice(2, -2)}
+        </span>
+      );
+    }
+
+    if (piece.startsWith("**") && piece.endsWith("**")) {
+      return <strong key={index}>{piece.slice(2, -2)}</strong>;
+    }
+
+    if (piece.startsWith("~~") && piece.endsWith("~~")) {
+      return <s key={index}>{piece.slice(2, -2)}</s>;
+    }
+
+    if (piece.startsWith("`") && piece.endsWith("`")) {
+      return <code key={index}>{piece.slice(1, -1)}</code>;
+    }
+
+    if (piece.startsWith("*") && piece.endsWith("*")) {
+      return <em key={index}>{piece.slice(1, -1)}</em>;
+    }
+
+    return <Fragment key={index}>{piece}</Fragment>;
+  });
 }
 
-.root-login button {
-  margin-top: 22px;
-  border: 1px solid #62251f;
-  background: #160302;
-  padding: 9px 13px;
-  color: #c35d52;
-  font: inherit;
-  cursor: pointer;
+function RootText({ value }: { value: string }) {
+  const chunks = value.split(/(```[\s\S]*?```)/g);
+
+  return (
+    <>
+      {chunks.map((chunk, chunkIndex) => {
+        if (chunk.startsWith("```") && chunk.endsWith("```")) {
+          const code = chunk
+            .slice(3, -3)
+            .replace(/^text\r?\n/i, "")
+            .replace(/^\r?\n/, "")
+            .replace(/\r?\n$/, "");
+
+          return <pre key={chunkIndex}>{code}</pre>;
+        }
+
+        return chunk.split(/\r?\n/).map((line, lineIndex) => (
+          <div
+            className="root-line"
+            key={`${chunkIndex}-${lineIndex}`}
+          >
+            {line ? renderInline(line) : "\u00a0"}
+          </div>
+        ));
+      })}
+    </>
+  );
 }
 
-.root-login button:hover,
-.root-login button:focus-visible {
-  border-color: #a43d33;
-  color: #ff6658;
-  outline: 0;
-  text-shadow: 0 0 6px #9d1009;
+function RootChrome() {
+  return (
+    <div className="root-browserbar" aria-hidden="true">
+      <span className="root-browser-dots">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="root-browser-title">*@3t@mainframe</span>
+    </div>
+  );
 }
 
-.root-login p {
-  margin-top: 14px;
-  color: #e94b3f;
-  font-size: 11px;
+function RootLoginScreen({
+  username,
+  password,
+  error,
+  setUsername,
+  setPassword,
+  submit,
+}: {
+  username: string;
+  password: string;
+  error: string;
+  setUsername: (value: string) => void;
+  setPassword: (value: string) => void;
+  submit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <main className="root-shell">
+      <RootChrome />
+
+      <section className="root-login">
+        <div className="root-terminal-marker" aria-hidden="true">
+          ▮
+        </div>
+
+        <form onSubmit={submit}>
+          <div className="root-login-heading">ROOT ACCESS TERMINAL</div>
+          <div className="root-login-subheading">
+            AUTHORIZED INITIALIZATION NODE
+          </div>
+
+          <label>
+            LOGIN
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              autoFocus
+            />
+          </label>
+
+          <label>
+            PASSWORD
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+            />
+          </label>
+
+          <button type="submit">============= ROOT =============</button>
+
+          {error ? <p>{error}</p> : null}
+        </form>
+      </section>
+    </main>
+  );
 }
 
-.root-fatal {
-  min-height: calc(100dvh - 25px);
-  padding: 12vh 10vw;
-  background: #050000;
-  color: #d64a3e;
-  font: 14px/1.7 "Courier New", Courier, monospace;
-}
+export default function Root() {
+  const [login, setLogin] = useState<RootLogin | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [path, setPath] = useState<string[]>([]);
+  const [file, setFile] = useState<string | null>(null);
 
-@keyframes rootBlink {
-  0%,
-  48% {
-    opacity: 1;
+  const node = useMemo(() => getNode(path), [path]);
+  const logicalPath = file ? [...path, file].join("/") : null;
+  const record = logicalPath ? getRecord(logicalPath) : null;
+  const requiredLevel = clampAuthorizationLevel(
+    record?.authorization?.required_level,
+  );
+  const allowed = Boolean(
+    login &&
+      record &&
+      login.level >= requiredLevel &&
+      authorizationAllowed(record),
+  );
+  const fileImage = assetUrl(record?.image);
+  const currentDirectoryImage = directoryAsset(path);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const found = LOGINS.find(
+      (candidate) =>
+        candidate.username === username.trim() &&
+        candidate.password === password.trim(),
+    );
+
+    if (!found) {
+      setError("AUTHENTICATION FAILURE // INVALID ROOT CREDENTIALS");
+      return;
+    }
+
+    setLogin(found);
+    setError("");
+    setPath([]);
+    setFile(null);
   }
 
-  49%,
-  100% {
-    opacity: 0.25;
-  }
-}
-
-@media (max-width: 700px) {
-  .root-shell {
-    font-size: 13px;
+  function openDirectory(name: string) {
+    setPath((current) => [...current, name]);
+    setFile(null);
   }
 
-  .root-browserbar {
-    height: 23px;
+  function goBack() {
+    if (file) {
+      setFile(null);
+      return;
+    }
+
+    setPath((current) => current.slice(0, -1));
   }
 
-  .root-stage {
-    min-height: calc(100dvh - 23px);
-    padding: 15px 12px 48px;
+  function logout() {
+    setLogin(null);
+    setUsername("");
+    setPassword("");
+    setError("");
+    setPath([]);
+    setFile(null);
   }
 
-  .root-stage::before,
-  .root-login::before {
-    inset: 23px 0 0;
+  if (!login) {
+    return (
+      <RootLoginScreen
+        username={username}
+        password={password}
+        error={error}
+        setUsername={setUsername}
+        setPassword={setPassword}
+        submit={submit}
+      />
+    );
   }
 
-  .root-terminal-marker {
-    top: 12px;
-    left: 8px;
+  if (!node) {
+    return (
+      <main className="root-shell">
+        <RootChrome />
+        <section className="root-fatal">
+          <div>ROOT // FILESYSTEM ERROR</div>
+          <p>DIRECTORY INDEX CORRUPTED.</p>
+          <button
+            className="root-link"
+            type="button"
+            onClick={() => {
+              setPath([]);
+              setFile(null);
+            }}
+          >
+            [RETURN TO ROOT]
+          </button>
+        </section>
+      </main>
+    );
   }
 
-  .root-session {
-    flex-direction: column;
-    gap: 3px;
-    margin: 0 0 22px 18px;
-    font-size: 8px;
-  }
+  return (
+    <main className="root-shell">
+      <RootChrome />
 
-  .root-directory,
-  .root-file {
-    padding-left: 18px;
-  }
+      <div className="root-stage">
+        <div className="root-terminal-marker" aria-hidden="true">
+          ▮
+        </div>
 
-  .root-directory-head {
-    display: block;
-  }
+        <header className="root-session">
+          <span>ROOT://{path.join("/") || "MAINFRAME"}</span>
+          <span>
+            AUTHENTICATED // {login.name} // LEVEL {login.level}
+          </span>
+        </header>
 
-  .root-directory-image {
-    display: block;
-    width: min(240px, 76vw);
-    max-height: 100px;
-    margin: 4px 0 18px;
-    object-position: left top;
-  }
+        {file ? (
+          <section className="root-file">
+            <nav className="root-file-nav">
+              <button
+                className="root-link root-back"
+                type="button"
+                onClick={goBack}
+              >
+                [..] RETURN TO DIRECTORY
+              </button>
+            </nav>
 
-  .root-list {
-    gap: 9px;
-  }
+            <div className="root-pathline">
+              ROOT/{logicalPath}
+            </div>
 
-  .root-pathline {
-    font-size: 11px;
-  }
+            {!record ? (
+              <div className="root-denied">
+                <strong>ROOT // FILE ERROR</strong>
+                <br />
+                REQUESTED RESOURCE COULD NOT BE LOCATED OR PARSED.
+              </div>
+            ) : !authorizationAllowed(record) ? (
+              <div className="root-denied">
+                <strong>ACCESS DENIED</strong>
+                <br />
+                RESOURCE AUTHORIZATION STATUS: {authorizationStatus(record)}
+              </div>
+            ) : login.level < requiredLevel ? (
+              <div className="root-denied">
+                <strong>ACCESS DENIED</strong>
+                <br />
+                INSUFFICIENT AUTHORIZATION LEVEL.
+                <br />
+                REQUIRED: LEVEL {requiredLevel}
+                <br />
+                SESSION: LEVEL {login.level}
+              </div>
+            ) : allowed ? (
+              <>
+                <div className="root-file-status">
+                  STATUS: {authorizationStatus(record)} // LEVEL {requiredLevel}
+                </div>
 
-  .root-file h1 {
-    font-size: 17px;
-  }
+                {record.title ? (
+                  <h1>{String(record.title)}</h1>
+                ) : null}
 
-  .root-field h2 {
-    font-size: 13px;
-  }
+                {record.description ? (
+                  <div className="root-copy root-description">
+                    <RootText value={String(record.description)} />
+                  </div>
+                ) : null}
 
-  .root-file-image {
-    max-height: 44vh;
-  }
+                {record.embed?.description ? (
+                  <div className="root-copy root-embed-description">
+                    <RootText
+                      value={String(record.embed.description)}
+                    />
+                  </div>
+                ) : null}
 
-  .root-stage footer {
-    max-width: 70vw;
-    font-size: 7px;
-  }
+                {fileImage ? (
+                  <img
+                    className="root-file-image"
+                    src={fileImage}
+                    alt=""
+                  />
+                ) : null}
 
-  .root-login form {
-    margin-top: 12vh;
-  }
+                <div className="root-fields">
+                  {(record.embed?.fields ?? []).map(
+                    (field, index) => (
+                      <article
+                        className={
+                          field.inline
+                            ? "root-field root-field-inline"
+                            : "root-field"
+                        }
+                        key={`${String(field.name ?? "FIELD")}-${index}`}
+                      >
+                        {field.name ? (
+                          <h2>{String(field.name)}</h2>
+                        ) : null}
+                        <div className="root-copy">
+                          <RootText value={String(field.value ?? "")} />
+                        </div>
+                      </article>
+                    ),
+                  )}
+                </div>
+              </>
+            ) : null}
+          </section>
+        ) : (
+          <section className="root-directory">
+            <div className="root-directory-head">
+              <div>
+                <div className="root-pathline">
+                  {path.length
+                    ? `ROOT DIRECTORY // ${path[path.length - 1].toLocaleUpperCase()}`
+                    : "ROOT SYSTEM FILESPACE."}
+                </div>
+
+                <div className="root-directory-controls">
+                  {path.length ? (
+                    <button
+                      className="root-link root-back"
+                      type="button"
+                      onClick={goBack}
+                    >
+                      [..] PARENT DIRECTORY
+                    </button>
+                  ) : (
+                    <button
+                      className="root-link root-back"
+                      type="button"
+                      onClick={logout}
+                    >
+                      [X] LOGOUT
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <img
+                className="root-directory-image"
+                src={currentDirectoryImage}
+                alt=""
+              />
+            </div>
+
+            <div className="root-list" role="navigation">
+              {node.directories.map((directory) => (
+                <button
+                  className="root-link root-dir"
+                  key={directory.name}
+                  type="button"
+                  onClick={() => openDirectory(directory.name)}
+                >
+                  <span className="root-kind">[DIR]</span>{" "}
+                  {directory.name}/
+                </button>
+              ))}
+
+              {node.files.map((filename) => {
+                const candidatePath = [...path, filename].join("/");
+                const candidate = getRecord(candidatePath);
+                const level = clampAuthorizationLevel(
+                  candidate?.authorization?.required_level,
+                );
+                const statusAllowed = authorizationAllowed(candidate);
+                const locked =
+                  !candidate || !statusAllowed || level > login.level;
+
+                return (
+                  <button
+                    className={`root-link root-entry${
+                      locked ? " root-locked" : ""
+                    }`}
+                    key={filename}
+                    type="button"
+                    onClick={() => setFile(filename)}
+                  >
+                    <span className="root-kind">[FILE]</span>{" "}
+                    {filename}
+                    {!candidate ? (
+                      <span className="root-lock-note"> [MISSING]</span>
+                    ) : !statusAllowed ? (
+                      <span className="root-lock-note"> [DENIED]</span>
+                    ) : level > login.level ? (
+                      <span className="root-lock-note"> [LVL {level}]</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        <footer>
+          BRAYTECH ROOT NETWORK // SESSION ACTIVE // AUTHORIZATION LEVEL {login.level}
+        </footer>
+      </div>
+    </main>
+  );
 }
