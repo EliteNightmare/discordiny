@@ -158,8 +158,8 @@ app.get("/api/terminal/status", async c => {
   const u=await getTerminalUser(c);
   if(!u) return c.json({authenticated:false,terminalUnlocked:false,rootUnlocked:false,isAdmin:false});
   await ensureTerminalRow(c,u.user_id);
-  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number}|null;
-  return c.json({authenticated:true,terminalUnlocked:!!x?.terminal_unlocked,rootUnlocked:!!x?.root_unlocked,isAdmin:u.user_id===1,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
+  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked,unknown_signal_resolved FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number;unknown_signal_resolved:number}|null;
+  return c.json({authenticated:true,terminalUnlocked:!!x?.terminal_unlocked,rootUnlocked:!!x?.root_unlocked,unknownSignalResolved:!!x?.unknown_signal_resolved,isAdmin:u.user_id===1,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
 });
 
 app.post("/api/terminal/unlock", async c => {
@@ -174,10 +174,10 @@ app.get("/api/terminal/library", async c => {
   const u=await getTerminalUser(c);
   if(!u) return c.json({authenticated:false,error:"ACCOUNT AUTHENTICATION REQUIRED"},401);
   await ensureTerminalRow(c,u.user_id);
-  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number}|null;
+  const x=await c.env.DB.prepare(`SELECT terminal_unlocked,root_unlocked,unknown_signal_resolved FROM player_terminal_access WHERE user_id=?`).bind(u.user_id).first() as {terminal_unlocked:number;root_unlocked:number;unknown_signal_resolved:number}|null;
   if(!x?.terminal_unlocked) return c.json({authenticated:true,terminalUnlocked:false,error:"TERMINAL NOT DISCOVERED"},403);
-  const f=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.title,terminal_files.subtitle,terminal_files.classification,terminal_files.content,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC`).bind(u.user_id).all();
-  return c.json({authenticated:true,terminalUnlocked:true,rootUnlocked:!!x.root_unlocked,isAdmin:u.user_id===1,files:f.results,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
+  const f=await c.env.DB.prepare(`SELECT terminal_files.id,terminal_files.code,terminal_files.title,terminal_files.subtitle,terminal_files.classification,terminal_files.content,player_terminal_files.discovered_at FROM player_terminal_files INNER JOIN terminal_files ON terminal_files.id=player_terminal_files.file_id WHERE player_terminal_files.user_id=? ORDER BY player_terminal_files.discovered_at DESC`).bind(u.user_id).all();
+  return c.json({authenticated:true,terminalUnlocked:true,rootUnlocked:!!x.root_unlocked,unknownSignalResolved:!!x.unknown_signal_resolved,isAdmin:u.user_id===1,files:f.results,user:{id:u.user_id,discord_id:u.discord_id,username:u.username,global_name:u.global_name,avatar:u.avatar}});
 });
 
 app.post("/api/terminal/execute", async c => {
@@ -191,10 +191,16 @@ app.post("/api/terminal/execute", async c => {
     await c.env.DB.prepare(`UPDATE player_terminal_access SET root_unlocked=1,root_unlocked_at=COALESCE(root_unlocked_at,?) WHERE user_id=?`).bind(new Date().toISOString(),u.user_id).run();
     return c.json({success:true,type:"root",rootUnlocked:true,redirectUrl:TERMINAL_ROOT_URL});
   }
-  const file=await c.env.DB.prepare(`SELECT id,title,subtitle,classification,content FROM terminal_files WHERE lower(code)=lower(?) LIMIT 1`).bind(code).first() as {id:number;title:string;subtitle:string;classification:string;content:string}|null;
+  const file=await c.env.DB.prepare(`SELECT id,code,title,subtitle,classification,content FROM terminal_files WHERE lower(code)=lower(?) LIMIT 1`).bind(code).first() as {id:number;code:string;title:string;subtitle:string;classification:string;content:string}|null;
   if(!file) return c.json({success:false,error:"ACCESS CODE NOT RECOGNIZED"},404);
   await c.env.DB.prepare(`INSERT INTO player_terminal_files (user_id,file_id,discovered_at) VALUES (?,?,?) ON CONFLICT(user_id,file_id) DO NOTHING`).bind(u.user_id,file.id,new Date().toISOString()).run();
-  return c.json({success:true,type:"file",file});
+
+  const unknownSignalResolved=file.code.toUpperCase()==="UH3C";
+  if(unknownSignalResolved){
+    await c.env.DB.prepare(`UPDATE player_terminal_access SET unknown_signal_resolved=1 WHERE user_id=?`).bind(u.user_id).run();
+  }
+
+  return c.json({success:true,type:"file",file,unknownSignalResolved});
 });
 
 app.post("/api/terminal/root-access", async c => {
