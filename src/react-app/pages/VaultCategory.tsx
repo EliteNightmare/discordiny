@@ -24,17 +24,6 @@ type VaultProfileResponse = {
   upgradeMaterials: Record<string, number>;
 };
 
-type SourceIndex = {
-  owned: number;
-  total: number;
-  maxed: number;
-};
-
-type VaultIndexResponse = {
-  authenticated: boolean;
-  sources: Record<string, SourceIndex>;
-};
-
 /*
  * Activity banners:
  *
@@ -52,11 +41,82 @@ const activityBanners = import.meta.glob(
   },
 ) as Record<string, string>;
 
+const generalImages = import.meta.glob(
+  "../assets/general/*.png",
+  {
+    eager: true,
+    import: "default",
+    query: "?url",
+  },
+) as Record<string, string>;
+
+const vaultGeneralBannerBySource: Record<string, string> = {
+  // Infiltrations
+  bgs: "battlegrounds.png",
+  emph: "empirehunt.png",
+  nigh: "nightmarehunt.png",
+
+  // Showdowns
+  seraph: "exochallenge.png",
+  elivagar: "greathunt.png",
+  lucent: "lucentfireteam.png",
+  cos: "cos.png",
+  sos: "sos.png",
+  eow: "eow.png",
+
+  // Crawls
+  coil: "coil.png",
+  contest: "contest.png",
+  nether: "nether.png",
+};
+
+function findGeneralImage(
+  filename: string,
+): string | null {
+  const desiredFilename =
+    filename.toLowerCase();
+
+  for (
+    const [path, imageUrl]
+    of Object.entries(generalImages)
+  ) {
+    const normalizedPath =
+      path.replace(/\\/g, "/");
+
+    const currentFilename =
+      normalizedPath
+        .split("/")
+        .pop()
+        ?.toLowerCase();
+
+    if (currentFilename === desiredFilename) {
+      return imageUrl;
+    }
+  }
+
+  return null;
+}
+
 function findActivityBanner(
   source: string,
 ): string | null {
+  const normalizedSource =
+    source.toLowerCase();
+
+  const generalFilename =
+    vaultGeneralBannerBySource[normalizedSource];
+
+  if (generalFilename) {
+    const generalBanner =
+      findGeneralImage(generalFilename);
+
+    if (generalBanner) {
+      return generalBanner;
+    }
+  }
+
   const desiredFilename =
-    `${source.toLowerCase()}.png`;
+    `${normalizedSource}.png`;
 
   for (
     const [path, imageUrl]
@@ -119,9 +179,6 @@ function VaultCategory({
       null,
     );
 
-  const [vaultIndex, setVaultIndex] =
-    useState<VaultIndexResponse | null>(null);
-
   const [loading, setLoading] =
     useState(true);
 
@@ -131,22 +188,21 @@ function VaultCategory({
   useEffect(() => {
     async function loadVaultData() {
       try {
-        const [response, indexResponse] =
-          await Promise.all([
-            fetch("/api/game/profile", { credentials: "include" }),
-            fetch("/api/game/vault/index", { credentials: "include" }),
-          ]);
+        const response =
+          await fetch(
+            "/api/game/profile",
+            {
+              credentials:
+                "include",
+            },
+          );
 
         const result =
           (await response.json()) as VaultProfileResponse;
-        const indexResult =
-          (await indexResponse.json()) as VaultIndexResponse;
 
         if (
           !response.ok ||
-          !result.authenticated ||
-          !indexResponse.ok ||
-          !indexResult.authenticated
+          !result.authenticated
         ) {
           throw new Error(
             "You must be logged in to view your Vault.",
@@ -154,7 +210,6 @@ function VaultCategory({
         }
 
         setProfile(result);
-        setVaultIndex(indexResult);
       } catch (err) {
         setError(
           err instanceof Error
@@ -332,18 +387,10 @@ function VaultCategory({
                           </span>
 
                           <strong>
-                            {activity.name}
+                            {
+                              activity.name
+                            }
                           </strong>
-
-                          {vaultIndex?.sources[activity.weaponSource] && (
-                            <small className="vault-activity-index">
-                              {vaultIndex.sources[activity.weaponSource].owned}/
-                              {vaultIndex.sources[activity.weaponSource].total} OWNED
-                              {vaultIndex.sources[activity.weaponSource].maxed > 0
-                                ? ` · ${vaultIndex.sources[activity.weaponSource].maxed} MAXED`
-                                : ""}
-                            </small>
-                          )}
 
                           <span className="vault-activity-arrow">
                             ›
