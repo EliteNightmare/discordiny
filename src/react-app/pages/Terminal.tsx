@@ -30,6 +30,21 @@ type Draft = {
     content: string;
 };
 const blank: Draft = { id: null, code: "", title: "", subtitle: "", classification: "", content: "" };
+type AdminUser = {
+    id: number;
+    discord_id: string;
+    username: string;
+    global_name: string | null;
+    avatar: string | null;
+};
+type AdminDiscovery = {
+    id: number;
+    code: string;
+    title: string;
+    subtitle: string;
+    classification: string;
+    discovered_at: string;
+};
 function inline(text: string): ReactNode[] {
     const re = /(\*\*[^*]+\*\*|~~[^~]+~~|\|\|[^|]+\|\||`[^`\n]+`|\*[^*\n]+\*)/g;
     return text.split(re).filter(Boolean).map((p, i) => {
@@ -122,6 +137,12 @@ export default function Terminal() {
     const [user, setUser] = useState<User | null>(null), [files, setFiles] = useState<FileRow[]>([]), [selected, setSelected] = useState<number | null>(null);
     const [rootUnlocked, setRootUnlocked] = useState(false), [admin, setAdmin] = useState(false), [accountOpen, setAccountOpen] = useState(false), [adminOpen, setAdminOpen] = useState(false), [mobileFilesOpen, setMobileFilesOpen] = useState(false);
     const [adminFiles, setAdminFiles] = useState<FileRow[]>([]), [draft, setDraft] = useState<Draft>(blank), [adminMessage, setAdminMessage] = useState("");
+    const [adminUserName, setAdminUserName] = useState("");
+    const [adminUserMatches, setAdminUserMatches] = useState<AdminUser[]>([]);
+    const [adminSelectedUser, setAdminSelectedUser] = useState<AdminUser | null>(null);
+    const [adminDiscoveries, setAdminDiscoveries] = useState<AdminDiscovery[]>([]);
+    const [adminUserMessage, setAdminUserMessage] = useState("");
+    const [adminUserSearching, setAdminUserSearching] = useState(false);
     const [backwashActive, setBackwashActive] = useState(false), [backwashPhase, setBackwashPhase] = useState(0);
     const input = useRef<HTMLInputElement>(null), backwashTimers = useRef<number[]>([]);
     const current = useMemo(() => files.find(f => f.id === selected) ?? null, [files, selected]);
@@ -231,6 +252,69 @@ export default function Terminal() {
     async function loadAdmin() { const r = await request("/api/terminal/admin/files"), d = await r.json(); if (r.ok)
         setAdminFiles(d.files ?? []); }
     async function openAdmin() { setAdminOpen(true); setDraft(blank); setAdminMessage(""); await loadAdmin(); }
+    async function searchAdminUsers(e: FormEvent) {
+        e.preventDefault();
+        const name = adminUserName.trim();
+        if (!name)
+            return;
+        setAdminUserSearching(true);
+        setAdminUserMessage("");
+        setAdminSelectedUser(null);
+        setAdminDiscoveries([]);
+        try {
+            const r = await request(`/api/terminal/admin/users?name=${encodeURIComponent(name)}`);
+            const d = await r.json();
+            if (!r.ok) {
+                setAdminUserMessage(d.error ?? "USER SEARCH FAILED");
+                setAdminUserMatches([]);
+                return;
+            }
+            setAdminUserMatches(d.users ?? []);
+            if (!(d.users ?? []).length)
+                setAdminUserMessage("NO USERS FOUND");
+        }
+        catch {
+            setAdminUserMessage("USER SEARCH FAILED");
+            setAdminUserMatches([]);
+        }
+        finally {
+            setAdminUserSearching(false);
+        }
+    }
+    async function selectAdminUser(target: AdminUser) {
+        setAdminSelectedUser(target);
+        setAdminUserMessage("");
+        const r = await request(`/api/terminal/admin/users/${target.id}/discoveries`);
+        const d = await r.json();
+        if (!r.ok) {
+            setAdminUserMessage(d.error ?? "DISCOVERY LOOKUP FAILED");
+            setAdminDiscoveries([]);
+            return;
+        }
+        setAdminDiscoveries(d.discoveries ?? []);
+    }
+    async function resetAdminDiscovery(discovery: AdminDiscovery) {
+        if (!adminSelectedUser)
+            return;
+        const display = adminSelectedUser.global_name || adminSelectedUser.username;
+        if (!confirm(`Reset discovery "${discovery.code}" for ${display}?`))
+            return;
+        const r = await request(`/api/terminal/admin/users/${adminSelectedUser.id}/discoveries/${discovery.id}`, { method: "DELETE" });
+        const d = await r.json();
+        if (!r.ok) {
+            setAdminUserMessage(d.error ?? "DISCOVERY RESET FAILED");
+            return;
+        }
+        setAdminUserMessage(`DISCOVERY RESET // ${discovery.code}`);
+        setAdminDiscoveries(current => current.filter(file => file.id !== discovery.id));
+        if (adminSelectedUser.id === user?.id) {
+            setFiles(current => current.filter(file => file.id !== discovery.id));
+            if (selected === discovery.id)
+                setSelected(null);
+            if (discovery.code.trim().toUpperCase() === "UH3C")
+                setUnknownSignalResolved(false);
+        }
+    }
     async function save(e: FormEvent) { e.preventDefault(); const path = draft.id === null ? "/api/terminal/admin/files" : `/api/terminal/admin/files/${draft.id}`; const r = await request(path, { method: draft.id === null ? "POST" : "PUT", body: JSON.stringify(draft) }), d = await r.json(); if (!r.ok) {
         setAdminMessage(d.error ?? "FILE SAVE FAILED");
         return;
@@ -253,7 +337,14 @@ export default function Terminal() {
     <section className="terminal-workspace"><aside className={mobileFilesOpen ? "terminal-library terminal-library-open" : "terminal-library"}><UnknownSignalAutopost resolved={unknownSignalResolved} /><button type="button" className="terminal-section-heading terminal-library-toggle" onClick={() => setMobileFilesOpen(x => !x)} aria-expanded={mobileFilesOpen}><span>MY FILES</span><span className="terminal-library-toggle-meta"><small>{String(files.length).padStart(2, "0")}</small><b aria-hidden="true">{mobileFilesOpen ? "▲" : "▼"}</b></span></button><div className="terminal-library-list">{files.length === 0 ? <div className="terminal-empty">NO ARCHIVE RECORDS DISCOVERED</div> : files.map(f => <button key={f.id} className={selected === f.id ? "terminal-file-row active" : "terminal-file-row"} onClick={() => { setAdminOpen(false); setSelected(f.id); setMobileFilesOpen(false); }}><span>{f.title}</span><small className="terminal-file-code">CODE // {f.code || "UNKNOWN"}</small><small>{f.classification || "UNCLASSIFIED"}</small></button>)}</div></aside>
       <article className="terminal-reader">{adminOpen && admin ? <div className="terminal-admin"><div className="terminal-reader-header"><div><span>ADMINISTRATOR // USER 1</span><h1>{draft.id === null ? "CREATE TERMINAL FILE" : "EDIT TERMINAL FILE"}</h1></div><button onClick={() => setAdminOpen(false)}>CLOSE</button></div>
         <form className="terminal-admin-form" onSubmit={save}>{(["code", "title", "subtitle", "classification"] as const).map(k => <label key={k}>{k.toUpperCase()}<input value={draft[k]} onChange={e => setDraft({ ...draft, [k]: e.target.value })} required={k === "code" || k === "title"}/></label>)}<label className="terminal-admin-content">CONTENT<textarea rows={14} value={draft.content} onChange={e => setDraft({ ...draft, content: e.target.value })}/></label><div className="terminal-admin-actions"><button>{draft.id === null ? "CREATE FILE" : "SAVE CHANGES"}</button><button type="button" onClick={() => setDraft(blank)}>CLEAR</button></div></form><div className="terminal-message">{adminMessage || "\u00a0"}</div>
-        <div className="terminal-admin-existing"><h2>ALL TERMINAL FILES</h2>{adminFiles.length === 0 ? <div className="terminal-empty">DATABASE EMPTY</div> : adminFiles.map(f => <div className="terminal-admin-file-row" key={f.id}><div><strong>{f.title}</strong><small>{f.code}</small></div><button onClick={() => setDraft({ id: f.id, code: f.code ?? "", title: f.title, subtitle: f.subtitle, classification: f.classification, content: f.content })}>EDIT</button><button onClick={() => remove(f)}>DELETE</button></div>)}</div></div>
+        <div className="terminal-admin-existing"><h2>ALL TERMINAL FILES</h2>{adminFiles.length === 0 ? <div className="terminal-empty">DATABASE EMPTY</div> : adminFiles.map(f => <div className="terminal-admin-file-row" key={f.id}><div><strong>{f.title}</strong><small>{f.code}</small></div><button onClick={() => setDraft({ id: f.id, code: f.code ?? "", title: f.title, subtitle: f.subtitle, classification: f.classification, content: f.content })}>EDIT</button><button onClick={() => remove(f)}>DELETE</button></div>)}</div>
+        <section className="terminal-admin-user-reset">
+          <div className="terminal-admin-user-reset-heading"><span>ACCOUNT DISCOVERY CONTROL</span><h2>RESET USER FILE DISCOVERY</h2><p>Search Discordiny accounts by username or display name, select the account, then reset individual discovered Terminal files.</p></div>
+          <form className="terminal-admin-user-search" onSubmit={searchAdminUsers}><label>USER NAME<input value={adminUserName} onChange={e => setAdminUserName(e.target.value)} placeholder="USERNAME OR DISPLAY NAME" autoComplete="off"/></label><button disabled={adminUserSearching || !adminUserName.trim()}>{adminUserSearching ? "SEARCHING..." : "FIND USER"}</button></form>
+          <div className="terminal-message">{adminUserMessage || "\u00a0"}</div>
+          {adminUserMatches.length > 0 ? <div className="terminal-admin-user-matches">{adminUserMatches.map(target => <button type="button" key={target.id} className={adminSelectedUser?.id === target.id ? "terminal-admin-user-match active" : "terminal-admin-user-match"} onClick={() => void selectAdminUser(target)}><strong>{target.global_name || target.username}</strong><span>@{target.username}</span><small>USER ID {target.id}</small></button>)}</div> : null}
+          {adminSelectedUser ? <div className="terminal-admin-user-discoveries"><div className="terminal-admin-user-selected"><div><span>SELECTED ACCOUNT</span><strong>{adminSelectedUser.global_name || adminSelectedUser.username}</strong><small>@{adminSelectedUser.username} // USER ID {adminSelectedUser.id}</small></div><b>{adminDiscoveries.length} DISCOVERED</b></div>{adminDiscoveries.length === 0 ? <div className="terminal-empty">NO TERMINAL FILES DISCOVERED</div> : adminDiscoveries.map(discovery => <div className="terminal-admin-discovery-row" key={discovery.id}><div><strong>{discovery.title}</strong><span>CODE // {discovery.code}</span><small>{discovery.classification || "UNCLASSIFIED"}</small></div><button type="button" onClick={() => void resetAdminDiscovery(discovery)}>RESET DISCOVERY</button></div>)}</div> : null}
+        </section></div>
             : current ? <><div className="terminal-reader-header"><div><span>{current.classification || "UNCLASSIFIED"}</span><h1>{current.title}</h1>{current.subtitle ? <p>{current.subtitle}</p> : null}</div><small>RECORD {String(current.id).padStart(4, "0")}</small></div><div className="terminal-document">{document(current.content)}</div></>
                 : <div className="terminal-reader-empty"><img src={cbcLogo} alt=""/><span>CLOVIS BRAY // ARCHIVE</span><p>ENTER AN ACCESS CODE OR SELECT A DISCOVERED FILE.</p></div>}</article>
     </section></main>;
