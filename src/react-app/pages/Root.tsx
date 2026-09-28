@@ -8,10 +8,27 @@ import {
 
 import "./Root.css";
 import {
-  ROOT_DIRECTORY_ASSETS,
   ROOT_FILES,
   ROOT_LAYOUT,
 } from "./rootData";
+
+/*
+ * ROOT images live inside:
+ *
+ *   src/react-app/assets/root/
+ *   src/react-app/assets/root/ids/
+ *
+ * Because these are Vite source assets (not /public assets), they must be
+ * resolved through Vite rather than requested as "/assets/root/...".
+ */
+const ROOT_ASSET_MODULES = import.meta.glob(
+  "../assets/root/**/*.{png,jpg,jpeg,gif,webp,svg}",
+  {
+    eager: true,
+    query: "?url",
+    import: "default",
+  },
+) as Record<string, string>;
 
 type NavNode = {
   directories: readonly {
@@ -146,36 +163,64 @@ function authorizationAllowed(record: RootRecord | null) {
   );
 }
 
-function assetUrl(value: unknown) {
+function normalizeRootAssetPath(value: unknown) {
   if (!value) {
     return null;
   }
 
-  const normalized = String(value)
+  let normalized = String(value)
+    .trim()
     .replace(/\\/g, "/")
     .replace(/^\/+/, "");
 
-  const marker = "assets/root/";
-  const index = normalized.toLocaleLowerCase().indexOf(marker);
-
-  if (index >= 0) {
-    return `/assets/root/${normalized.slice(index + marker.length)}`;
+  if (!normalized) {
+    return null;
   }
 
-  if (!normalized.includes("/")) {
-    return `/assets/root/${normalized}`;
+  const lower = normalized.toLocaleLowerCase();
+
+  const discordinyMarker = "discordiny/assets/root/";
+  const discordinyIndex = lower.indexOf(discordinyMarker);
+
+  if (discordinyIndex >= 0) {
+    normalized = normalized.slice(
+      discordinyIndex + discordinyMarker.length,
+    );
+  } else {
+    const rootMarker = "assets/root/";
+    const rootIndex = lower.indexOf(rootMarker);
+
+    if (rootIndex >= 0) {
+      normalized = normalized.slice(
+        rootIndex + rootMarker.length,
+      );
+    } else if (!normalized.includes("/")) {
+      // A bare filename belongs directly in assets/root/.
+      normalized = normalized;
+    } else {
+      return null;
+    }
   }
 
-  return null;
+  return normalized.replace(/^\/+/, "");
 }
 
-function directoryAsset(path: string[]) {
-  const key = path.join("/");
-  return (
-    ROOT_DIRECTORY_ASSETS[key] ??
-    ROOT_DIRECTORY_ASSETS[""] ??
-    "/assets/root/root.gif"
+function assetUrl(value: unknown) {
+  const relativePath = normalizeRootAssetPath(value);
+
+  if (!relativePath) {
+    return null;
+  }
+
+  const wanted = `../assets/root/${relativePath}`.toLocaleLowerCase();
+
+  const matchingKey = Object.keys(ROOT_ASSET_MODULES).find(
+    (key) => key.toLocaleLowerCase() === wanted,
   );
+
+  return matchingKey
+    ? ROOT_ASSET_MODULES[matchingKey]
+    : null;
 }
 
 function renderInline(value: string): ReactNode[] {
@@ -334,7 +379,6 @@ export default function Root() {
       authorizationAllowed(record),
   );
   const fileImage = assetUrl(record?.image);
-  const currentDirectoryImage = directoryAsset(path);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -555,11 +599,6 @@ export default function Root() {
                 </div>
               </div>
 
-              <img
-                className="root-directory-image"
-                src={currentDirectoryImage}
-                alt=""
-              />
             </div>
 
             <div className="root-list" role="navigation">
