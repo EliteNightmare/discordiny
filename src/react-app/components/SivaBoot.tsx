@@ -1,739 +1,1323 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+/* =========================================================
+   SIVA BOOT
+   ========================================================= */
 
-import "./SivaBoot.css";
+.siva-boot {
+  position: fixed;
+  inset: 0;
 
-type SivaBootProps = {
-  onComplete: () => void;
-};
+  z-index: 999999;
 
-const REQUIRED_KEYS = [
-  "shift",
-  "s",
-  "i",
-  "v",
-  "a",
-];
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      #111111 0%,
+      #070707 45%,
+      #020202 100%
+    );
+
+  color: #e7e7e7;
+
+  font-family:
+    "Courier New",
+    Courier,
+    monospace;
+
+  user-select: none;
+
+  -webkit-user-select: none;
+}
+
+
+/* =========================================================
+   BACKGROUND GRID
+   ========================================================= */
+
+.siva-grid {
+  position: absolute;
+  inset: 0;
+
+  z-index: 0;
+
+  pointer-events: none;
+
+  opacity: 0.18;
+
+  background-image:
+    linear-gradient(
+      rgba(180, 20, 20, 0.08)
+      1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(180, 20, 20, 0.08)
+      1px,
+      transparent 1px
+    );
+
+  background-size:
+    48px
+    48px;
+
+  mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 82%
+    );
+
+  -webkit-mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 82%
+    );
+}
+
+
+/* =========================================================
+   SCANLINES
+   ========================================================= */
+
+.siva-scanlines {
+  position: absolute;
+  inset: 0;
+
+  z-index: 1;
+
+  pointer-events: none;
+
+  opacity: 0.13;
+
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 3px,
+      rgba(255, 255, 255, 0.025) 4px
+    );
+
+  animation:
+    siva-scanline-move
+    7s
+    linear
+    infinite;
+}
+
+
+/* =========================================================
+   GLITCH BARS
+   ========================================================= */
+
+.siva-glitch-bar {
+  position: absolute;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  height: 2px;
+
+  opacity: 0;
+
+  background:
+    #b10f16;
+
+  box-shadow:
+    0 0 12px
+    rgba(190, 10, 20, 0.5);
+}
+
+.siva-glitch-bar-one {
+  top: 24%;
+  left: 7%;
+
+  width: 26%;
+
+  animation:
+    siva-glitch-one
+    2.8s
+    steps(1)
+    infinite;
+}
+
+.siva-glitch-bar-two {
+  top: 62%;
+  right: 5%;
+
+  width: 18%;
+
+  animation:
+    siva-glitch-two
+    3.4s
+    steps(1)
+    infinite;
+}
+
+.siva-glitch-bar-three {
+  bottom: 18%;
+  left: 22%;
+
+  width: 12%;
+
+  animation:
+    siva-glitch-three
+    4.1s
+    steps(1)
+    infinite;
+}
+
+
+/* =========================================================
+   SIDE SYSTEM CODE
+   ========================================================= */
+
+.siva-code {
+  position: absolute;
+
+  z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+
+  pointer-events: none;
+
+  color:
+    rgba(
+      150,
+      150,
+      150,
+      0.32
+    );
+
+  font-size: 0.52rem;
+  font-weight: 700;
+
+  line-height: 1.4;
+
+  letter-spacing: 0.16em;
+}
+
+.siva-code-left {
+  top: 50%;
+
+  left: 32px;
+
+  transform:
+    translateY(-50%);
+}
+
+.siva-code-right {
+  top: 50%;
+
+  right: 32px;
+
+  align-items: flex-end;
+
+  transform:
+    translateY(-50%);
+
+  text-align: right;
+}
+
+
+/* =========================================================
+   MAIN BOOT CONTENT
+   ========================================================= */
+
+.siva-boot-content {
+  position: relative;
+
+  z-index: 10;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  width:
+    min(
+      580px,
+      calc(100% - 48px)
+    );
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   SIVA DIAMOND
+   ========================================================= */
+
+.siva-diamond {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 62px;
+  height: 62px;
+
+  margin-bottom: 34px;
+
+  transform:
+    rotate(45deg);
+
+  border:
+    1px solid
+    rgba(
+      184,
+      22,
+      28,
+      0.72
+    );
+
+  background:
+    rgba(
+      105,
+      8,
+      12,
+      0.08
+    );
+
+  box-shadow:
+    0 0 30px
+    rgba(
+      185,
+      15,
+      22,
+      0.08
+    );
+
+  animation:
+    siva-diamond-pulse
+    1.6s
+    ease-in-out
+    infinite alternate;
+}
+
+.siva-diamond::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 8px;
+
+  border:
+    1px solid
+    rgba(
+      177,
+      18,
+      24,
+      0.28
+    );
+}
+
+.siva-diamond span {
+  display: block;
+
+  width: 12px;
+  height: 12px;
+
+  background: #a70f15;
+
+  box-shadow:
+    0 0 18px
+    rgba(
+      190,
+      12,
+      20,
+      0.5
+    );
+}
+
+
+/* =========================================================
+   DISCORDINY TITLE
+   ========================================================= */
+
+.siva-boot-content h1 {
+  margin: 0;
+
+  color: #e8e8e8;
+
+  font-size:
+    clamp(
+      2rem,
+      6vw,
+      4.3rem
+    );
+
+  font-weight: 400;
+
+  line-height: 1;
+
+  letter-spacing: 0.3em;
+
+  text-indent: 0.3em;
+
+  text-shadow:
+    0 0 20px
+    rgba(
+      255,
+      255,
+      255,
+      0.04
+    );
+}
+
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.siva-status {
+  min-height: 16px;
+
+  margin:
+    24px
+    0
+    0;
+
+  color: #9c2024;
+
+  font-size: 0.58rem;
+  font-weight: 700;
+
+  letter-spacing: 0.22em;
+
+  animation:
+    siva-status-flicker
+    2.4s
+    steps(1)
+    infinite;
+}
+
+
+/* =========================================================
+   PROGRESS BAR
+   ========================================================= */
+
+.siva-progress-track {
+  position: relative;
+
+  width: 100%;
+  height: 3px;
+
+  margin-top: 30px;
+
+  overflow: hidden;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.08
+    );
+}
+
+.siva-progress-fill {
+  height: 100%;
+
+  background:
+    #a20e14;
+
+  box-shadow:
+    0 0 12px
+    rgba(
+      190,
+      15,
+      22,
+      0.4
+    );
+
+  transition:
+    width
+    40ms
+    linear;
+}
+
+.siva-progress-number {
+  align-self: flex-end;
+
+  margin-top: 10px;
+
+  color:
+    rgba(
+      190,
+      190,
+      190,
+      0.45
+    );
+
+  font-size: 0.5rem;
+  font-weight: 700;
+
+  letter-spacing: 0.12em;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.siva-footer {
+  position: absolute;
+
+  right: 26px;
+  bottom: 22px;
+
+  z-index: 5;
+
+  pointer-events: none;
+
+  color:
+    rgba(
+      150,
+      150,
+      150,
+      0.25
+    );
+
+  font-size: 0.47rem;
+  font-weight: 700;
+
+  letter-spacing: 0.18em;
+}
+
+
+/* =========================================================
+   TERMINAL ACTIVATION STATE
+   ========================================================= */
+
+.siva-terminal-triggered
+.siva-diamond {
+  border-color:
+    rgba(
+      255,
+      30,
+      30,
+      0.95
+    );
+
+  background:
+    rgba(
+      150,
+      0,
+      0,
+      0.18
+    );
+
+  box-shadow:
+    0 0 45px
+    rgba(
+      220,
+      15,
+      20,
+      0.22
+    );
+
+  animation:
+    siva-terminal-diamond
+    0.15s
+    steps(2)
+    infinite;
+}
+
+.siva-terminal-triggered
+.siva-diamond span {
+  background:
+    #e01c24;
+
+  box-shadow:
+    0 0 25px
+    rgba(
+      240,
+      20,
+      30,
+      0.75
+    );
+}
+
+.siva-terminal-triggered
+.siva-status {
+  color:
+    #d3262d;
+}
+
+
+/* =========================================================
+   MOBILE S-I-V-A ACCESS KEYS
+   ========================================================= */
 
 /*
- * Mobile puzzle:
+ * Desktop:
  *
- * S -> I -> V -> A
+ * Completely hidden.
  *
- * Each next letter must be pressed
- * within this amount of time.
+ * Desktop continues using the
+ * Shift + S + I + V + A shortcut.
  */
-const MOBILE_SEQUENCE = [
-  "S",
-  "I",
-  "V",
-  "A",
-];
 
-const MOBILE_SEQUENCE_TIMEOUT =
-  1600;
+.siva-sequence-key {
+  display: none;
+}
 
-export default function SivaBoot({
-  onComplete,
-}: SivaBootProps) {
-  const [
-    progress,
-    setProgress,
-  ] = useState(0);
 
-  const [
-    status,
-    setStatus,
-  ] = useState(
-    "INITIALIZING DISCORDINY",
-  );
+/* =========================================================
+   TOUCH DEVICE SECRET
+   ========================================================= */
 
-  const [
-    terminalTriggered,
-    setTerminalTriggered,
-  ] = useState(false);
+@media (hover: none) and (pointer: coarse) {
+  .siva-sequence-key {
+    position: fixed;
 
-  /*
-   * Which step of S-I-V-A the
-   * mobile player has reached.
-   *
-   * 0 = waiting for S
-   * 1 = waiting for I
-   * 2 = waiting for V
-   * 3 = waiting for A
-   */
-  const [
-    mobileSequenceIndex,
-    setMobileSequenceIndex,
-  ] = useState(0);
+    z-index: 50;
 
-  const heldKeys =
-    useRef<Set<string>>(
-      new Set(),
-    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-  const triggered =
-    useRef(false);
+    width: 36px;
+    height: 36px;
 
-  const mobileSequenceIndexRef =
-    useRef(0);
+    padding: 0;
 
-  const mobileSequenceTimer =
-    useRef<
-      ReturnType<
-        typeof setTimeout
-      > | null
-    >(null);
-
-  /*
-   * ========================================================
-   * RESET MOBILE SEQUENCE
-   * ========================================================
-   */
-
-  const resetMobileSequence =
-    useCallback(() => {
-      if (
-        mobileSequenceTimer.current
-      ) {
-        clearTimeout(
-          mobileSequenceTimer.current,
-        );
-
-        mobileSequenceTimer.current =
-          null;
-      }
-
-      mobileSequenceIndexRef.current =
-        0;
-
-      setMobileSequenceIndex(0);
-    }, []);
-
-  /*
-   * ========================================================
-   * ACTIVATE TERMINAL
-   * ========================================================
-   */
-
-  const activateTerminal =
-    useCallback(async () => {
-      if (triggered.current) {
-        return;
-      }
-
-      triggered.current = true;
-      setTerminalTriggered(true);
-      setStatus(
-        "SIVA ACCESS VECTOR DETECTED",
+    border:
+      1px solid
+      rgba(
+        145,
+        151,
+        157,
+        0.2
       );
 
-      if (
-        mobileSequenceTimer.current
-      ) {
-        clearTimeout(
-          mobileSequenceTimer.current,
-        );
+    border-radius: 3px;
 
-        mobileSequenceTimer.current =
-          null;
-      }
+    outline: 0;
 
-      try {
-        const response =
-          await fetch(
-            "/api/terminal/unlock",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type":
-                  "application/json",
-              },
-              credentials: "include",
-            },
-          );
-
-        const data =
-          await response.json();
-
-        if (
-          !response.ok ||
-          !data.success
-        ) {
-          throw new Error(
-            data.error ??
-              "Unable to unlock terminal.",
-          );
-        }
-
-        setStatus(
-          "OPENING SIVA TERMINAL",
-        );
-
-        window.location.assign(
-          data.redirectUrl ??
-            "https://terminal.discordiny.com/",
-        );
-      } catch {
-        triggered.current = false;
-        setTerminalTriggered(false);
-        heldKeys.current.clear();
-        resetMobileSequence();
-        setStatus(
-          "SYSTEM READY",
-        );
-      }
-    }, [
-      resetMobileSequence,
-    ]);
-
-  /*
-   * ========================================================
-   * 5 SECOND BOOT SEQUENCE
-   * ========================================================
-   */
-
-  useEffect(() => {
-    const startTime =
-      performance.now();
-
-    let animationFrame = 0;
-
-    function update() {
-      const elapsed =
-        performance.now() -
-        startTime;
-
-      const nextProgress =
-        Math.min(
-          100,
-          (elapsed / 5000) *
-            100,
-        );
-
-      setProgress(
-        nextProgress,
+    background:
+      rgba(
+        12,
+        14,
+        16,
+        0.18
       );
 
-      if (
-        !triggered.current
-      ) {
-        if (elapsed < 900) {
-          setStatus(
-            "INITIALIZING DISCORDINY",
-          );
-        } else if (
-          elapsed < 1800
-        ) {
-          setStatus(
-            "VERIFYING MEMORY",
-          );
-        } else if (
-          elapsed < 2700
-        ) {
-          setStatus(
-            "ESTABLISHING NETWORK LINK",
-          );
-        } else if (
-          elapsed < 3600
-        ) {
-          setStatus(
-            "VALIDATING SYSTEM",
-          );
-        } else if (
-          elapsed < 4500
-        ) {
-          setStatus(
-            "FINALIZING BOOT SEQUENCE",
-          );
-        } else {
-          setStatus(
-            "SYSTEM READY",
-          );
-        }
-      }
-
-      if (elapsed >= 5000) {
-        if (
-          !triggered.current
-        ) {
-          onComplete();
-        }
-
-        return;
-      }
-
-      animationFrame =
-        requestAnimationFrame(
-          update,
-        );
-    }
-
-    animationFrame =
-      requestAnimationFrame(
-        update,
+    color:
+      rgba(
+        170,
+        175,
+        180,
+        0.3
       );
 
-    return () => {
-      cancelAnimationFrame(
-        animationFrame,
-      );
-    };
-  }, [onComplete]);
-
-  /*
-   * ========================================================
-   * DESKTOP SECRET
-   *
-   * SHIFT + S + I + V + A
-   * held simultaneously.
-   * ========================================================
-   */
-
-  useEffect(() => {
-    function normalizeKey(
-      key: string,
-    ) {
-      if (
-        key === "Shift"
-      ) {
-        return "shift";
-      }
-
-      return key.toLowerCase();
-    }
-
-    function checkKeys() {
-      const allHeld =
-        REQUIRED_KEYS.every(
-          (key) =>
-            heldKeys.current.has(
-              key,
-            ),
-        );
-
-      if (allHeld) {
-        activateTerminal();
-      }
-    }
-
-    function handleKeyDown(
-      event: KeyboardEvent,
-    ) {
-      const key =
-        normalizeKey(
-          event.key,
-        );
-
-      heldKeys.current.add(
-        key,
+    box-shadow:
+      inset
+      0 0 10px
+      rgba(
+        255,
+        255,
+        255,
+        0.01
       );
 
-      checkKeys();
-    }
+    cursor: pointer;
 
-    function handleKeyUp(
-      event: KeyboardEvent,
-    ) {
-      const key =
-        normalizeKey(
-          event.key,
-        );
+    font-family:
+      "Courier New",
+      Courier,
+      monospace;
 
-      heldKeys.current.delete(
-        key,
+    font-size: 0.7rem;
+    font-weight: 700;
+
+    line-height: 1;
+
+    letter-spacing: 0;
+
+    user-select: none;
+
+    -webkit-user-select: none;
+
+    -webkit-tap-highlight-color:
+      transparent;
+
+    touch-action:
+      manipulation;
+
+    transition:
+      color
+      100ms ease,
+      border-color
+      100ms ease,
+      background
+      100ms ease,
+      box-shadow
+      100ms ease,
+      opacity
+      100ms ease,
+      transform
+      100ms ease;
+  }
+
+
+  /* =======================================================
+     S
+
+     Upper-left region.
+     ======================================================= */
+
+  .siva-sequence-s {
+    top: 13%;
+    left: 7%;
+  }
+
+
+  /* =======================================================
+     I
+
+     Upper-right region.
+     ======================================================= */
+
+  .siva-sequence-i {
+    top: 26%;
+    right: 8%;
+  }
+
+
+  /* =======================================================
+     V
+
+     Lower-left region.
+     ======================================================= */
+
+  .siva-sequence-v {
+    bottom: 20%;
+    left: 11%;
+  }
+
+
+  /* =======================================================
+     A
+
+     Lower-right region.
+     ======================================================= */
+
+  .siva-sequence-a {
+    right: 9%;
+    bottom: 9%;
+  }
+
+
+  /* =======================================================
+     TAP FEEDBACK
+     ======================================================= */
+
+  .siva-sequence-key:active {
+    transform:
+      scale(0.88);
+
+    border-color:
+      rgba(
+        201,
+        34,
+        34,
+        0.8
       );
-    }
 
-    function handleBlur() {
-      heldKeys.current.clear();
-
-      resetMobileSequence();
-    }
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown,
-    );
-
-    window.addEventListener(
-      "keyup",
-      handleKeyUp,
-    );
-
-    window.addEventListener(
-      "blur",
-      handleBlur,
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown,
+    background:
+      rgba(
+        150,
+        10,
+        10,
+        0.18
       );
 
-      window.removeEventListener(
-        "keyup",
-        handleKeyUp,
+    color:
+      rgba(
+        224,
+        56,
+        56,
+        0.95
       );
 
-      window.removeEventListener(
-        "blur",
-        handleBlur,
-      );
-    };
-  }, [
-    activateTerminal,
-    resetMobileSequence,
-  ]);
-
-  /*
-   * ========================================================
-   * MOBILE S-I-V-A PUZZLE
-   * ========================================================
-   */
-
-  function handleMobileLetter(
-    letter: string,
-  ) {
-    if (
-      triggered.current
-    ) {
-      return;
-    }
-
-    const currentIndex =
-      mobileSequenceIndexRef.current;
-
-    const expectedLetter =
-      MOBILE_SEQUENCE[
-        currentIndex
-      ];
-
-    /*
-     * Wrong letter:
-     *
-     * Reset everything.
-     *
-     * If they happened to press S,
-     * however, immediately treat that
-     * as the beginning of a new
-     * sequence.
-     */
-    if (
-      letter !==
-      expectedLetter
-    ) {
-      resetMobileSequence();
-
-      if (letter === "S") {
-        mobileSequenceIndexRef.current =
-          1;
-
-        setMobileSequenceIndex(
-          1,
-        );
-
-        mobileSequenceTimer.current =
-          setTimeout(
-            resetMobileSequence,
-            MOBILE_SEQUENCE_TIMEOUT,
-          );
-      }
-
-      return;
-    }
-
-    /*
-     * Correct letter.
-     */
-    const nextIndex =
-      currentIndex + 1;
-
-    /*
-     * A completed the sequence.
-     */
-    if (
-      nextIndex >=
-      MOBILE_SEQUENCE.length
-    ) {
-      resetMobileSequence();
-
-      activateTerminal();
-
-      return;
-    }
-
-    mobileSequenceIndexRef.current =
-      nextIndex;
-
-    setMobileSequenceIndex(
-      nextIndex,
-    );
-
-    /*
-     * Restart the timer every time
-     * they successfully press the
-     * next letter.
-     */
-    if (
-      mobileSequenceTimer.current
-    ) {
-      clearTimeout(
-        mobileSequenceTimer.current,
-      );
-    }
-
-    mobileSequenceTimer.current =
-      setTimeout(
-        resetMobileSequence,
-        MOBILE_SEQUENCE_TIMEOUT,
+    box-shadow:
+      0 0 18px
+      rgba(
+        180,
+        20,
+        25,
+        0.12
       );
   }
 
+
+  /* =======================================================
+     CORRECT SEQUENCE FEEDBACK
+     ======================================================= */
+
+  .siva-sequence-complete {
+    border-color:
+      rgba(
+        176,
+        27,
+        27,
+        0.4
+      );
+
+    background:
+      rgba(
+        108,
+        10,
+        10,
+        0.09
+      );
+
+    color:
+      rgba(
+        202,
+        47,
+        47,
+        0.6
+      );
+
+    box-shadow:
+      0 0 14px
+      rgba(
+        170,
+        15,
+        20,
+        0.06
+      );
+  }
+
+
   /*
-   * Clean up sequence timer if the
-   * component disappears.
+   * Once terminal activation begins,
+   * make all four letters react.
    */
-  useEffect(() => {
-    return () => {
-      if (
-        mobileSequenceTimer.current
-      ) {
-        clearTimeout(
-          mobileSequenceTimer.current,
-        );
-      }
-    };
-  }, []);
 
-  return (
-    <main
-      className={
-        terminalTriggered
-          ? "siva-boot siva-terminal-triggered"
-          : "siva-boot"
-      }
-    >
-      <div className="siva-grid" />
+  .siva-terminal-triggered
+  .siva-sequence-key {
+    border-color:
+      rgba(
+        210,
+        25,
+        30,
+        0.55
+      );
 
-      <div className="siva-scanlines" />
+    color:
+      rgba(
+        230,
+        40,
+        45,
+        0.8
+      );
 
-      <div className="siva-glitch-bar siva-glitch-bar-one" />
+    background:
+      rgba(
+        120,
+        5,
+        10,
+        0.14
+      );
 
-      <div className="siva-glitch-bar siva-glitch-bar-two" />
+    animation:
+      siva-key-triggered
+      0.3s
+      steps(2)
+      infinite;
+  }
+}
 
-      <div className="siva-glitch-bar siva-glitch-bar-three" />
 
-      {/*
-       * Decorative system text
-       */}
+/* =========================================================
+   SMALLER MOBILE SCREENS
+   ========================================================= */
 
-      <div className="siva-code siva-code-left">
-        <span>
-          SYS//DISCORDINY
-        </span>
+@media (max-width: 800px) {
+  .siva-code {
+    font-size: 0.42rem;
 
-        <span>
-          MEM_CHECK: OK
-        </span>
+    opacity: 0.65;
+  }
 
-        <span>
-          LINK: ACTIVE
-        </span>
+  .siva-code-left {
+    top: 18%;
 
-        <span>
-          PROTOCOL: INIT
-        </span>
-      </div>
+    left: 16px;
 
-      <div className="siva-code siva-code-right">
-        <span>
-          0x0007F3A
-        </span>
+    transform: none;
+  }
 
-        <span>
-          NODE//ACTIVE
-        </span>
+  .siva-code-right {
+    top: auto;
 
-        <span>
-          SIVA_NET
-        </span>
+    right: 16px;
+    bottom: 15%;
 
-        <span>
-          AUTH//WAIT
-        </span>
-      </div>
+    transform: none;
+  }
 
-      <div
-        className="siva-hold-hint siva-hold-hint-one"
-        aria-hidden="true"
-      >
-        HOLD SHIFT + S I V A
-      </div>
+  .siva-boot-content {
+    width:
+      min(
+        440px,
+        calc(100% - 42px)
+      );
+  }
 
-      <div
-        className="siva-hold-hint siva-hold-hint-two"
-        aria-hidden="true"
-      >
-        HOLD SHIFT + S I V A
-      </div>
+  .siva-diamond {
+    width: 52px;
+    height: 52px;
 
-      <div
-        className="siva-hold-hint siva-hold-hint-three"
-        aria-hidden="true"
-      >
-        HOLD SHIFT + S I V A
-      </div>
+    margin-bottom: 28px;
+  }
 
-      <div
-        className="siva-hold-hint siva-hold-hint-four"
-        aria-hidden="true"
-      >
-        HOLD SHIFT + S I V A
-      </div>
+  .siva-boot-content h1 {
+    font-size:
+      clamp(
+        1.65rem,
+        9vw,
+        3rem
+      );
 
-      {/*
-       * Main boot content
-       */}
+    letter-spacing: 0.22em;
 
-      <section className="siva-boot-content">
-        <div className="siva-diamond">
-          <span />
-        </div>
+    text-indent: 0.22em;
+  }
 
-        <h1>
-          DISCORDINY
-        </h1>
+  .siva-status {
+    margin-top: 20px;
 
-        <p className="siva-status">
-          {status}
-        </p>
+    font-size: 0.5rem;
 
-        <div className="siva-progress-track">
-          <div
-            className="siva-progress-fill"
-            style={{
-              width:
-                `${progress}%`,
-            }}
-          />
-        </div>
+    letter-spacing: 0.17em;
+  }
 
-        <div className="siva-progress-number">
-          {Math.floor(
-            progress,
-          )
-            .toString()
-            .padStart(
-              3,
-              "0",
-            )}
-          %
-        </div>
+  .siva-progress-track {
+    margin-top: 25px;
+  }
 
-      </section>
+  .siva-footer {
+    right: 15px;
+    bottom: 14px;
 
-      <footer className="siva-footer">
-        DISCORDINY SYSTEM
-        // BOOT
-      </footer>
+    font-size: 0.4rem;
+  }
+}
 
-      {/*
-       * ====================================================
-       * MOBILE SECRET BUTTONS
-       *
-       * Deliberately scattered across
-       * four separate areas.
-       *
-       * They only appear on coarse
-       * pointer/touch devices via CSS.
-       * ====================================================
-       */}
 
-      <button
-        type="button"
-        className={[
-          "siva-sequence-key",
-          "siva-sequence-s",
-          mobileSequenceIndex >
-          0
-            ? "siva-sequence-complete"
-            : "",
-        ].join(" ")}
-        onClick={() =>
-          handleMobileLetter(
-            "S",
-          )
-        }
-        aria-label="S"
-      >
-        S
-      </button>
+/* =========================================================
+   VERY SMALL MOBILE SCREENS
+   ========================================================= */
 
-      <button
-        type="button"
-        className={[
-          "siva-sequence-key",
-          "siva-sequence-i",
-          mobileSequenceIndex >
-          1
-            ? "siva-sequence-complete"
-            : "",
-        ].join(" ")}
-        onClick={() =>
-          handleMobileLetter(
-            "I",
-          )
-        }
-        aria-label="I"
-      >
-        I
-      </button>
+@media (max-width: 480px) {
+  .siva-grid {
+    background-size:
+      38px
+      38px;
+  }
 
-      <button
-        type="button"
-        className={[
-          "siva-sequence-key",
-          "siva-sequence-v",
-          mobileSequenceIndex >
-          2
-            ? "siva-sequence-complete"
-            : "",
-        ].join(" ")}
-        onClick={() =>
-          handleMobileLetter(
-            "V",
-          )
-        }
-        aria-label="V"
-      >
-        V
-      </button>
+  .siva-code-left {
+    top: 10%;
 
-      <button
-        type="button"
-        className={[
-          "siva-sequence-key",
-          "siva-sequence-a",
-          mobileSequenceIndex >
-          3
-            ? "siva-sequence-complete"
-            : "",
-        ].join(" ")}
-        onClick={() =>
-          handleMobileLetter(
-            "A",
-          )
-        }
-        aria-label="A"
-      >
-        A
-      </button>
-    </main>
-  );
+    left: 12px;
+  }
+
+  .siva-code-right {
+    right: 12px;
+    bottom: 11%;
+  }
+
+  .siva-code {
+    gap: 5px;
+
+    font-size: 0.36rem;
+
+    letter-spacing: 0.11em;
+  }
+
+  .siva-boot-content {
+    width:
+      calc(100% - 36px);
+  }
+
+  .siva-diamond {
+    width: 46px;
+    height: 46px;
+
+    margin-bottom: 25px;
+  }
+
+  .siva-diamond::before {
+    inset: 6px;
+  }
+
+  .siva-diamond span {
+    width: 10px;
+    height: 10px;
+  }
+
+  .siva-boot-content h1 {
+    font-size: 1.55rem;
+
+    letter-spacing: 0.18em;
+
+    text-indent: 0.18em;
+  }
+
+  .siva-status {
+    font-size: 0.44rem;
+
+    letter-spacing: 0.13em;
+  }
+
+  .siva-progress-number {
+    font-size: 0.44rem;
+  }
+
+
+  /*
+   * Slightly smaller secret keys
+   * on narrow phones.
+   */
+
+  .siva-sequence-key {
+    width: 32px;
+    height: 32px;
+
+    font-size: 0.62rem;
+  }
+
+  .siva-sequence-s {
+    top: 15%;
+    left: 6%;
+  }
+
+  .siva-sequence-i {
+    top: 29%;
+    right: 6%;
+  }
+
+  .siva-sequence-v {
+    bottom: 22%;
+    left: 8%;
+  }
+
+  .siva-sequence-a {
+    right: 7%;
+    bottom: 7%;
+  }
+}
+
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes siva-scanline-move {
+  from {
+    transform:
+      translateY(0);
+  }
+
+  to {
+    transform:
+      translateY(16px);
+  }
+}
+
+@keyframes siva-diamond-pulse {
+  from {
+    opacity: 0.58;
+
+    box-shadow:
+      0 0 18px
+      rgba(
+        185,
+        15,
+        22,
+        0.04
+      );
+  }
+
+  to {
+    opacity: 1;
+
+    box-shadow:
+      0 0 34px
+      rgba(
+        185,
+        15,
+        22,
+        0.13
+      );
+  }
+}
+
+@keyframes siva-status-flicker {
+  0%,
+  91%,
+  94%,
+  100% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 0.35;
+  }
+
+  93% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes siva-glitch-one {
+  0%,
+  79%,
+  82%,
+  100% {
+    opacity: 0;
+  }
+
+  80% {
+    opacity: 0.55;
+
+    transform:
+      translateX(0);
+  }
+
+  81% {
+    opacity: 0.2;
+
+    transform:
+      translateX(22px);
+  }
+}
+
+@keyframes siva-glitch-two {
+  0%,
+  62%,
+  65%,
+  100% {
+    opacity: 0;
+  }
+
+  63% {
+    opacity: 0.45;
+
+    transform:
+      translateX(0);
+  }
+
+  64% {
+    opacity: 0.18;
+
+    transform:
+      translateX(-28px);
+  }
+}
+
+@keyframes siva-glitch-three {
+  0%,
+  87%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+
+  88% {
+    opacity: 0.38;
+
+    transform:
+      translateX(0);
+  }
+
+  89% {
+    opacity: 0.12;
+
+    transform:
+      translateX(35px);
+  }
+}
+
+@keyframes siva-terminal-diamond {
+  0% {
+    transform:
+      rotate(45deg)
+      translate(0, 0);
+  }
+
+  50% {
+    transform:
+      rotate(45deg)
+      translate(2px, -1px);
+  }
+
+  100% {
+    transform:
+      rotate(45deg)
+      translate(-1px, 1px);
+  }
+}
+
+@keyframes siva-key-triggered {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.35;
+  }
+
+  100% {
+    opacity: 0.8;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (
+  prefers-reduced-motion:
+  reduce
+) {
+  .siva-scanlines,
+  .siva-glitch-bar,
+  .siva-diamond,
+  .siva-status,
+  .siva-terminal-triggered
+  .siva-sequence-key {
+    animation: none;
+  }
+
+  .siva-progress-fill,
+  .siva-sequence-key {
+    transition: none;
+  }
+}
+
+
+/* =========================================================
+   TERMINAL ACCESS HINTS // DELIBERATELY SCATTERED
+   ========================================================= */
+.siva-hold-hint {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+
+  color: rgba(188, 31, 38, 0.18);
+
+  font-family:
+    "Courier New",
+    Courier,
+    monospace;
+
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 0.19em;
+  white-space: nowrap;
+
+  opacity: 0.08;
+
+  text-shadow:
+    0 0 8px
+    rgba(190, 15, 22, 0.12);
+
+  animation:
+    siva-hold-hint-blink
+    2.85s
+    steps(1, end)
+    infinite;
+}
+
+.siva-hold-hint-one {
+  top: 16%;
+  left: 17%;
+  animation-delay: -0.35s;
+}
+
+.siva-hold-hint-two {
+  top: 35%;
+  right: 13%;
+  animation-delay: -1.45s;
+}
+
+.siva-hold-hint-three {
+  bottom: 27%;
+  left: 12%;
+  animation-delay: -2.15s;
+}
+
+.siva-hold-hint-four {
+  right: 19%;
+  bottom: 12%;
+  animation-delay: -0.9s;
+}
+
+@keyframes siva-hold-hint-blink {
+  0%,
+  10%,
+  14%,
+  48%,
+  52%,
+  78%,
+  82%,
+  100% {
+    opacity: 0.06;
+  }
+
+  11%,
+  13% {
+    opacity: 0.34;
+  }
+
+  49%,
+  51% {
+    opacity: 0.22;
+  }
+
+  79%,
+  81% {
+    opacity: 0.29;
+  }
+}
+
+.siva-terminal-triggered
+.siva-hold-hint {
+  opacity: 0;
+  animation: none;
+}
+
+/* Touch devices keep the existing scattered S-I-V-A button puzzle. */
+@media (hover: none) and (pointer: coarse) {
+  .siva-hold-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siva-hold-hint {
+    animation: none;
+    opacity: 0.13;
+  }
 }
