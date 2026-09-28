@@ -120,44 +120,90 @@ export default function SivaBoot({
    * ========================================================
    */
 
-  const [terminalUnlocked, setTerminalUnlocked] = useState(false);
+  const activateTerminal =
+    useCallback(async () => {
+      if (triggered.current) {
+        return;
+      }
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/terminal/status", { credentials: "include" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (!cancelled && data) setTerminalUnlocked(Boolean(data.terminalUnlocked));
-      })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, []);
+      triggered.current = true;
 
-  const activateTerminal = useCallback(async () => {
-    if (triggered.current) return;
-    triggered.current = true;
-    setTerminalTriggered(true);
-    setStatus("SIVA ACCESS VECTOR DETECTED");
-    try {
-      const response = await fetch("/api/terminal/unlock", { method: "POST", credentials: "include" });
-      const data = await response.json();
-      if (response.status === 401) { window.location.href = "/api/auth/login"; return; }
-      if (!response.ok || !data.success) throw new Error();
-      setTerminalUnlocked(true);
-      setStatus("OPENING SIVA TERMINAL");
-      window.location.href = data.redirectUrl ?? "https://terminal.discordiny.com/";
-    } catch {
-      triggered.current = false;
-      setTerminalTriggered(false);
-      heldKeys.current.clear();
-      resetMobileSequence();
-      setStatus("SYSTEM READY");
-    }
-  }, [resetMobileSequence]);
+      setTerminalTriggered(true);
 
-  const openUnlockedTerminal = useCallback(() => {
-    window.location.href = "https://terminal.discordiny.com/";
-  }, []);
+      setStatus(
+        "SIVA ACCESS VECTOR DETECTED",
+      );
+
+      if (
+        mobileSequenceTimer.current
+      ) {
+        clearTimeout(
+          mobileSequenceTimer.current,
+        );
+
+        mobileSequenceTimer.current =
+          null;
+      }
+
+      try {
+        const response =
+          await fetch(
+            "/api/terminal/create",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success ||
+          !data.instanceKey
+        ) {
+          throw new Error(
+            "Unable to create terminal instance.",
+          );
+        }
+
+        setStatus(
+          "OPENING SIVA TERMINAL",
+        );
+
+        window.location.href =
+          `https://terminal.discordiny.com/${encodeURIComponent(
+            data.instanceKey,
+          )}`;
+      } catch {
+        triggered.current = false;
+
+        setTerminalTriggered(false);
+
+        heldKeys.current.clear();
+
+        resetMobileSequence();
+
+        setStatus(
+          "SYSTEM READY",
+        );
+
+        window.setTimeout(
+          () => {
+            onComplete();
+          },
+          500,
+        );
+      }
+    }, [
+      onComplete,
+      resetMobileSequence,
+    ]);
 
   /*
    * ========================================================
@@ -575,6 +621,13 @@ export default function SivaBoot({
             )}
           %
         </div>
+
+        <div
+          className="siva-terminal-hint"
+          aria-hidden="true"
+        >
+          SHIFT + S I V A
+        </div>
       </section>
 
       <footer className="siva-footer">
@@ -673,12 +726,6 @@ export default function SivaBoot({
       >
         A
       </button>
-      {terminalUnlocked && !terminalTriggered ? (
-        <button type="button" className="siva-terminal-access" onClick={openUnlockedTerminal}>
-          TERMINAL
-        </button>
-      ) : null}
-
     </main>
   );
 }
