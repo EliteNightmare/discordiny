@@ -1802,3 +1802,215 @@ UNKNOWN SIGNAL // PERMANENT AUTPOST PUZZLE   ===================================
   line-height: 1.6;
   letter-spacing: 0.055em;
 }
+
+
+/* =========================================================
+   TERMINAL ADMIN // USER DISCOVERY CONTROL
+   ========================================================= */
+
+.terminal-admin-user-reset {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(194, 35, 46, 0.38);
+}
+
+.terminal-admin-user-reset-heading > span {
+  display: block;
+  margin-bottom: 5px;
+  color: #d64b55;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.terminal-admin-user-reset-heading h2 {
+  margin: 0;
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+}
+
+.terminal-admin-user-reset-heading p {
+  max-width: 760px;
+  margin: 8px 0 18px;
+  color: rgba(226, 213, 214, 0.62);
+  font-size: 0.58rem;
+  line-height: 1.6;
+}
+
+.terminal-admin-user-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.terminal-admin-user-search label {
+  display: grid;
+  gap: 6px;
+  color: #a68e91;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.terminal-admin-user-search input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(194, 35, 46, 0.4);
+  border-radius: 0;
+  outline: none;
+  background: rgba(12, 7, 9, 0.78);
+  color: #f0dcde;
+  padding: 11px 12px;
+  font: inherit;
+  letter-spacing: 0.06em;
+}
+
+.terminal-admin-user-search button,
+.terminal-admin-discovery-row button {
+  border: 1px solid rgba(194, 35, 46, 0.56);
+  border-radius: 0;
+  background: rgba(87, 10, 17, 0.48);
+  color: #e75a64;
+  padding: 11px 13px;
+  font: inherit;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.terminal-admin-user-search button:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+.terminal-admin-user-matches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.terminal-admin-user-match {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(194, 35, 46, 0.24);
+  border-radius: 0;
+  background: rgba(19, 9, 11, 0.72);
+  color: #d7c5c7;
+  text-align: left;
+  cursor: pointer;
+}
+
+.terminal-admin-user-match:hover,
+.terminal-admin-user-match.active {
+  border-color: rgba(221, 49, 60, 0.75);
+  background: rgba(65, 11, 16, 0.58);
+}
+
+.terminal-admin-user-match strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #f1dfe1;
+  font-size: 0.62rem;
+}
+
+.terminal-admin-user-match span,
+.terminal-admin-user-match small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #9f7f83;
+  font-size: 0.48rem;
+  letter-spacing: 0.05em;
+}
+
+.terminal-admin-user-discoveries {
+  margin-top: 16px;
+  border: 1px solid rgba(194, 35, 46, 0.24);
+  background: rgba(9, 6, 7, 0.58);
+}
+
+.terminal-admin-user-selected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(194, 35, 46, 0.22);
+}
+
+.terminal-admin-user-selected div,
+.terminal-admin-discovery-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.terminal-admin-user-selected span,
+.terminal-admin-user-selected small {
+  color: #9c7e82;
+  font-size: 0.48rem;
+  letter-spacing: 0.08em;
+}
+
+.terminal-admin-user-selected strong {
+  color: #f0d9dc;
+  font-size: 0.68rem;
+}
+
+.terminal-admin-user-selected b {
+  color: #d94d57;
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+}
+
+.terminal-admin-discovery-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(194, 35, 46, 0.14);
+}
+
+.terminal-admin-discovery-row:last-child {
+  border-bottom: 0;
+}
+
+.terminal-admin-discovery-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e8d4d6;
+  font-size: 0.6rem;
+}
+
+.terminal-admin-discovery-row span {
+  color: #d64c56;
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.terminal-admin-discovery-row small {
+  color: #8f777a;
+  font-size: 0.47rem;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 700px) {
+  .terminal-admin-user-search,
+  .terminal-admin-discovery-row {
+    grid-template-columns: 1fr;
+  }
+
+  .terminal-admin-user-selected {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
