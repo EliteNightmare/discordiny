@@ -14,7 +14,7 @@ body,
   min-height: 100dvh;
   overflow-x: hidden;
   background: #070000;
-  color: #b97a6e;
+  color: #d45b50;
   font-family: "Courier New", Courier, monospace;
   font-size: 14px;
   line-height: 1.55;
@@ -147,7 +147,7 @@ body,
 
 .root-pathline {
   margin-bottom: 13px;
-  color: #d18b7e;
+  color: #ef6255;
   font-size: 13px;
   letter-spacing: 0.035em;
   overflow-wrap: anywhere;
@@ -172,7 +172,7 @@ body,
   border: 0;
   background: none;
   padding: 0;
-  color: #b66f63;
+  color: #e14b40;
   font: inherit;
   line-height: 1.45;
   text-align: left;
@@ -188,7 +188,7 @@ body,
 }
 
 .root-dir {
-  color: #cf8274;
+  color: #f05b4d;
   font-weight: 700;
 }
 
@@ -224,7 +224,7 @@ body,
 
 .root-file h1 {
   margin: 0 0 22px;
-  color: #dc9385;
+  color: #ff7466;
   font-size: 20px;
   font-weight: 400;
   line-height: 1.25;
@@ -237,7 +237,7 @@ body,
 
 .root-field h2 {
   margin: 0 0 8px;
-  color: #cf8578;
+  color: #f86658;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.35;
@@ -249,12 +249,12 @@ body,
 }
 
 .root-embed-description {
-  color: #c78376;
+  color: #e85b50;
 }
 
 .root-copy,
 .root-line {
-  color: #b97a6e;
+  color: #d45b50;
   line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -283,7 +283,7 @@ body,
   border-left: 2px solid #58231e;
   background: #0e0302;
   padding: 11px 13px;
-  color: #b97f74;
+  color: #dd5c52;
   font: inherit;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -352,11 +352,11 @@ body,
   margin: 16vh auto 0;
   border-left: 2px solid #682a24;
   padding: 20px 22px;
-  color: #b96f62;
+  color: #df4c42;
 }
 
 .root-login-heading {
-  color: #d48476;
+  color: #f35a4d;
   font-size: 17px;
   letter-spacing: 0.055em;
 }
@@ -385,7 +385,7 @@ body,
   outline: 0;
   background: #090101;
   padding: 9px 7px;
-  color: #d28a7e;
+  color: #f06458;
   font: inherit;
   caret-color: #ff5548;
 }
@@ -515,4 +515,348 @@ body,
   .root-login form {
     margin-top: 12vh;
   }
+}
+
+
+/* =========================================================
+   ROOT TOP ACTIONS / ACCOUNT
+========================================================= */
+
+.root-top-actions {
+  position: fixed;
+  z-index: 80;
+  top: 37px;
+  right: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  max-width: min(620px, 70vw);
+}
+
+.root-top-actions > a,
+.root-top-actions > button {
+  border: 1px solid #6f1712;
+  background: rgba(20, 0, 0, 0.88);
+  padding: 6px 9px;
+  color: #ef493d;
+  font: 10px/1.2 "Courier New", Courier, monospace;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(205, 18, 8, 0.08);
+}
+
+.root-top-actions > a:hover,
+.root-top-actions > button:hover {
+  border-color: #d52b20;
+  color: #ff7164;
+  text-shadow: 0 0 7px #d10b00;
+}
+
+.root-account {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.root-account img {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* =========================================================
+   DESKTOP BACKGROUND GLITCH FEED
+========================================================= */
+
+.root-noise {
+  position: fixed;
+  z-index: 1;
+  top: 92px;
+  right: 20px;
+  bottom: 34px;
+  width: min(31vw, 430px);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.19;
+  mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 88%, transparent);
+}
+
+.root-noise > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #ff2e22;
+  font: 9px/1.25 "Courier New", Courier, monospace;
+  letter-spacing: 0.08em;
+  text-align: right;
+  white-space: nowrap;
+  animation: rootNoiseScroll 21s linear infinite;
+  text-shadow: 0 0 6px rgba(255, 20, 8, 0.55);
+}
+
+.root-noise span:nth-child(3n) {
+  transform: translateX(-24px);
+  opacity: 0.45;
+}
+
+.root-noise span:nth-child(5n) {
+  transform: translateX(11px);
+  opacity: 0.75;
+}
+
+@keyframes rootNoiseScroll {
+  from { transform: translateY(8%); }
+  to { transform: translateY(-54%); }
+}
+
+/* =========================================================
+   ROOT ADMIN FILE EXPLORER
+========================================================= */
+
+.root-admin-overlay {
+  position: fixed;
+  z-index: 200;
+  inset: 0;
+  overflow: auto;
+  background: rgba(3, 0, 0, 0.94);
+  padding: 34px;
+  color: #e65448;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.root-admin {
+  min-height: calc(100vh - 68px);
+  border: 1px solid #55120e;
+  background: #080000;
+  box-shadow: 0 0 50px rgba(183, 17, 8, 0.13);
+}
+
+.root-admin > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #55120e;
+  background: #140201;
+  padding: 12px 14px;
+}
+
+.root-admin > header div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.root-admin > header span {
+  color: #772d27;
+  font-size: 9px;
+}
+
+.root-admin button,
+.root-admin input,
+.root-admin textarea,
+.root-admin select {
+  border: 1px solid #5b1b16;
+  outline: none;
+  background: #0b0101;
+  color: #e75b50;
+  font: 11px/1.4 "Courier New", Courier, monospace;
+}
+
+.root-admin button {
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.root-admin button:hover,
+.root-admin button:focus-visible {
+  border-color: #c42a20;
+  color: #ff7568;
+}
+
+.root-admin-grid {
+  display: grid;
+  grid-template-columns: 240px minmax(350px, 1fr) minmax(320px, 0.9fr);
+  min-height: calc(100vh - 124px);
+}
+
+.root-admin-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-right: 1px solid #42100d;
+  padding: 12px;
+}
+
+.root-admin-explorer > button {
+  width: 100%;
+  text-align: left;
+}
+
+.root-admin-path {
+  min-height: 34px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid #35100d;
+  color: #ff6659;
+  overflow-wrap: anywhere;
+}
+
+.root-admin-create-dir {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.root-admin-create-dir input {
+  min-width: 0;
+  padding: 6px;
+}
+
+.root-admin-danger {
+  border-color: #8e160f !important;
+  color: #ff392d !important;
+}
+
+.root-admin-editor {
+  border-right: 1px solid #42100d;
+  padding: 14px;
+}
+
+.root-admin-editor-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.root-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.root-admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #8e3a33;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.root-admin-form input,
+.root-admin-form textarea,
+.root-admin-form select {
+  width: 100%;
+  padding: 7px;
+  resize: vertical;
+}
+
+.root-admin-form small {
+  color: #6e332e;
+  line-height: 1.5;
+}
+
+.root-admin-row {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px;
+}
+
+.root-admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.root-admin-message {
+  border-left: 2px solid #9d1e16;
+  padding: 8px 10px;
+  color: #ff6457;
+}
+
+.root-admin-preview {
+  width: auto;
+  max-width: none;
+  overflow: auto;
+  padding: 14px 18px;
+}
+
+.root-admin-preview .root-file-image {
+  max-width: 100%;
+  max-height: 360px;
+}
+
+@media (max-width: 1050px) {
+  .root-admin-grid {
+    grid-template-columns: 210px 1fr;
+  }
+
+  .root-admin-preview {
+    grid-column: 1 / -1;
+    border-top: 1px solid #42100d;
+  }
+}
+
+@media (max-width: 700px) {
+  .root-noise {
+    display: none;
+  }
+
+  .root-top-actions {
+    position: relative;
+    top: auto;
+    right: auto;
+    z-index: 30;
+    max-width: none;
+    padding: 8px 10px 0;
+  }
+
+  .root-top-actions > a,
+  .root-top-actions > button {
+    font-size: 8px;
+    padding: 5px 6px;
+  }
+
+  .root-admin-overlay {
+    padding: 0;
+  }
+
+  .root-admin {
+    min-height: 100vh;
+    border: 0;
+  }
+
+  .root-admin-grid {
+    display: block;
+  }
+
+  .root-admin-explorer,
+  .root-admin-editor {
+    border-right: 0;
+    border-bottom: 1px solid #42100d;
+  }
+
+  .root-admin-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* Saved per-account ROOT authorization */
+.root-login .root-resume {
+  margin-top: 9px;
+  border-color: #8e1b14;
+  color: #ff5b4e;
+  background: rgba(30, 0, 0, 0.88);
+  text-shadow: 0 0 7px rgba(255, 31, 18, 0.42);
+}
+
+.root-login .root-resume:hover,
+.root-login .root-resume:focus-visible {
+  border-color: #e43629;
+  color: #ff887e;
+  box-shadow: 0 0 18px rgba(230, 31, 20, 0.13);
 }
