@@ -162,7 +162,9 @@ export default function Terminal() {
     const [adminUserMessage, setAdminUserMessage] = useState("");
     const [adminUserSearching, setAdminUserSearching] = useState(false);
     const [backwashActive, setBackwashActive] = useState(false), [backwashPhase, setBackwashPhase] = useState(0);
-    const input = useRef<HTMLInputElement>(null), backwashTimers = useRef<number[]>([]);
+    const [relicSwarmActive, setRelicSwarmActive] = useState(false);
+    const [relicSwarmMessage, setRelicSwarmMessage] = useState("");
+    const input = useRef<HTMLInputElement>(null), backwashTimers = useRef<number[]>([]), relicSwarmTimer = useRef<number | null>(null);
     const current = useMemo(() => files.find(f => f.id === selected) ?? null, [files, selected]);
     const [unknownSignalResolved, setUnknownSignalResolved] = useState(false);
     const [relic, setRelic] = useState<RelicState | null>(null);
@@ -190,7 +192,21 @@ export default function Terminal() {
     useEffect(() => { void load().catch(() => { setMessage("TERMINAL CONNECTION FAILED"); setLoading(false); }); }, []);
     useEffect(() => { if (!loading)
         input.current?.focus(); }, [loading]);
-    useEffect(() => () => { backwashTimers.current.forEach(t => window.clearTimeout(t)); }, []);
+    useEffect(() => () => {
+        backwashTimers.current.forEach(t => window.clearTimeout(t));
+        if (relicSwarmTimer.current !== null) window.clearTimeout(relicSwarmTimer.current);
+    }, []);
+    function runRelicSwarm(message: string, duration = 2300) {
+        if (relicSwarmTimer.current !== null) window.clearTimeout(relicSwarmTimer.current);
+        setRelicSwarmMessage(message);
+        setRelicSwarmActive(false);
+        window.requestAnimationFrame(() => setRelicSwarmActive(true));
+        relicSwarmTimer.current = window.setTimeout(() => {
+            setRelicSwarmActive(false);
+            setRelicSwarmMessage("");
+            relicSwarmTimer.current = null;
+        }, duration);
+    }
     function runBackwash() {
         if (backwashActive)
             return;
@@ -222,7 +238,25 @@ export default function Terminal() {
         if (!code || backwashActive)
             return;
         if (code.toUpperCase() === "BACKWASH") {
-            runBackwash();
+            setCommand("");
+            setMessage("");
+            try {
+                const r = await request("/api/terminal/execute", { method: "POST", body: JSON.stringify({ code: "BACKWASH" }) });
+                const d = await r.json();
+                if (!r.ok || !d.success) {
+                    setMessage(d.error ?? "BACKWASH PROTOCOL FAILED");
+                    return;
+                }
+                if (d.relic) setRelic(d.relic);
+                runBackwash();
+                if (d.relicAdvanced && d.relicTransition?.from === 2 && d.relicTransition?.to === 3) {
+                    window.setTimeout(() => runRelicSwarm("RELIC PHASE SKIP 2 >> 3 INITIATED", 2550), 350);
+                    window.setTimeout(() => setMessage("SUCCESS"), 2500);
+                }
+            }
+            catch {
+                setMessage("TERMINAL CONNECTION FAILED");
+            }
             return;
         }
         setMessage("");
@@ -243,6 +277,9 @@ export default function Terminal() {
             }
             if (d.relic) {
                 setRelic(d.relic);
+            }
+            if (d.relicAdvanced && d.relicTransition?.from === 1 && d.relicTransition?.to === 2) {
+                runRelicSwarm("R.E.L.I.C. PHASE 02 // CORRUPTION ACCEPTED");
             }
 
             if (d.file) {
@@ -351,6 +388,7 @@ export default function Terminal() {
         return <main className="terminal-page terminal-loading"><div className="terminal-grid"/><div className="terminal-loading-copy"><img src={cbcLogo} alt=""/><span>CONNECTING TO ARCHIVE_</span></div></main>;
     return <main className={backwashActive ? `terminal-page terminal-backwash terminal-backwash-phase-${backwashPhase}` : "terminal-page"}><div className="terminal-grid"/>
     {backwashActive ? <div className="backwash-overlay" aria-hidden="true"><div className="backwash-scan"/><div className="backwash-noise"/><div className="backwash-slash backwash-slash-a"/><div className="backwash-slash backwash-slash-b"/><div className="backwash-status"><span>BACKWASH // CLEANSE PROTOCOL</span><strong>{backwashPhase < 3 ? "ISOLATING CONTAMINANT" : backwashPhase < 7 ? "PURGING RESIDUAL SIGNAL" : backwashPhase < 9 ? "RESTORING ARCHIVE" : "CLEAN"}</strong></div><div className="backwash-8556" data-text="8556">8556</div></div> : null}
+    {relicSwarmActive ? <div className="relic-swarm-overlay" aria-hidden="true"><div className="relic-swarm-vignette"/><div className="relic-swarm-core"/>{Array.from({length:42},(_,i)=><i key={i} style={{"--i":i} as React.CSSProperties}/>) }<div className="relic-swarm-copy"><span>SIVA // R.E.L.I.C. CORRUPTION SWARM</span><strong>{relicSwarmMessage}</strong><b>SUCCESS</b></div></div> : null}
     <header className="terminal-topbar"><button className="terminal-brand" onClick={() => { setSelected(null); setAdminOpen(false); }}><img src={cbcLogo} alt=""/><span><strong>CLOVIS BRAY</strong><small>TERMINAL ARCHIVE</small></span></button>
       <div className="terminal-top-actions">{rootUnlocked ? <button className="terminal-root-button" onClick={root}>◆ SIVA // ROOT</button> : null}{admin ? <button className="terminal-admin-button" onClick={openAdmin}>NEW / MANAGE FILES</button> : null}
         <div className="account-container"><button className="account-button" type="button" onClick={() => setAccountOpen(x => !x)}><img src={avatar()} alt={`${name}'s Discord avatar`}/><span>{name}</span></button>{accountOpen && user ? <div className="account-menu"><div className="account-menu-user"><img src={avatar()} alt=""/><div><strong>{name}</strong><span>@{user.username}</span></div></div><div className="account-menu-divider"/><button type="button" className="account-menu-profile" onClick={() => window.location.href = API + "/account"}>Account</button><button type="button" className="account-menu-logout" onClick={() => window.location.href = API + "/api/auth/logout"}>Log Out</button></div> : null}</div>
