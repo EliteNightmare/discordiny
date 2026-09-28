@@ -1728,3 +1728,77 @@ UNKNOWN SIGNAL // PERMANENT AUTPOST PUZZLE   ===================================
 .terminal-autopost-resolved .terminal-autopost-footer {
   border-top-color: rgba(52, 198, 110, 0.2);
 }
+
+
+/* =========================================================
+   MY FILES // CODE + SIX-FILE SCROLLER
+   ========================================================= */
+
+.terminal-library-list {
+  --terminal-library-row-height: 66px;
+  max-height: calc(var(--terminal-library-row-height) * 6);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(194, 35, 46, 0.72) rgba(13, 8, 10, 0.55);
+}
+
+.terminal-library-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.terminal-library-list::-webkit-scrollbar-track {
+  background: rgba(13, 8, 10, 0.55);
+}
+
+.terminal-library-list::-webkit-scrollbar-thumb {
+  background: rgba(194, 35, 46, 0.72);
+}
+
+.terminal-file-row {
+  min-height: var(--terminal-library-row-height);
+  box-sizing: border-box;
+}
+
+.terminal-file-row .terminal-file-code {
+  color: #d24a54;
+  font-size: 0.46rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 0.95;
+}
+
+/* =========================================================
+   RESOLVED UNKNOWN SIGNAL
+   ========================================================= */
+
+.terminal-autopost-resolved-message {
+  position: relative;
+  margin: 14px 0 15px;
+  padding: 13px 11px;
+  border: 1px solid rgba(55, 206, 115, 0.34);
+  border-left: 2px solid rgba(78, 234, 140, 0.72);
+  background: rgba(4, 36, 19, 0.52);
+}
+
+.terminal-autopost-resolved-message strong {
+  display: block;
+  color: #6befa0;
+  font-size: 0.59rem;
+  font-weight: 900;
+  line-height: 1.55;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 9px rgba(57, 222, 123, 0.16);
+}
+
+.terminal-autopost-resolved-message p {
+  margin: 11px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(55, 206, 115, 0.18);
+  color: #83c69d;
+  font-size: 0.51rem;
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.055em;
+}
