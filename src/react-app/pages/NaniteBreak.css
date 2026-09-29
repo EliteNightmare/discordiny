@@ -1,1 +1,2383 @@
-.opnb-page{height:100vh;overflow:hidden;background:#050608;color:#fff}.opnb-hud{position:fixed;z-index:40;top:72px;left:0;right:0;height:86px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;border-bottom:1px solid rgba(255,255,255,.09);background:linear-gradient(180deg,rgba(5,6,8,.99),rgba(5,6,8,.9));backdrop-filter:blur(12px)}.opnb-hud span,.opnb-footer,.opnb-encounter-content>span,.opnb-reward-overlay section>span{font-size:.58rem;font-weight:850;letter-spacing:.16em;color:rgba(255,255,255,.42)}.opnb-hud h1{margin:4px 0 0;font-size:1.45rem;letter-spacing:-.025em}.opnb-hud-status{display:flex;flex-direction:column;align-items:flex-end;gap:5px}.opnb-hud-status strong{color:#df4a55;font-size:.72rem;letter-spacing:.1em}.opnb-viewport{position:fixed;top:158px;right:0;bottom:52px;left:0;overflow:hidden;background:#08090b;scrollbar-width:none}.opnb-viewport::-webkit-scrollbar{display:none}.opnb-map-world{position:relative;width:max(190vw,1900px);aspect-ratio:877/677;overflow:hidden;cursor:crosshair;touch-action:none}.opnb-map-image{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;user-select:none}.opnb-map-vignette{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px rgba(0,0,0,.7);background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.014) 3px 4px)}.opnb-player-signal,.opnb-encounter-signal{position:absolute;z-index:8;transform:translate(-50%,-50%);pointer-events:none}.opnb-player-signal i{display:block;width:18px;height:18px;border:2px solid #fff;border-radius:50%;background:#c82936;box-shadow:0 0 0 8px rgba(200,41,54,.12),0 0 22px rgba(230,49,62,.85)}.opnb-player-signal.self:before{content:"";position:absolute;inset:-12px;border:1px solid rgba(255,255,255,.4);border-radius:50%;animation:signal-pulse 1.6s ease-out infinite}.opnb-player-signal.other i{width:11px;height:11px;border-width:1px;background:#ded7b7;box-shadow:0 0 12px rgba(222,215,183,.65)}.opnb-player-signal span,.opnb-encounter-signal span{position:absolute;top:26px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:.48rem;font-weight:900;letter-spacing:.12em;text-shadow:0 2px 5px #000}.opnb-player-signal.other span{top:19px;color:rgba(255,255,255,.65)}.opnb-encounter-signal i{display:block;width:20px;height:20px;transform:rotate(45deg);border:2px solid #df4350;background:rgba(106,9,17,.8);box-shadow:0 0 0 7px rgba(213,42,55,.09),0 0 20px rgba(213,42,55,.62);animation:node-breathe 1.8s ease-in-out infinite}.opnb-encounter-signal.hidden i{border-color:#e7c767;background:#66541b;box-shadow:0 0 0 7px rgba(231,199,103,.08),0 0 24px rgba(231,199,103,.6)}.opnb-encounter-signal span{top:30px;color:#e65a65}.opnb-encounter-signal.hidden span{color:#e7c767}.opnb-footer{position:fixed;z-index:40;right:0;bottom:0;left:0;height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;border-top:1px solid rgba(255,255,255,.08);background:rgba(5,6,8,.98)}.opnb-footer>div{display:flex;gap:24px}.opnb-footer .online{color:#67d890}.opnb-footer strong{color:rgba(255,255,255,.3);font-size:.55rem;letter-spacing:.13em}.opnb-toast{position:fixed;z-index:100;right:20px;bottom:72px;max-width:420px;padding:13px 16px;border:1px solid rgba(255,89,101,.35);border-radius:8px;background:rgba(37,7,10,.95);font-size:.72rem}.opnb-encounter-overlay,.opnb-reward-overlay{position:fixed;z-index:80;inset:0;display:grid;place-items:center;padding:24px;background:rgba(2,3,5,.78);backdrop-filter:blur(10px)}.opnb-encounter-card{width:min(960px,100%);max-height:min(760px,calc(100vh - 50px));display:grid;grid-template-columns:minmax(280px,.8fr) 1.2fr;overflow:hidden;border:1px solid rgba(225,50,62,.42);border-radius:17px;background:#0b0d11;box-shadow:0 35px 110px rgba(0,0,0,.6)}.opnb-encounter-card>img{width:100%;height:100%;min-height:500px;object-fit:cover;filter:saturate(.85) contrast(1.08)}.opnb-encounter-content{overflow:auto;padding:34px}.opnb-encounter-content h2,.opnb-reward-overlay h2{margin:7px 0 10px;font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.05em}.opnb-mini p{margin:0 0 18px;color:rgba(255,255,255,.5);line-height:1.55}.opnb-mini>strong{display:block;margin-top:14px;color:#d65a64;font-size:.62rem;letter-spacing:.12em}.opnb-lock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.opnb-lock-grid button{aspect-ratio:1;border:1px solid rgba(219,55,67,.35);border-radius:8px;color:#e34a56;background:#17090c;font-size:1.4rem;cursor:pointer}.opnb-lock-grid button.broken{opacity:.25}.opnb-mini-field{position:relative;height:330px;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-radius:10px;background:radial-gradient(circle at 50% 60%,rgba(128,15,24,.17),transparent 55%),#07080b}.siva-cluster{position:absolute;width:30px;height:30px;transform:translate(-50%,-50%) rotate(45deg);border:1px solid #e2424e;background:#77101a;box-shadow:0 0 14px rgba(226,66,78,.55);cursor:pointer}.siva-missile{position:absolute;z-index:2;transform:translate(-50%,-50%);border:0;color:#ff5360;background:transparent;font-size:2rem;filter:drop-shadow(0 0 8px #e32d3b);cursor:pointer}.player-base{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);padding:7px 12px;border:1px solid rgba(255,255,255,.2);font-size:.5rem;letter-spacing:.12em}.defense-line{position:absolute;right:0;bottom:10%;left:0;height:1px;background:#d23c48;box-shadow:0 0 12px #d23c48}.defense-unit{position:absolute;transform:translate(-50%,-50%);border:0;color:#ef4a56;background:transparent;font-size:1.25rem;cursor:pointer}.maze{display:grid;grid-template-columns:repeat(11,1fr);width:min(380px,100%);aspect-ratio:1;gap:2px}.maze i{position:relative;background:#11151a}.maze i.wall{background:#3a1015}.maze i.drone:after{content:"◆";position:absolute;inset:0;display:grid;place-items:center;color:#ef4551;font-style:normal}.maze i.you:after{content:"●";position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-style:normal;text-shadow:0 0 8px #fff}.maze i.exit{box-shadow:inset 0 0 0 2px #d9bc65}.maze-controls{display:grid;grid-template-columns:repeat(4,46px);gap:6px;margin-top:12px}.maze-controls button,.opnb-reward-overlay button{height:42px;border:1px solid rgba(255,255,255,.14);border-radius:7px;color:#fff;background:#15171d;cursor:pointer}.opnb-resolving{margin-top:16px;color:#e75a64;font-size:.62rem;font-weight:850;letter-spacing:.13em}.opnb-reward-overlay section{width:min(520px,100%);padding:32px;border:1px solid rgba(218,50,62,.4);border-radius:16px;background:linear-gradient(145deg,#0c0e12,#16090c)}.opnb-reward-list{margin:20px 0}.opnb-reward-list>div{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.07)}.opnb-reward-list span{color:rgba(255,255,255,.5)}.opnb-reward-list .weapon strong{color:#e4c86f}.opnb-reward-overlay button{width:100%;margin-top:8px;font-size:.62rem;font-weight:850;letter-spacing:.12em}.opnb-reward-overlay button:hover{background:#241014}@keyframes signal-pulse{from{transform:scale(.5);opacity:1}to{transform:scale(1.6);opacity:0}}@keyframes node-breathe{50%{transform:rotate(45deg) scale(1.18)}}@media(max-width:760px){.opnb-hud{padding:0 15px}.opnb-hud-status{display:none}.opnb-map-world{width:max(285vw,1500px)}.opnb-footer{padding:0 15px}.opnb-footer strong{display:none}.opnb-encounter-card{grid-template-columns:1fr}.opnb-encounter-card>img{min-height:170px;max-height:220px}.opnb-encounter-content{padding:22px}.opnb-mini-field{height:280px}}@media(prefers-reduced-motion:reduce){.opnb-player-signal.self:before,.opnb-encounter-signal i{animation:none}}
+/* ================================================================
+   OPERATION: NANITE BREAK
+   ================================================================ */
+
+.opnb-page {
+  height: 100vh;
+  overflow: hidden;
+  background: #050608;
+  color: #fff;
+}
+
+/* ================================================================
+   HUD
+   ================================================================ */
+
+.opnb-hud {
+  position: fixed;
+  z-index: 40;
+  top: 72px;
+  left: 0;
+  right: 0;
+  height: 86px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 30px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(5, 6, 8, 0.99),
+      rgba(5, 6, 8, 0.9)
+    );
+
+  backdrop-filter: blur(12px);
+}
+
+.opnb-hud span,
+.opnb-footer,
+.opnb-encounter-content > span,
+.opnb-reward-overlay section > span {
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.opnb-hud h1 {
+  margin: 4px 0 0;
+
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+}
+
+.opnb-hud-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.opnb-hud-status strong {
+  color: #df4a55;
+
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+}
+
+/* ================================================================
+   MAP
+   ================================================================ */
+
+.opnb-viewport {
+  position: fixed;
+
+  top: 158px;
+  right: 0;
+  bottom: 52px;
+  left: 0;
+
+  overflow: hidden;
+
+  background: #08090b;
+
+  scrollbar-width: none;
+}
+
+.opnb-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * More zoomed-in than the old 190vw world.
+ * Camera follows the player in TSX.
+ */
+.opnb-map-world {
+  position: relative;
+
+  width: max(225vw, 2250px);
+  aspect-ratio: 877 / 677;
+
+  overflow: hidden;
+
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.opnb-map-image {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: fill;
+
+  pointer-events: none;
+  user-select: none;
+}
+
+.opnb-map-vignette {
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  box-shadow:
+    inset 0 0 160px rgba(0, 0, 0, 0.7);
+
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 3px,
+      rgba(255, 255, 255, 0.014) 3px 4px
+    );
+}
+
+/* ================================================================
+   PLAYER SIGNALS
+   ================================================================ */
+
+.opnb-player-signal,
+.opnb-encounter-signal {
+  position: absolute;
+  z-index: 8;
+
+  transform: translate(-50%, -50%);
+
+  pointer-events: none;
+}
+
+.opnb-player-signal i {
+  display: block;
+
+  width: 18px;
+  height: 18px;
+
+  border: 2px solid #fff;
+  border-radius: 50%;
+
+  background: #c82936;
+
+  box-shadow:
+    0 0 0 8px rgba(200, 41, 54, 0.12),
+    0 0 22px rgba(230, 49, 62, 0.85);
+}
+
+.opnb-player-signal.self {
+  z-index: 14;
+}
+
+.opnb-player-signal.self::before {
+  content: "";
+
+  position: absolute;
+  inset: -12px;
+
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+
+  animation:
+    signal-pulse 1.6s ease-out infinite;
+}
+
+.opnb-player-signal.other i {
+  width: 11px;
+  height: 11px;
+
+  border-width: 1px;
+
+  background: #ded7b7;
+
+  box-shadow:
+    0 0 12px rgba(222, 215, 183, 0.65);
+}
+
+.opnb-player-signal span,
+.opnb-encounter-signal span {
+  position: absolute;
+
+  top: 26px;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  white-space: nowrap;
+
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+
+  text-shadow:
+    0 2px 5px #000,
+    0 0 8px #000;
+}
+
+.opnb-player-signal.other span {
+  top: 19px;
+
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ================================================================
+   ENCOUNTER SIGNALS
+   ================================================================ */
+
+.opnb-encounter-signal i {
+  display: block;
+
+  width: 20px;
+  height: 20px;
+
+  transform: rotate(45deg);
+
+  border: 2px solid #df4350;
+
+  background:
+    rgba(106, 9, 17, 0.8);
+
+  box-shadow:
+    0 0 0 7px rgba(213, 42, 55, 0.09),
+    0 0 20px rgba(213, 42, 55, 0.62);
+
+  animation:
+    node-breathe 1.8s ease-in-out infinite;
+}
+
+.opnb-encounter-signal.hidden i {
+  border-color: #e7c767;
+
+  background: #66541b;
+
+  box-shadow:
+    0 0 0 7px rgba(231, 199, 103, 0.08),
+    0 0 24px rgba(231, 199, 103, 0.6);
+}
+
+.opnb-encounter-signal span {
+  top: 30px;
+
+  color: #e65a65;
+}
+
+.opnb-encounter-signal.hidden span {
+  color: #e7c767;
+}
+
+/* ================================================================
+   FOOTER
+   ================================================================ */
+
+.opnb-footer {
+  position: fixed;
+  z-index: 40;
+
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 30px;
+
+  border-top:
+    1px solid rgba(255, 255, 255, 0.08);
+
+  background:
+    rgba(5, 6, 8, 0.98);
+}
+
+.opnb-footer > div {
+  display: flex;
+  gap: 24px;
+}
+
+.opnb-footer .online {
+  color: #67d890;
+}
+
+.opnb-footer strong {
+  color: rgba(255, 255, 255, 0.3);
+
+  font-size: 0.55rem;
+  letter-spacing: 0.13em;
+}
+
+/* ================================================================
+   TOASTS
+   ================================================================ */
+
+.opnb-toast {
+  position: fixed;
+  z-index: 100;
+
+  right: 20px;
+  bottom: 72px;
+
+  max-width: 420px;
+
+  padding: 13px 16px;
+
+  border:
+    1px solid rgba(255, 89, 101, 0.35);
+
+  border-radius: 8px;
+
+  background:
+    rgba(37, 7, 10, 0.95);
+
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.45);
+
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.opnb-toast.error {
+  color: #ff7a83;
+}
+
+.opnb-resolving-toast {
+  color: #fff;
+}
+
+/* ================================================================
+   ENCOUNTER OVERLAY
+   ================================================================ */
+
+.opnb-encounter-overlay,
+.opnb-reward-overlay {
+  position: fixed;
+  z-index: 80;
+
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  padding: 24px;
+
+  background:
+    rgba(2, 3, 5, 0.78);
+
+  backdrop-filter: blur(10px);
+}
+
+.opnb-encounter-card {
+  width: min(960px, 100%);
+
+  max-height:
+    min(
+      760px,
+      calc(100vh - 50px)
+    );
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(280px, 0.8fr)
+    1.2fr;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(225, 50, 62, 0.42);
+
+  border-radius: 17px;
+
+  background: #0b0d11;
+
+  box-shadow:
+    0 35px 110px rgba(0, 0, 0, 0.6);
+}
+
+.opnb-encounter-card > img {
+  width: 100%;
+  height: 100%;
+
+  min-height: 500px;
+
+  object-fit: cover;
+
+  filter:
+    saturate(0.85)
+    contrast(1.08);
+}
+
+.opnb-encounter-content {
+  overflow: auto;
+
+  padding: 34px;
+}
+
+.opnb-encounter-content h2,
+.opnb-reward-overlay h2 {
+  margin: 7px 0 10px;
+
+  font-size:
+    clamp(
+      2rem,
+      5vw,
+      3.2rem
+    );
+
+  letter-spacing: -0.05em;
+}
+
+.opnb-mini {
+  margin-top: 20px;
+}
+
+.opnb-mini p {
+  margin: 0 0 18px;
+
+  color:
+    rgba(255, 255, 255, 0.5);
+
+  line-height: 1.55;
+}
+
+.opnb-mini > strong {
+  display: block;
+
+  margin-top: 14px;
+
+  color: #d65a64;
+
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+}
+
+/* ================================================================
+   CANCEL ENCOUNTER
+   ================================================================ */
+
+.opnb-encounter-actions {
+  margin-top: 22px;
+  padding-top: 16px;
+
+  border-top:
+    1px solid rgba(255, 255, 255, 0.07);
+}
+
+.opnb-cancel-encounter {
+  width: 100%;
+  min-height: 42px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.13);
+
+  border-radius: 7px;
+
+  color:
+    rgba(255, 255, 255, 0.55);
+
+  background:
+    rgba(255, 255, 255, 0.025);
+
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+
+  cursor: pointer;
+
+  transition:
+    border-color 120ms ease,
+    color 120ms ease,
+    background 120ms ease;
+}
+
+.opnb-cancel-encounter:hover {
+  color: #ff6a75;
+
+  border-color:
+    rgba(224, 61, 72, 0.48);
+
+  background:
+    rgba(118, 18, 26, 0.15);
+}
+
+/* ================================================================
+   DRESIKS
+   ================================================================ */
+
+.opnb-shield-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 9px;
+}
+
+.opnb-shield-grid button {
+  position: relative;
+
+  min-height: 92px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(216, 58, 70, 0.3);
+
+  border-radius: 9px;
+
+  color: #bd4b54;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(69, 10, 16, 0.32),
+      rgba(11, 13, 17, 0.95)
+    );
+
+  cursor: pointer;
+
+  transition:
+    transform 100ms ease,
+    border-color 100ms ease,
+    box-shadow 100ms ease;
+}
+
+.opnb-shield-grid button span {
+  position: relative;
+  z-index: 2;
+
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.opnb-shield-grid button i {
+  position: absolute;
+
+  width: 32px;
+  height: 32px;
+
+  top: 50%;
+  left: 50%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(45deg);
+
+  border:
+    1px solid currentColor;
+
+  opacity: 0.25;
+}
+
+.opnb-shield-grid button.armed:hover {
+  transform: translateY(-2px);
+
+  border-color:
+    rgba(231, 74, 85, 0.75);
+}
+
+.opnb-shield-grid button.active {
+  color: #fff;
+
+  border-color: #ff6470;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(239, 66, 79, 0.72),
+      rgba(90, 11, 19, 0.45)
+    );
+
+  box-shadow:
+    0 0 30px rgba(231, 53, 67, 0.65),
+    inset 0 0 30px rgba(255, 255, 255, 0.08);
+}
+
+/* ================================================================
+   MONSTER CONTAINMENT
+   ================================================================ */
+
+.opnb-containment-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 8px;
+}
+
+.opnb-containment-grid button {
+  position: relative;
+
+  min-height: 94px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(211, 57, 68, 0.28);
+
+  border-radius: 8px;
+
+  color: #fff;
+
+  background: #0c0e12;
+
+  cursor: pointer;
+}
+
+.opnb-containment-grid button > i {
+  position: absolute;
+
+  right: 0;
+  bottom: 0;
+  left: 0;
+
+  background:
+    linear-gradient(
+      0deg,
+      rgba(201, 31, 44, 0.72),
+      rgba(136, 14, 24, 0.22)
+    );
+
+  transition:
+    height 200ms ease;
+}
+
+.opnb-containment-grid button > span {
+  position: relative;
+  z-index: 2;
+
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.opnb-containment-grid button.critical {
+  border-color:
+    rgba(255, 64, 78, 0.85);
+
+  box-shadow:
+    inset 0 0 20px rgba(215, 35, 49, 0.16);
+}
+
+.opnb-containment-grid button.sealed {
+  color: #6ad98e;
+
+  border-color:
+    rgba(106, 217, 142, 0.35);
+
+  background:
+    rgba(21, 72, 41, 0.12);
+}
+
+/* ================================================================
+   NANITE CREW
+   ================================================================ */
+
+.opnb-dialogue-terminal {
+  overflow: hidden;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #101218,
+      #08090c
+    );
+}
+
+.opnb-dialogue-speaker {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  padding: 14px 16px;
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.07);
+
+  background:
+    rgba(183, 31, 43, 0.07);
+}
+
+.opnb-dialogue-speaker span {
+  color:
+    rgba(255, 255, 255, 0.38);
+
+  font-size: 0.52rem;
+  font-weight: 850;
+  letter-spacing: 0.14em;
+}
+
+.opnb-dialogue-speaker strong {
+  color: #df5963;
+
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+}
+
+.opnb-dialogue-terminal blockquote {
+  margin: 0;
+
+  padding: 22px 18px;
+
+  color:
+    rgba(255, 255, 255, 0.74);
+
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.opnb-dialogue-options {
+  display: grid;
+
+  gap: 7px;
+
+  padding: 0 14px 14px;
+}
+
+.opnb-dialogue-options button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 4px;
+
+  padding: 12px 14px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 7px;
+
+  color: #fff;
+
+  background: #12141a;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.opnb-dialogue-options button:hover {
+  border-color:
+    rgba(219, 61, 73, 0.48);
+
+  background: #1a0e12;
+}
+
+.opnb-dialogue-options button strong {
+  color: #df5963;
+
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+}
+
+.opnb-dialogue-options button span {
+  color:
+    rgba(255, 255, 255, 0.48);
+
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+/* ================================================================
+   PERFECTED SQUAD
+   ================================================================ */
+
+.opnb-squad-network {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 8px;
+}
+
+.opnb-squad-network button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 5px;
+
+  min-height: 120px;
+
+  padding: 14px;
+
+  border:
+    1px solid rgba(216, 55, 68, 0.3);
+
+  border-radius: 9px;
+
+  color: #fff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(89, 12, 20, 0.2),
+      #0b0d11
+    );
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.opnb-squad-network button > span {
+  color:
+    rgba(255, 255, 255, 0.35);
+
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+}
+
+.opnb-squad-network button > strong {
+  color: #e15a65;
+
+  font-size: 0.75rem;
+}
+
+.opnb-squad-network button small {
+  color: #e5c968;
+
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+}
+
+.opnb-squad-network button i {
+  margin-top: auto;
+
+  color:
+    rgba(255, 255, 255, 0.3);
+
+  font-size: 0.48rem;
+  font-style: normal;
+  line-height: 1.4;
+}
+
+.opnb-squad-network button.protected {
+  opacity: 0.72;
+}
+
+.opnb-squad-network button.down {
+  opacity: 0.24;
+
+  border-color:
+    rgba(255, 255, 255, 0.08);
+
+  filter: grayscale(1);
+}
+
+/* ================================================================
+   RAHNDEL
+   ================================================================ */
+
+.opnb-scan-tabs {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 6px;
+
+  margin-bottom: 9px;
+}
+
+.opnb-scan-tabs button {
+  min-height: 36px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.09);
+
+  border-radius: 6px;
+
+  color:
+    rgba(255, 255, 255, 0.45);
+
+  background: #101217;
+
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+
+  cursor: pointer;
+}
+
+.opnb-scan-tabs button.active {
+  color: #fff;
+
+  border-color:
+    rgba(222, 61, 73, 0.55);
+
+  background:
+    rgba(125, 15, 24, 0.3);
+}
+
+.opnb-rahndel-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 7px;
+}
+
+.opnb-rahndel-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 7px;
+
+  min-height: 82px;
+
+  padding: 12px;
+
+  border:
+    1px solid rgba(215, 57, 68, 0.25);
+
+  border-radius: 7px;
+
+  color: #fff;
+
+  background:
+    rgba(111, 13, 21, 0.12);
+
+  cursor: pointer;
+}
+
+.opnb-rahndel-grid button:hover {
+  border-color:
+    rgba(236, 75, 87, 0.6);
+
+  background:
+    rgba(111, 13, 21, 0.25);
+}
+
+.opnb-rahndel-grid span {
+  color:
+    rgba(255, 255, 255, 0.38);
+
+  font-size: 0.48rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+}
+
+.opnb-rahndel-grid strong {
+  color: #df5c65;
+
+  font-size: 0.68rem;
+}
+
+/* ================================================================
+   SERVITORS
+   ================================================================ */
+
+.opnb-servitor-network {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 8px;
+}
+
+.opnb-servitor-network button {
+  position: relative;
+
+  min-height: 112px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(222, 60, 73, 0.28);
+
+  border-radius: 50%;
+
+  color: #fff;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(113, 15, 23, 0.35),
+      #0a0c10 68%
+    );
+
+  cursor: pointer;
+}
+
+.opnb-servitor-network button i {
+  position: absolute;
+
+  width: 42%;
+  aspect-ratio: 1;
+
+  top: 50%;
+  left: 50%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(45deg);
+
+  border:
+    1px solid rgba(224, 69, 80, 0.45);
+
+  box-shadow:
+    0 0 20px rgba(205, 40, 53, 0.2);
+}
+
+.opnb-servitor-network button span,
+.opnb-servitor-network button strong {
+  position: relative;
+  z-index: 2;
+
+  display: block;
+}
+
+.opnb-servitor-network button span {
+  margin-bottom: 4px;
+
+  color:
+    rgba(255, 255, 255, 0.38);
+
+  font-size: 0.44rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.opnb-servitor-network button strong {
+  color: #df5964;
+
+  font-size: 0.58rem;
+}
+
+.opnb-servitor-network button.disabled {
+  opacity: 0.25;
+
+  border-color:
+    rgba(255, 255, 255, 0.08);
+
+  filter: grayscale(1);
+}
+
+/* ================================================================
+   SHANK SWARM
+   ================================================================ */
+
+.opnb-shank-field {
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(112, 13, 22, 0.2),
+      transparent 60%
+    ),
+    #07080b;
+}
+
+.opnb-shank {
+  position: absolute;
+
+  transform:
+    translate(-50%, -50%);
+
+  width: 52px;
+  height: 52px;
+
+  border:
+    1px solid rgba(226, 66, 78, 0.25);
+
+  border-radius: 50%;
+
+  color: #d84b56;
+
+  background:
+    rgba(23, 7, 10, 0.85);
+
+  cursor: pointer;
+}
+
+.opnb-shank i {
+  position: absolute;
+
+  width: 18px;
+  height: 18px;
+
+  top: 50%;
+  left: 50%;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(45deg);
+
+  border:
+    1px solid currentColor;
+}
+
+.opnb-shank span {
+  position: absolute;
+
+  top: 58px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  color:
+    rgba(255, 255, 255, 0.42);
+
+  white-space: nowrap;
+
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.opnb-shank.priority {
+  color: #e9cc68;
+
+  border-color:
+    rgba(233, 204, 104, 0.6);
+
+  box-shadow:
+    0 0 20px rgba(233, 204, 104, 0.22);
+}
+
+.opnb-shank.volatile {
+  color: #ff4a57;
+
+  animation:
+    volatile-shank 0.45s steps(2) infinite;
+}
+
+/* ================================================================
+   STEALTH SWARM
+   ================================================================ */
+
+.opnb-stealth-field {
+  background:
+    linear-gradient(
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    #07090c;
+
+  background-size:
+    26px 26px;
+}
+
+.opnb-stealth-target {
+  position: absolute;
+
+  width: 32px;
+  height: 32px;
+
+  transform:
+    translate(-50%, -50%);
+
+  border: 0;
+
+  color: transparent;
+
+  background: transparent;
+
+  font-size: 1.2rem;
+
+  cursor: crosshair;
+
+  transition:
+    color 100ms ease,
+    filter 100ms ease;
+}
+
+.opnb-stealth-field.scanner-active
+  .opnb-stealth-target {
+  color: #ef5260;
+
+  filter:
+    drop-shadow(
+      0 0 9px #e73947
+    );
+}
+
+.opnb-scanner-line {
+  position: absolute;
+
+  z-index: 1;
+
+  top: 0;
+  bottom: 0;
+
+  width: 2px;
+
+  left: -4%;
+
+  opacity: 0;
+
+  background:
+    rgba(229, 70, 82, 0.75);
+
+  box-shadow:
+    0 0 20px rgba(229, 70, 82, 0.8);
+}
+
+.opnb-stealth-field.scanner-active
+  .opnb-scanner-line {
+  opacity: 1;
+
+  animation:
+    scanner-sweep 0.95s linear;
+}
+
+/* ================================================================
+   WALKER
+   ================================================================ */
+
+.opnb-walker-body {
+  padding: 18px;
+
+  border:
+    1px solid rgba(220, 58, 70, 0.24);
+
+  border-radius: 10px;
+
+  background:
+    radial-gradient(
+      circle at 50% 42%,
+      rgba(124, 15, 24, 0.25),
+      transparent 45%
+    ),
+    #080a0e;
+}
+
+.opnb-walker-core {
+  display: block;
+
+  width: 150px;
+  height: 150px;
+
+  margin: 0 auto 18px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.12);
+
+  border-radius: 50%;
+
+  color:
+    rgba(255, 255, 255, 0.28);
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.04),
+      rgba(0, 0, 0, 0.25)
+    );
+}
+
+.opnb-walker-core span,
+.opnb-walker-core strong {
+  display: block;
+}
+
+.opnb-walker-core span {
+  font-size: 0.48rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.opnb-walker-core strong {
+  margin-top: 7px;
+
+  font-size: 1rem;
+}
+
+.opnb-walker-core.exposed {
+  color: #ff6570;
+
+  border-color:
+    rgba(255, 82, 95, 0.75);
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(224, 48, 62, 0.65),
+      rgba(77, 8, 15, 0.25)
+    );
+
+  box-shadow:
+    0 0 35px rgba(224, 48, 62, 0.5);
+
+  cursor: pointer;
+
+  animation:
+    walker-core 0.8s ease-in-out infinite alternate;
+}
+
+.opnb-walker-legs {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 7px;
+}
+
+.opnb-walker-legs button {
+  min-height: 72px;
+
+  border:
+    1px solid rgba(218, 58, 70, 0.25);
+
+  border-radius: 7px;
+
+  color: #fff;
+
+  background:
+    rgba(82, 10, 17, 0.18);
+
+  cursor: pointer;
+}
+
+.opnb-walker-legs button span,
+.opnb-walker-legs button strong {
+  display: block;
+}
+
+.opnb-walker-legs button span {
+  margin-bottom: 7px;
+
+  color:
+    rgba(255, 255, 255, 0.38);
+
+  font-size: 0.45rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.opnb-walker-legs button strong {
+  color: #df5762;
+
+  font-size: 0.64rem;
+}
+
+.opnb-walker-legs button.broken {
+  opacity: 0.25;
+
+  filter: grayscale(1);
+}
+
+/* ================================================================
+   SHARED HIDDEN MINIGAME FIELD
+   ================================================================ */
+
+.opnb-mini-field {
+  position: relative;
+
+  height: 330px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.1);
+
+  border-radius: 10px;
+
+  background:
+    radial-gradient(
+      circle at 50% 60%,
+      rgba(128, 15, 24, 0.17),
+      transparent 55%
+    ),
+    #07080b;
+}
+
+/* ================================================================
+   HIDDEN CLEAR
+   ================================================================ */
+
+.siva-cluster {
+  position: absolute;
+
+  width: 30px;
+  height: 30px;
+
+  transform:
+    translate(-50%, -50%)
+    rotate(45deg);
+
+  border:
+    1px solid #e2424e;
+
+  background: #77101a;
+
+  box-shadow:
+    0 0 14px rgba(226, 66, 78, 0.55);
+
+  cursor: pointer;
+
+  transition:
+    transform 100ms ease,
+    box-shadow 100ms ease;
+}
+
+.siva-cluster:hover {
+  transform:
+    translate(-50%, -50%)
+    rotate(45deg)
+    scale(1.2);
+
+  box-shadow:
+    0 0 25px rgba(226, 66, 78, 0.8);
+}
+
+/* ================================================================
+   HIDDEN CYCLONE
+   ================================================================ */
+
+.siva-missile {
+  position: absolute;
+  z-index: 2;
+
+  transform:
+    translate(-50%, -50%);
+
+  border: 0;
+
+  color: #ff5360;
+  background: transparent;
+
+  font-size: 2rem;
+
+  filter:
+    drop-shadow(
+      0 0 8px #e32d3b
+    );
+
+  cursor: pointer;
+}
+
+.player-base {
+  position: absolute;
+
+  bottom: 10px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  padding: 7px 12px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.2);
+
+  color:
+    rgba(255, 255, 255, 0.55);
+
+  background:
+    rgba(0, 0, 0, 0.45);
+
+  font-size: 0.5rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+/* ================================================================
+   HIDDEN DEFENSE
+   ================================================================ */
+
+.defense-line {
+  position: absolute;
+
+  right: 0;
+  bottom: 10%;
+  left: 0;
+
+  height: 1px;
+
+  background: #d23c48;
+
+  box-shadow:
+    0 0 12px #d23c48;
+}
+
+.defense-unit {
+  position: absolute;
+
+  transform:
+    translate(-50%, -50%);
+
+  border: 0;
+
+  color: #ef4a56;
+  background: transparent;
+
+  font-size: 1.25rem;
+
+  filter:
+    drop-shadow(
+      0 0 6px rgba(239, 74, 86, 0.55)
+    );
+
+  cursor: pointer;
+}
+
+/* ================================================================
+   HIDDEN INFILTRATE
+   ================================================================ */
+
+.opnb-infiltration-arena {
+  position: relative;
+
+  width: 100%;
+  height: 390px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(222, 61, 74, 0.28);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.018) 1px,
+      transparent 1px
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(92, 11, 18, 0.18),
+      transparent 60%
+    ),
+    #06080b;
+
+  background-size:
+    22px 22px,
+    22px 22px,
+    auto,
+    auto;
+
+  cursor: crosshair;
+
+  touch-action: none;
+  user-select: none;
+}
+
+.opnb-infiltration-arena::before {
+  content: "";
+
+  position: absolute;
+  z-index: 1;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  box-shadow:
+    inset 0 0 50px rgba(0, 0, 0, 0.75);
+}
+
+.opnb-infiltration-arena.detected {
+  animation:
+    infiltration-detected 0.14s steps(2) infinite;
+}
+
+/* WALLS */
+
+.opnb-infiltration-wall {
+  position: absolute;
+  z-index: 12;
+
+  background:
+    linear-gradient(
+      135deg,
+      #8f7527,
+      #d4b74e 45%,
+      #705b1e
+    );
+
+  border:
+    1px solid #ead26e;
+
+  box-shadow:
+    0 0 10px rgba(222, 190, 82, 0.25),
+    inset 0 0 8px rgba(0, 0, 0, 0.55);
+
+  pointer-events: none;
+}
+
+.opnb-infiltration-wall::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  opacity: 0.4;
+
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0 5px,
+      rgba(0, 0, 0, 0.28) 5px 7px
+    );
+}
+
+/* INSERTION */
+
+.opnb-infiltration-start {
+  position: absolute;
+  z-index: 5;
+
+  transform:
+    translate(-50%, -50%);
+
+  padding: 4px 7px;
+
+  color:
+    rgba(255, 255, 255, 0.35);
+
+  border:
+    1px solid rgba(255, 255, 255, 0.12);
+
+  background:
+    rgba(0, 0, 0, 0.45);
+
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+
+  pointer-events: none;
+}
+
+/* EXTRACTION */
+
+.opnb-infiltration-exit {
+  position: absolute;
+  z-index: 5;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid rgba(93, 220, 139, 0.75);
+
+  color: #79e19d;
+
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(73, 189, 113, 0.08) 0 5px,
+      rgba(73, 189, 113, 0.15) 5px 10px
+    );
+
+  box-shadow:
+    inset 0 0 16px rgba(73, 189, 113, 0.16),
+    0 0 16px rgba(73, 189, 113, 0.12);
+
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+
+  pointer-events: none;
+}
+
+/* PLAYER */
+
+.opnb-infiltration-player {
+  position: absolute;
+  z-index: 30;
+
+  transform:
+    translate(-50%, -50%);
+
+  pointer-events: none;
+}
+
+.opnb-infiltration-player i {
+  display: block;
+
+  width: 13px;
+  height: 13px;
+
+  border:
+    2px solid #fff;
+
+  border-radius: 50%;
+
+  background: #d33c48;
+
+  box-shadow:
+    0 0 0 6px rgba(211, 60, 72, 0.12),
+    0 0 16px rgba(238, 67, 81, 0.75);
+}
+
+.opnb-infiltration-player span {
+  position: absolute;
+
+  top: 20px;
+  left: 50%;
+
+  transform:
+    translateX(-50%);
+
+  color: #fff;
+
+  font-size: 0.42rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+
+  white-space: nowrap;
+
+  text-shadow:
+    0 1px 4px #000;
+}
+
+/* DRONES */
+
+.opnb-drone {
+  position: absolute;
+  z-index: 20;
+
+  width: 0;
+  height: 0;
+
+  pointer-events: none;
+}
+
+.opnb-drone > i {
+  position: absolute;
+  z-index: 23;
+
+  top: 0;
+  left: 0;
+
+  width: 23px;
+  height: 23px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid #ff5663;
+
+  border-radius: 50%;
+
+  color: #ff5663;
+
+  background:
+    rgba(71, 8, 14, 0.96);
+
+  box-shadow:
+    0 0 13px rgba(238, 65, 78, 0.65);
+
+  font-size: 0.62rem;
+  font-style: normal;
+
+  transform-origin: center;
+}
+
+/*
+ * The TSX rotates this element around the drone.
+ * clip-path creates the visual FOV cone.
+ */
+.opnb-drone-fov {
+  position: absolute;
+  z-index: 3;
+
+  /*
+   * The drone is the origin of the cone.
+   * Width is the visual detection range.
+   */
+  left: 10px;
+  top: 0;
+  width: 150px;
+  height: 110px;
+
+  /*
+   * Keep the cone centered vertically on the drone.
+   * Rotation itself continues to come from the TSX.
+   */
+  transform-origin: 0 50%;
+
+  /*
+   * Bright at the drone, fading toward the end of the FOV.
+   */
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 68, 82, 0.42) 0%,
+      rgba(231, 54, 69, 0.25) 38%,
+      rgba(202, 35, 50, 0.12) 72%,
+      rgba(202, 35, 50, 0.015) 100%
+    );
+
+  /*
+   * Actual triangular FOV.
+   */
+  clip-path: polygon(
+    0 50%,
+    100% 0,
+    100% 100%
+  );
+
+  filter:
+    drop-shadow(0 0 5px rgba(231, 55, 70, 0.25));
+
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/*
+ * A stronger inner beam makes the drone's
+ * current facing direction obvious.
+ */
+.opnb-drone-fov::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  top: calc(50% - 1px);
+
+  width: 50%;
+  height: 2px;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 93, 104, 0.8),
+      transparent
+    );
+}
+
+/* DETECTION */
+
+.opnb-infiltration-alert {
+  position: absolute;
+  z-index: 60;
+
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #fff;
+
+  background:
+    rgba(174, 20, 32, 0.22);
+
+  font-size:
+    clamp(
+      0.8rem,
+      3vw,
+      1.35rem
+    );
+
+  font-weight: 950;
+  letter-spacing: 0.18em;
+
+  text-shadow:
+    0 0 12px #e33442;
+
+  pointer-events: none;
+}
+
+/* ================================================================
+   OLD MAZE CLASSES
+   Kept harmlessly for compatibility if another old component still
+   references them. New Infiltrate does NOT use the grid maze.
+   ================================================================ */
+
+.maze {
+  display: grid;
+
+  grid-template-columns:
+    repeat(11, 1fr);
+
+  width: min(380px, 100%);
+
+  aspect-ratio: 1;
+
+  gap: 2px;
+}
+
+.maze i {
+  position: relative;
+
+  background: #11151a;
+}
+
+.maze i.wall {
+  background: #3a1015;
+}
+
+.maze i.drone::after {
+  content: "◆";
+
+  position: absolute;
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #ef4551;
+
+  font-style: normal;
+}
+
+.maze i.you::after {
+  content: "●";
+
+  position: absolute;
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #fff;
+
+  font-style: normal;
+
+  text-shadow:
+    0 0 8px #fff;
+}
+
+.maze i.exit {
+  box-shadow:
+    inset 0 0 0 2px #d9bc65;
+}
+
+.maze-controls {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 46px);
+
+  gap: 6px;
+
+  margin-top: 12px;
+}
+
+.maze-controls button {
+  height: 42px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.14);
+
+  border-radius: 7px;
+
+  color: #fff;
+
+  background: #15171d;
+
+  cursor: pointer;
+}
+
+/* ================================================================
+   RESOLVING
+   ================================================================ */
+
+.opnb-resolving {
+  margin-top: 16px;
+
+  color: #e75a64;
+
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+}
+
+/* ================================================================
+   REWARDS
+   ================================================================ */
+
+.opnb-reward-overlay {
+  z-index: 110;
+}
+
+.opnb-reward-overlay section {
+  width: min(520px, 100%);
+
+  padding: 32px;
+
+  border:
+    1px solid rgba(218, 50, 62, 0.4);
+
+  border-radius: 16px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0c0e12,
+      #16090c
+    );
+
+  box-shadow:
+    0 35px 100px rgba(0, 0, 0, 0.65);
+}
+
+.opnb-reward-list {
+  margin: 20px 0;
+}
+
+.opnb-reward-list > div {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 11px 0;
+
+  border-bottom:
+    1px solid rgba(255, 255, 255, 0.07);
+}
+
+.opnb-reward-list span {
+  color:
+    rgba(255, 255, 255, 0.5);
+}
+
+.opnb-reward-list strong {
+  color: #fff;
+}
+
+.opnb-reward-list .weapon strong {
+  color: #e4c86f;
+}
+
+.opnb-reward-overlay button {
+  width: 100%;
+  height: 42px;
+
+  margin-top: 8px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.14);
+
+  border-radius: 7px;
+
+  color: #fff;
+
+  background: #15171d;
+
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+
+  cursor: pointer;
+}
+
+.opnb-reward-overlay button:hover {
+  background: #241014;
+
+  border-color:
+    rgba(220, 63, 75, 0.42);
+}
+
+/* ================================================================
+   ANIMATIONS
+   ================================================================ */
+
+@keyframes signal-pulse {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes node-breathe {
+  0%,
+  100% {
+    transform:
+      rotate(45deg)
+      scale(1);
+  }
+
+  50% {
+    transform:
+      rotate(45deg)
+      scale(1.18);
+  }
+}
+
+@keyframes volatile-shank {
+  0% {
+    transform:
+      translate(-50%, -50%)
+      translateX(-1px);
+  }
+
+  50% {
+    transform:
+      translate(-50%, -50%)
+      translateX(2px);
+  }
+
+  100% {
+    transform:
+      translate(-50%, -50%)
+      translateX(-2px);
+  }
+}
+
+@keyframes scanner-sweep {
+  from {
+    left: -4%;
+  }
+
+  to {
+    left: 104%;
+  }
+}
+
+@keyframes walker-core {
+  from {
+    box-shadow:
+      0 0 20px rgba(224, 48, 62, 0.35);
+  }
+
+  to {
+    box-shadow:
+      0 0 45px rgba(224, 48, 62, 0.75);
+  }
+}
+
+@keyframes infiltration-detected {
+  0% {
+    filter: none;
+  }
+
+  50% {
+    filter:
+      contrast(1.25)
+      brightness(1.15);
+  }
+
+  100% {
+    filter: none;
+  }
+}
+
+/* ================================================================
+   TABLET / MOBILE
+   ================================================================ */
+
+@media (max-width: 760px) {
+  .opnb-hud {
+    padding: 0 15px;
+  }
+
+  .opnb-hud h1 {
+    font-size: 1.18rem;
+  }
+
+  .opnb-hud-status {
+    display: none;
+  }
+
+  /*
+   * Keep mobile zoomed in as requested.
+   */
+  .opnb-map-world {
+    width: max(330vw, 1750px);
+  }
+
+  .opnb-footer {
+    padding: 0 15px;
+  }
+
+  .opnb-footer > div {
+    gap: 10px;
+  }
+
+  .opnb-footer strong {
+    display: none;
+  }
+
+  .opnb-encounter-overlay,
+  .opnb-reward-overlay {
+    padding: 12px;
+  }
+
+  .opnb-encounter-card {
+    grid-template-columns: 1fr;
+
+    max-height:
+      calc(100vh - 24px);
+  }
+
+  .opnb-encounter-card > img {
+    min-height: 170px;
+    max-height: 220px;
+  }
+
+  .opnb-encounter-content {
+    padding: 22px;
+  }
+
+  .opnb-mini-field {
+    height: 280px;
+  }
+
+  .opnb-shield-grid,
+  .opnb-containment-grid,
+  .opnb-servitor-network {
+    gap: 6px;
+  }
+
+  .opnb-shield-grid button {
+    min-height: 72px;
+  }
+
+  .opnb-containment-grid button {
+    min-height: 76px;
+  }
+
+  .opnb-servitor-network button {
+    min-height: 88px;
+  }
+
+  .opnb-squad-network {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .opnb-squad-network button {
+    min-height: 108px;
+  }
+
+  .opnb-rahndel-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .opnb-walker-core {
+    width: 120px;
+    height: 120px;
+  }
+
+  .opnb-walker-legs {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .opnb-infiltration-arena {
+    height: 340px;
+  }
+
+  .opnb-cancel-encounter {
+    min-height: 48px;
+  }
+}
+
+/* ================================================================
+   VERY SMALL MOBILE
+   ================================================================ */
+
+@media (max-width: 480px) {
+  .opnb-hud {
+    height: 78px;
+  }
+
+  .opnb-viewport {
+    top: 150px;
+  }
+
+  .opnb-hud span {
+    font-size: 0.48rem;
+  }
+
+  .opnb-hud h1 {
+    font-size: 1rem;
+  }
+
+  .opnb-encounter-content {
+    padding: 18px;
+  }
+
+  .opnb-encounter-content h2 {
+    font-size: 1.8rem;
+  }
+
+  .opnb-squad-network,
+  .opnb-rahndel-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .opnb-servitor-network button {
+    min-height: 76px;
+  }
+
+  .opnb-dialogue-terminal blockquote {
+    padding: 17px 14px;
+  }
+
+  .opnb-mini-field {
+    height: 255px;
+  }
+
+  .opnb-infiltration-arena {
+    height: 300px;
+  }
+
+  .opnb-walker-body {
+    padding: 12px;
+  }
+
+  .opnb-toast {
+    right: 12px;
+    bottom: 64px;
+    left: 12px;
+
+    max-width: none;
+  }
+}
+
+/* ================================================================
+   REDUCED MOTION
+   ================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .opnb-player-signal.self::before,
+  .opnb-encounter-signal i,
+  .opnb-shank.volatile,
+  .opnb-walker-core.exposed,
+  .opnb-infiltration-arena.detected {
+    animation: none;
+  }
+
+  .opnb-stealth-field.scanner-active
+    .opnb-scanner-line {
+    animation-duration: 0.01ms;
+  }
+}
