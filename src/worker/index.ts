@@ -109,6 +109,511 @@ const BUNGIE_STATE_DURATION_SECONDS =
   60 * 10;
 
 
+
+/* =========================================================
+   OPERATION: CLEANSE // OPERATION: NANITE BREAK
+   Shared public Plaguelands activity.
+========================================================= */
+
+const CLEANSE_TARGET = 777_777;
+const OPNB_MAX_NODES = 7;
+const OPNB_HIDDEN_CHANCE = 0.08;
+const OPNB_PRESENCE_SECONDS = 20;
+const OPNB_ENCOUNTER_RADIUS = 3.25;
+
+const OPNB_NORMAL_ENCOUNTERS = [
+  "dresiks",
+  "monster",
+  "nanitecrew",
+  "perfectedsquad",
+  "rahndel",
+  "servitors",
+  "shankswarm",
+  "stealthswarm",
+  "walker",
+] as const;
+
+const OPNB_HIDDEN_ENCOUNTERS = [
+  "clear",
+  "cyclone",
+  "defense",
+  "infiltrate",
+] as const;
+
+const OPNB_MAP_POLYGON: Array<[number, number]> = [
+  [8,18],[21,9],[39,7],[57,10],[74,8],[91,18],
+  [94,36],[91,57],[84,77],[67,91],[45,94],[24,88],
+  [9,72],[5,51],
+];
+
+function opnbInsideMap(x: number, y: number) {
+  let inside = false;
+  for (let i = 0, j = OPNB_MAP_POLYGON.length - 1; i < OPNB_MAP_POLYGON.length; j = i++) {
+    const [xi, yi] = OPNB_MAP_POLYGON[i];
+    const [xj, yj] = OPNB_MAP_POLYGON[j];
+    const intersects =
+      (yi > y) !== (yj > y) &&
+      x < ((xj - xi) * (y - yi)) / ((yj - yi) || 0.00001) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function opnbDistance(ax: number, ay: number, bx: number, by: number) {
+  return Math.hypot(ax - bx, ay - by);
+}
+
+function opnbRandomPoint() {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    const x = 9 + Math.random() * 82;
+    const y = 10 + Math.random() * 80;
+    if (opnbInsideMap(x, y)) return { x, y };
+  }
+  return { x: 50, y: 55 };
+}
+
+function opnbEncounterImage(kind: "normal" | "hidden", encounter: string) {
+  return kind === "hidden"
+    ? `nanitebreak_hidden_${encounter}.png`
+    : `nanitebreak_encounter_${encounter}.png`;
+}
+
+async function getEventUser(c: any) {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return null;
+  return await c.env.DB.prepare(`
+    SELECT
+      sessions.user_id,
+      users.username,
+      users.global_name
+    FROM sessions
+    INNER JOIN users ON users.id = sessions.user_id
+    WHERE sessions.id = ?
+    LIMIT 1
+  `).bind(sessionId).first() as {
+    user_id: number;
+    username: string;
+    global_name: string | null;
+  } | null;
+}
+
+async function ensureCleanseSchema(c: any) {
+  await c.env.DB.batch([
+    c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS operation_cleanse_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        progress INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS opnb_nodes (
+        id TEXT PRIMARY KEY,
+        x REAL NOT NULL,
+        y REAL NOT NULL,
+        kind TEXT NOT NULL,
+        encounter TEXT NOT NULL,
+        image TEXT NOT NULL,
+        spawned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS opnb_player_presence (
+        user_id INTEGER PRIMARY KEY,
+        x REAL NOT NULL DEFAULT 50,
+        y REAL NOT NULL DEFAULT 55,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+    c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS opnb_player_state (
+        user_id INTEGER PRIMARY KEY,
+        encounters_cleared INTEGER NOT NULL DEFAULT 0,
+        next_weapon_roll INTEGER NOT NULL DEFAULT 3,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `),
+  ]);
+  await c.env.DB.prepare(`
+    INSERT INTO operation_cleanse_state (id, progress)
+    VALUES (1, 0)
+    ON CONFLICT(id) DO NOTHING
+  `).run();
+}
+
+async function ensureOpnbNodes(c: any) {
+  const rows = await c.env.DB.prepare(`
+    SELECT id, x, y, kind, encounter, image, spawned_at
+    FROM opnb_nodes
+    ORDER BY spawned_at ASC
+  `).all<{
+    id: string;
+    x: number;
+    y: number;
+    kind: "normal" | "hidden";
+    encounter: string;
+    image: string;
+    spawned_at: string;
+  }>();
+
+  let count = rows.results?.length ?? 0;
+  const existing = [...(rows.results ?? [])];
+
+  while (count < OPNB_MAX_NODES) {
+    let point = opnbRandomPoint();
+    for (let retry = 0; retry < 80; retry += 1) {
+      if (existing.every((node) => opnbDistance(point.x, point.y, Number(node.x), Number(node.y)) >= 8)) break;
+      point = opnbRandomPoint();
+    }
+
+    const hidden = Math.random() < OPNB_HIDDEN_CHANCE;
+    const pool = hidden ? OPNB_HIDDEN_ENCOUNTERS : OPNB_NORMAL_ENCOUNTERS;
+    const encounter = pool[Math.floor(Math.random() * pool.length)];
+    const kind = hidden ? "hidden" : "normal";
+    const node = {
+      id: crypto.randomUUID(),
+      x: point.x,
+      y: point.y,
+      kind,
+      encounter,
+      image: opnbEncounterImage(kind, encounter),
+      spawned_at: new Date().toISOString(),
+    };
+
+    await c.env.DB.prepare(`
+      INSERT INTO opnb_nodes (id, x, y, kind, encounter, image, spawned_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      node.id, node.x, node.y, node.kind, node.encounter, node.image, node.spawned_at,
+    ).run();
+
+    existing.push(node);
+    count += 1;
+  }
+}
+
+async function opnbWorld(c: any, user: { user_id: number; username: string; global_name: string | null }) {
+  await ensureCleanseSchema(c);
+  await ensureOpnbNodes(c);
+
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO opnb_player_presence (user_id, x, y, updated_at)
+    VALUES (?, 50, 55, ?)
+    ON CONFLICT(user_id) DO UPDATE SET updated_at = excluded.updated_at
+  `).bind(user.user_id, now).run();
+
+  const self = await c.env.DB.prepare(`
+    SELECT user_id, x, y, updated_at
+    FROM opnb_player_presence
+    WHERE user_id = ?
+    LIMIT 1
+  `).bind(user.user_id).first<{
+    user_id: number; x: number; y: number; updated_at: string;
+  }>();
+
+  const cutoff = new Date(Date.now() - OPNB_PRESENCE_SECONDS * 1000).toISOString();
+  const players = await c.env.DB.prepare(`
+    SELECT
+      opnb_player_presence.user_id,
+      opnb_player_presence.x,
+      opnb_player_presence.y,
+      opnb_player_presence.updated_at,
+      users.username,
+      users.global_name
+    FROM opnb_player_presence
+    INNER JOIN users ON users.id = opnb_player_presence.user_id
+    WHERE opnb_player_presence.updated_at >= ?
+    ORDER BY opnb_player_presence.updated_at DESC
+  `).bind(cutoff).all<{
+    user_id: number; x: number; y: number; updated_at: string;
+    username: string; global_name: string | null;
+  }>();
+
+  const nodes = await c.env.DB.prepare(`
+    SELECT id, x, y, kind, encounter, image
+    FROM opnb_nodes
+    ORDER BY spawned_at ASC
+    LIMIT ?
+  `).bind(OPNB_MAX_NODES).all<{
+    id: string; x: number; y: number; kind: "normal" | "hidden";
+    encounter: string; image: string;
+  }>();
+
+  return {
+    success: true,
+    self: {
+      userId: user.user_id,
+      username: user.username,
+      globalName: user.global_name,
+      x: Number(self?.x ?? 50),
+      y: Number(self?.y ?? 55),
+      updatedAt: self?.updated_at ?? now,
+    },
+    players: (players.results ?? []).map((player) => ({
+      userId: player.user_id,
+      username: player.username,
+      globalName: player.global_name,
+      x: Number(player.x),
+      y: Number(player.y),
+      updatedAt: player.updated_at,
+    })),
+    nodes: (nodes.results ?? []).map((node) => ({
+      id: node.id,
+      x: Number(node.x),
+      y: Number(node.y),
+      kind: node.kind,
+      encounter: node.encounter,
+      image: node.image,
+    })),
+  };
+}
+
+app.get("/api/events/operation-cleanse", async (c) => {
+  await ensureCleanseSchema(c);
+  const state = await c.env.DB.prepare(`
+    SELECT progress FROM operation_cleanse_state WHERE id = 1 LIMIT 1
+  `).first<{ progress: number }>();
+  const progress = Math.max(0, Math.min(CLEANSE_TARGET, Number(state?.progress ?? 0)));
+  return c.json({
+    success: true,
+    progress,
+    target: CLEANSE_TARGET,
+    completed: progress >= CLEANSE_TARGET,
+  });
+});
+
+app.get("/api/events/operation-cleanse/nanite-break/world", async (c) => {
+  const user = await getEventUser(c);
+  if (!user) return c.json({ success: false, error: "ACCOUNT AUTHENTICATION REQUIRED" }, 401);
+  return c.json(await opnbWorld(c, user));
+});
+
+app.post("/api/events/operation-cleanse/nanite-break/position", async (c) => {
+  const user = await getEventUser(c);
+  if (!user) return c.json({ success: false, error: "ACCOUNT AUTHENTICATION REQUIRED" }, 401);
+  await ensureCleanseSchema(c);
+
+  let body: { x?: number; y?: number };
+  try { body = await c.req.json(); }
+  catch { return c.json({ success: false, error: "INVALID POSITION REQUEST" }, 400); }
+
+  const x = Number(body.x);
+  const y = Number(body.y);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !opnbInsideMap(x, y)) {
+    return c.json({ success: false, error: "DESTINATION IS OUTSIDE THE PLAGUELANDS PERIMETER" }, 400);
+  }
+
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO opnb_player_presence (user_id, x, y, updated_at)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET
+      x = excluded.x,
+      y = excluded.y,
+      updated_at = excluded.updated_at
+  `).bind(user.user_id, x, y, now).run();
+
+  return c.json({
+    success: true,
+    self: {
+      userId: user.user_id,
+      username: user.username,
+      globalName: user.global_name,
+      x, y, updatedAt: now,
+    },
+  });
+});
+
+app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", async (c) => {
+  const user = await getEventUser(c);
+  if (!user) return c.json({ success: false, error: "ACCOUNT AUTHENTICATION REQUIRED" }, 401);
+  await ensureCleanseSchema(c);
+
+  const nodeId = c.req.param("id");
+  const node = await c.env.DB.prepare(`
+    SELECT id, x, y, kind, encounter, image
+    FROM opnb_nodes
+    WHERE id = ?
+    LIMIT 1
+  `).bind(nodeId).first<{
+    id: string; x: number; y: number; kind: "normal" | "hidden";
+    encounter: string; image: string;
+  }>();
+
+  if (!node) return c.json({ success: false, error: "ENCOUNTER SIGNAL NO LONGER EXISTS" }, 409);
+
+  const presence = await c.env.DB.prepare(`
+    SELECT x, y FROM opnb_player_presence WHERE user_id = ? LIMIT 1
+  `).bind(user.user_id).first<{ x: number; y: number }>();
+
+  if (!presence || opnbDistance(Number(presence.x), Number(presence.y), Number(node.x), Number(node.y)) > OPNB_ENCOUNTER_RADIUS) {
+    return c.json({ success: false, error: "PLAYER SIGNAL IS NOT WITHIN ENCOUNTER RANGE" }, 403);
+  }
+
+  const deleteResult = await c.env.DB.prepare(`
+    DELETE FROM opnb_nodes WHERE id = ?
+  `).bind(node.id).run();
+
+  if (Number(deleteResult.meta?.changes ?? 0) !== 1) {
+    return c.json({ success: false, error: "ENCOUNTER WAS CLEARED BY ANOTHER PLAYER" }, 409);
+  }
+
+  const hidden = node.kind === "hidden";
+  const multiplier = hidden ? 3 : 1;
+
+  const glimmer = (700 + Math.floor(Math.random() * 801)) * multiplier;
+  const cores = (1 + Math.floor(Math.random() * 3)) * multiplier;
+  const prisms = (Math.random() < 0.22 ? 1 : 0) * multiplier;
+  const xp = hidden
+    ? 1200 + Math.floor(Math.random() * 801)
+    : 180 + Math.floor(Math.random() * 221);
+
+  let state = await c.env.DB.prepare(`
+    SELECT encounters_cleared, next_weapon_roll
+    FROM opnb_player_state
+    WHERE user_id = ?
+    LIMIT 1
+  `).bind(user.user_id).first<{ encounters_cleared: number; next_weapon_roll: number }>();
+
+  if (!state) {
+    const firstRoll = 3 + Math.floor(Math.random() * 3);
+    await c.env.DB.prepare(`
+      INSERT INTO opnb_player_state (user_id, encounters_cleared, next_weapon_roll)
+      VALUES (?, 0, ?)
+    `).bind(user.user_id, firstRoll).run();
+    state = { encounters_cleared: 0, next_weapon_roll: firstRoll };
+  }
+
+  const cleared = Number(state.encounters_cleared) + 1;
+  let nextWeaponRoll = Number(state.next_weapon_roll);
+  let weapon: { dropped: boolean; name: string | null; rarity: string | null } = {
+    dropped: false, name: null, rarity: null,
+  };
+
+  if (cleared >= nextWeaponRoll) {
+    const statsRow = await c.env.DB.prepare(`
+      SELECT stats FROM player_stats WHERE user_id = ? LIMIT 1
+    `).bind(user.user_id).first<{ stats: string }>();
+
+    let baseChance = 0.2;
+    if (statsRow?.stats) {
+      try {
+        const parsed = JSON.parse(statsRow.stats) as {
+          weapons?: { exotic_chance?: number; legendary_chance?: number };
+        };
+        baseChance = Math.max(
+          0.05,
+          Math.min(
+            1,
+            Number(parsed.weapons?.exotic_chance ?? 0) +
+            Number(parsed.weapons?.legendary_chance ?? 0),
+          ),
+        );
+      } catch {}
+    }
+
+    const weaponChance = Math.min(1, hidden ? baseChance * 2 : baseChance);
+    if (Math.random() < weaponChance) {
+      const catalog = await c.env.DB.prepare(`
+        SELECT name, rarity
+        FROM weapons
+        WHERE lower(source) = 'opnb'
+        ORDER BY name
+      `).all<{ name: string; rarity: string | null }>();
+
+      const owned = await c.env.DB.prepare(`
+        SELECT weapon_name FROM player_weapons WHERE user_id = ?
+      `).bind(user.user_id).all<{ weapon_name: string }>();
+
+      const ownedNames = new Set((owned.results ?? []).map((row) => row.weapon_name.toLowerCase()));
+      const available = (catalog.results ?? []).filter((row) => !ownedNames.has(row.name.toLowerCase()));
+
+      if (available.length) {
+        const drop = available[Math.floor(Math.random() * available.length)];
+        weapon = { dropped: true, name: drop.name, rarity: drop.rarity };
+      }
+    }
+    nextWeaponRoll = cleared + 3 + Math.floor(Math.random() * 3);
+  }
+
+  const progressAmount = hidden ? 3 : 1;
+  const writes: D1PreparedStatement[] = [
+    c.env.DB.prepare(`
+      INSERT INTO player_currencies (user_id, currency_name, amount)
+      VALUES (?, 'Glimmer', ?)
+      ON CONFLICT(user_id, currency_name)
+      DO UPDATE SET amount = player_currencies.amount + excluded.amount
+    `).bind(user.user_id, glimmer),
+    c.env.DB.prepare(`
+      INSERT INTO player_upgrade_materials (user_id, material_name, amount)
+      VALUES (?, 'Enhancement Core', ?)
+      ON CONFLICT(user_id, material_name)
+      DO UPDATE SET amount = player_upgrade_materials.amount + excluded.amount
+    `).bind(user.user_id, cores),
+    c.env.DB.prepare(`
+      UPDATE player_profiles
+      SET exp = exp + ?, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = ?
+    `).bind(xp, user.user_id),
+    c.env.DB.prepare(`
+      INSERT INTO opnb_player_state (user_id, encounters_cleared, next_weapon_roll, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET
+        encounters_cleared = excluded.encounters_cleared,
+        next_weapon_roll = excluded.next_weapon_roll,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(user.user_id, cleared, nextWeaponRoll),
+    c.env.DB.prepare(`
+      UPDATE operation_cleanse_state
+      SET progress = MIN(?, progress + ?), updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+    `).bind(CLEANSE_TARGET, progressAmount),
+  ];
+
+  if (prisms > 0) {
+    writes.push(c.env.DB.prepare(`
+      INSERT INTO player_upgrade_materials (user_id, material_name, amount)
+      VALUES (?, 'Enhancement Prism', ?)
+      ON CONFLICT(user_id, material_name)
+      DO UPDATE SET amount = player_upgrade_materials.amount + excluded.amount
+    `).bind(user.user_id, prisms));
+  }
+
+  if (weapon.dropped && weapon.name) {
+    writes.push(c.env.DB.prepare(`
+      INSERT INTO player_weapons (user_id, weapon_name, masterwork)
+      VALUES (?, ?, 0)
+      ON CONFLICT(user_id, weapon_name) DO NOTHING
+    `).bind(user.user_id, weapon.name));
+  }
+
+  await c.env.DB.batch(writes);
+  await ensureOpnbNodes(c);
+
+  const progressRow = await c.env.DB.prepare(`
+    SELECT progress FROM operation_cleanse_state WHERE id = 1 LIMIT 1
+  `).first<{ progress: number }>();
+
+  const rewards: Record<string, number> = {
+    Glimmer: glimmer,
+    "Enhancement Core": cores,
+  };
+  if (prisms > 0) rewards["Enhancement Prism"] = prisms;
+
+  return c.json({
+    success: true,
+    hidden,
+    rewards,
+    xp,
+    weapon,
+    cleanseProgress: Number(progressRow?.progress ?? 0),
+    cleanseTarget: CLEANSE_TARGET,
+  });
+});
+
+
+
 /* =========================================================
    API ROOT
 ========================================================= */
