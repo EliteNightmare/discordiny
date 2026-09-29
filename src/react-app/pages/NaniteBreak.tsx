@@ -371,10 +371,10 @@ export default function NaniteBreak() {
   }, [displayPos]);
 
   useEffect(() => {
-    if (activeNode) return;
+    if (activeNode || clearing || reward) return;
     const nearby = nodes.find((node) => distance(displayPos, node) <= 2.3);
     if (nearby) setActiveNode(nearby);
-  }, [displayPos, nodes, activeNode]);
+  }, [displayPos, nodes, activeNode, clearing, reward]);
 
   async function persistPosition(x: number, y: number) {
     const response = await fetch("/api/events/operation-cleanse/nanite-break/position", {
@@ -432,11 +432,18 @@ export default function NaniteBreak() {
 
   async function finishEncounter() {
     if (!activeNode || clearing) return;
+
+    const completedNode = activeNode;
+
+    // Exit the encounter immediately when the minigame completes.
+    // The server clear/reward request continues using the captured node.
+    setActiveNode(null);
     setClearing(true);
     setError("");
+
     try {
       const response = await fetch(
-        `/api/events/operation-cleanse/nanite-break/encounters/${encodeURIComponent(activeNode.id)}/clear`,
+        `/api/events/operation-cleanse/nanite-break/encounters/${encodeURIComponent(completedNode.id)}/clear`,
         {
           method: "POST",
           credentials: "include",
@@ -447,7 +454,6 @@ export default function NaniteBreak() {
       const data = await readJson<ClearResponse>(response);
       if (!response.ok || !data.success) throw new Error(data.error || "Encounter clear rejected.");
       setReward(data);
-      setActiveNode(null);
       await loadWorld(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Encounter clear rejected.");
