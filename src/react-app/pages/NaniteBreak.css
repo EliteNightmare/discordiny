@@ -1808,43 +1808,49 @@
  */
 .opnb-drone-fov {
   position: absolute;
-  z-index: 18;
+  z-index: 3;
 
-  left: 0;
+  /*
+   * The drone is the origin of the cone.
+   * Width is the visual detection range.
+   */
+  left: 10px;
   top: 0;
+  width: 150px;
+  height: 110px;
 
-  transform-origin:
-    0 50%;
+  /*
+   * Keep the cone centered vertically on the drone.
+   * Rotation itself continues to come from the TSX.
+   */
+  transform-origin: 0 50%;
 
-  pointer-events: none;
-
-  opacity: 0.36;
-
+  /*
+   * Bright at the drone, fading toward the end of the FOV.
+   */
   background:
-    conic-gradient(
-      from calc(
-        -1 * var(--fov, 60deg) / 2
-      )
-      at 0 50%,
-      rgba(239, 67, 81, 0.26)
-        0deg,
-      rgba(239, 67, 81, 0.08)
-        var(--fov, 60deg),
-      transparent
-        var(--fov, 60deg)
+    linear-gradient(
+      90deg,
+      rgba(255, 68, 82, 0.42) 0%,
+      rgba(231, 54, 69, 0.25) 38%,
+      rgba(202, 35, 50, 0.12) 72%,
+      rgba(202, 35, 50, 0.015) 100%
     );
 
-  clip-path:
-    polygon(
-      0 50%,
-      100% 10%,
-      100% 90%
-    );
+  /*
+   * Actual triangular FOV.
+   */
+  clip-path: polygon(
+    0 50%,
+    100% 0,
+    100% 100%
+  );
 
   filter:
-    drop-shadow(
-      0 0 8px rgba(232, 54, 68, 0.18)
-    );
+    drop-shadow(0 0 5px rgba(231, 55, 70, 0.25));
+
+  opacity: 0.9;
+  pointer-events: none;
 }
 
 /*
