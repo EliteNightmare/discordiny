@@ -260,11 +260,11 @@ function App() {
     return <Activities />;
   }
 
-  if (path === "/events/operation_cleanse/nanite-break") {
+  if (path === "/events/operation-cleanse/nanite-break") {
     return <NaniteBreak />;
   }
 
-  if (path === "/events/operation_cleanse") {
+  if (path === "/events/operation-cleanse") {
     return <OperationCleanse />;
   }
 
