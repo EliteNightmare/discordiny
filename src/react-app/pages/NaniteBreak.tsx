@@ -97,9 +97,17 @@ const imageByName = Object.fromEntries(
 ) as Record<string, string>;
 
 /*
- * This is the same normalized Plaguelands boundary used by the
- * current Nanite Break implementation. The Worker update will use
- * the same polygon authoritatively.
+ * Temporary normalized Plaguelands boundary.
+ *
+ * User ID 1 gets an in-game boundary tracing
+ * panel later in this file. That lets the real
+ * gold perimeter be traced directly over the
+ * map and exported as normalized coordinates.
+ *
+ * Once traced, the exported polygon should
+ * replace this polygon AND the matching Worker
+ * polygon so client and server use the exact
+ * same hard boundary.
  */
 const MAP_POLYGON: Array<[number, number]> = [
   [8, 18],
@@ -145,11 +153,8 @@ function insidePolygon(x: number, y: number) {
 }
 
 /*
- * Checking only the final destination is not enough for a concave
- * perimeter. Sample the entire route so the displayed player signal
- * cannot cut through the gold wall between two legal destinations.
- *
- * The Worker will perform the authoritative version of this check.
+ * Checking only the final destination is not
+ * enough for a concave perimeter.
  */
 function routeInsidePolygon(
   from: Point,
@@ -523,10 +528,6 @@ function MonsterMinigame({
         return current;
       }
 
-      /*
-       * High-corruption sectors are unstable.
-       * Reduce them first; a second hit seals.
-       */
       if (target.corruption > 55) {
         return current.map(
           (sector) =>
@@ -767,13 +768,6 @@ function NaniteCrewMinigame({
     setHostility(
       nextHostility,
     );
-
-    /*
-     * A bad answer does not make the puzzle
-     * unwinnable. The current crew member
-     * remains and the player has to actually
-     * read their clue.
-     */
   }
 
   return (
@@ -1205,6 +1199,7 @@ function RahndelMinigame({
     </div>
   );
 }
+
 /* ================================================================
    SERVITORS
    Read the pulse values and hit the linked Servitors in ascending
@@ -1595,8 +1590,6 @@ function ShankSwarmMinigame({
    ================================================================ */
 
 type StealthTarget = {
-  id: number;
-  x: number;
   y: number;
   vx: number;
   vy: number;
@@ -1668,6 +1661,7 @@ function StealthSwarmMinigame({
                   x >= 95
                 ) {
                   vx *= -1;
+
                   x = Math.max(
                     5,
                     Math.min(
@@ -1682,6 +1676,7 @@ function StealthSwarmMinigame({
                   y >= 92
                 ) {
                   vy *= -1;
+
                   y = Math.max(
                     5,
                     Math.min(
@@ -1749,6 +1744,7 @@ function StealthSwarmMinigame({
       intercepts + 1;
 
     setTargets(next);
+
     setIntercepts(
       nextIntercepts,
     );
@@ -1913,8 +1909,9 @@ function WalkerMinigame({
         return current;
       }
 
-      const next =
-        [...current];
+      const next = [
+        ...current,
+      ];
 
       next[index] -= 1;
 
@@ -2020,8 +2017,7 @@ function WalkerMinigame({
                 }
               >
                 <span>
-                  LEG{" "}
-                  {index + 1}
+                  LEG {index + 1}
                 </span>
 
                 <strong>
@@ -2396,14 +2392,6 @@ function DefenseMinigame({
    HIDDEN // INFILTRATE
 
    Free-movement stealth arena.
-
-   - Solid rectangular walls.
-   - Player moves around the arena rather than on grid cells.
-   - Drones continuously rotate.
-   - Each drone has a field-of-view cone.
-   - Walls block line of sight.
-   - Entering an unobstructed FOV resets the player to insertion.
-   - Reach extraction to complete.
    ================================================================ */
 
 type Rect = {
@@ -2424,60 +2412,15 @@ type InfiltrationDrone = {
 };
 
 const INFILTRATE_WALLS: Rect[] = [
-  {
-    x: 18,
-    y: 0,
-    w: 4,
-    h: 58,
-  },
-  {
-    x: 18,
-    y: 70,
-    w: 4,
-    h: 30,
-  },
-  {
-    x: 38,
-    y: 22,
-    w: 4,
-    h: 78,
-  },
-  {
-    x: 58,
-    y: 0,
-    w: 4,
-    h: 62,
-  },
-  {
-    x: 58,
-    y: 75,
-    w: 4,
-    h: 25,
-  },
-  {
-    x: 78,
-    y: 18,
-    w: 4,
-    h: 82,
-  },
-  {
-    x: 22,
-    y: 56,
-    w: 12,
-    h: 4,
-  },
-  {
-    x: 42,
-    y: 20,
-    w: 12,
-    h: 4,
-  },
-  {
-    x: 62,
-    y: 62,
-    w: 12,
-    h: 4,
-  },
+  { x: 18, y: 0, w: 4, h: 58 },
+  { x: 18, y: 70, w: 4, h: 30 },
+  { x: 38, y: 22, w: 4, h: 78 },
+  { x: 58, y: 0, w: 4, h: 62 },
+  { x: 58, y: 75, w: 4, h: 25 },
+  { x: 78, y: 18, w: 4, h: 82 },
+  { x: 22, y: 56, w: 12, h: 4 },
+  { x: 42, y: 20, w: 12, h: 4 },
+  { x: 62, y: 62, w: 12, h: 4 },
 ];
 
 const INFILTRATE_START: Point = {
@@ -2537,11 +2480,9 @@ function pointInRect(
 ) {
   return (
     point.x >= rect.x &&
-    point.x <=
-      rect.x + rect.w &&
+    point.x <= rect.x + rect.w &&
     point.y >= rect.y &&
-    point.y <=
-      rect.y + rect.h
+    point.y <= rect.y + rect.h
   );
 }
 
@@ -2565,42 +2506,22 @@ function segmentsIntersect(
   d: Point,
 ) {
   const o1 =
-    orientation(
-      a,
-      b,
-      c,
-    );
+    orientation(a, b, c);
 
   const o2 =
-    orientation(
-      a,
-      b,
-      d,
-    );
+    orientation(a, b, d);
 
   const o3 =
-    orientation(
-      c,
-      d,
-      a,
-    );
+    orientation(c, d, a);
 
   const o4 =
-    orientation(
-      c,
-      d,
-      b,
-    );
+    orientation(c, d, b);
 
   return (
-    (o1 > 0 &&
-      o2 < 0 ||
-      o1 < 0 &&
-      o2 > 0) &&
-    (o3 > 0 &&
-      o4 < 0 ||
-      o3 < 0 &&
-      o4 > 0)
+    ((o1 > 0 && o2 < 0) ||
+      (o1 < 0 && o2 > 0)) &&
+    ((o3 > 0 && o4 < 0) ||
+      (o3 < 0 && o4 > 0))
   );
 }
 
@@ -2610,14 +2531,8 @@ function lineHitsRect(
   rect: Rect,
 ) {
   if (
-    pointInRect(
-      from,
-      rect,
-    ) ||
-    pointInRect(
-      to,
-      rect,
-    )
+    pointInRect(from, rect) ||
+    pointInRect(to, rect)
   ) {
     return true;
   }
@@ -2628,26 +2543,18 @@ function lineHitsRect(
   };
 
   const topRight = {
-    x:
-      rect.x +
-      rect.w,
+    x: rect.x + rect.w,
     y: rect.y,
   };
 
   const bottomLeft = {
     x: rect.x,
-    y:
-      rect.y +
-      rect.h,
+    y: rect.y + rect.h,
   };
 
   const bottomRight = {
-    x:
-      rect.x +
-      rect.w,
-    y:
-      rect.y +
-      rect.h,
+    x: rect.x + rect.w,
+    y: rect.y + rect.h,
   };
 
   return (
@@ -2740,10 +2647,7 @@ function droneSeesPlayer(
   const range =
     Math.hypot(dx, dy);
 
-  if (
-    range >
-    drone.range
-  ) {
+  if (range > drone.range) {
     return false;
   }
 
@@ -2780,6 +2684,58 @@ function droneSeesPlayer(
     );
 
   return !blocked;
+}
+
+/*
+ * Builds the actual visual FOV triangle using
+ * the SAME angle/range/FOV values used by the
+ * detection calculation above.
+ *
+ * The SVG uses the arena's normalized 0..100
+ * coordinate system, so the visible cone and
+ * detection math remain aligned.
+ */
+function infiltrationFovPoints(
+  drone: InfiltrationDrone,
+  angle: number,
+) {
+  const half =
+    drone.fov / 2;
+
+  function endpoint(
+    degrees: number,
+  ) {
+    const radians =
+      (degrees * Math.PI) /
+      180;
+
+    return {
+      x:
+        drone.x +
+        Math.cos(radians) *
+          drone.range,
+      y:
+        drone.y +
+        Math.sin(radians) *
+          drone.range,
+    };
+  }
+
+  const left =
+    endpoint(
+      angle - half,
+    );
+
+  const right =
+    endpoint(
+      angle + half,
+    );
+
+  return [
+    `${drone.x},${drone.y}`,
+    `${left.x},${left.y}`,
+    `${right.x},${right.y}`,
+  ].join(" ");
 }
 
 function InfiltrateMinigame({
@@ -2960,7 +2916,9 @@ function InfiltrateMinigame({
       }, 70);
 
     return () =>
-      window.clearInterval(timer);
+      window.clearInterval(
+        timer,
+      );
   }, [detected]);
 
   useEffect(
@@ -3053,11 +3011,6 @@ function InfiltrateMinigame({
             t,
       };
 
-      /*
-       * Recheck during movement. This prevents
-       * cutting through a wall because of
-       * pointer rounding.
-       */
       if (
         pathHitsInfiltrationWall(
           playerRef.current,
@@ -3193,6 +3146,84 @@ function InfiltrateMinigame({
           EXTRACTION
         </div>
 
+        {/*
+         * The FOV is one arena-sized SVG.
+         *
+         * This avoids percentage sizing relative
+         * to a zero-sized drone wrapper, which is
+         * why the old triangular FOV could exist
+         * in the DOM but render at effectively
+         * zero dimensions.
+         */}
+        <svg
+          className="opnb-infiltration-fov-layer"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <radialGradient
+              id="opnb-fov-gradient"
+              cx="0%"
+              cy="50%"
+              r="100%"
+              fx="0%"
+              fy="50%"
+            >
+              <stop
+                offset="0%"
+                stopColor="#ff5360"
+                stopOpacity="0.62"
+              />
+
+              <stop
+                offset="55%"
+                stopColor="#df3445"
+                stopOpacity="0.30"
+              />
+
+              <stop
+                offset="100%"
+                stopColor="#a51f31"
+                stopOpacity="0.06"
+              />
+            </radialGradient>
+          </defs>
+
+          {INFILTRATE_DRONES.map(
+            (drone) => {
+              const angle =
+                angles[
+                  drone.id
+                ] ??
+                drone.angle;
+
+              return (
+                <polygon
+                  key={
+                    drone.id
+                  }
+                  className="opnb-drone-fov"
+                  points={infiltrationFovPoints(
+                    drone,
+                    angle,
+                  )}
+                  fill="url(#opnb-fov-gradient)"
+                  stroke="rgba(255, 91, 105, .72)"
+                  strokeWidth="0.28"
+                  vectorEffect="non-scaling-stroke"
+                />
+              );
+            },
+          )}
+        </svg>
+
+        {/*
+         * Walls render ABOVE the cones. Visually
+         * this makes the wall cut the FOV off,
+         * matching the existing detection logic
+         * where walls block line of sight.
+         */}
         {INFILTRATE_WALLS.map(
           (wall, index) => (
             <div
@@ -3227,17 +3258,6 @@ function InfiltrateMinigame({
                   top: `${drone.y}%`,
                 }}
               >
-                <div
-                  className="opnb-drone-fov"
-                  style={{
-                    width: `${drone.range * 2}%`,
-                    height: `${drone.range * 2}%`,
-                    transform: `translate(0, -50%) rotate(${angle}deg)`,
-                    ["--fov" as string]:
-                      `${drone.fov}deg`,
-                  }}
-                />
-
                 <i
                   style={{
                     transform: `translate(-50%, -50%) rotate(${angle}deg)`,
@@ -3258,6 +3278,7 @@ function InfiltrateMinigame({
           }}
         >
           <i />
+
           <span>
             YOU
           </span>
@@ -3280,6 +3301,7 @@ function InfiltrateMinigame({
     </div>
   );
 }
+
 /* ================================================================
    NORMAL ENCOUNTER ROUTER
    ================================================================ */
@@ -3408,7 +3430,6 @@ function HiddenEncounter({
 /* ================================================================
    PAGE
    ================================================================ */
-
 export default function NaniteBreak() {
   const viewportRef =
     useRef<HTMLDivElement>(
@@ -3470,6 +3491,27 @@ export default function NaniteBreak() {
   const [connected, setConnected] =
     useState(false);
 
+  /* ==============================================================
+     MAP BOUNDARY ADMIN
+
+     Discordiny user_id 1 only.
+     ============================================================== */
+
+  const [showMapAdmin, setShowMapAdmin] =
+    useState(false);
+
+  const [mapTraceMode, setMapTraceMode] =
+    useState(false);
+
+  const [mapTracePoints, setMapTracePoints] =
+    useState<Point[]>([]);
+
+  const [mapTraceMessage, setMapTraceMessage] =
+    useState("");
+
+  const isMapAdmin =
+    Number(self?.userId) === 1;
+
   useEffect(() => {
     displayPosRef.current =
       displayPos;
@@ -3527,10 +3569,6 @@ export default function NaniteBreak() {
         data.players ?? [],
       );
 
-      /*
-       * The Worker is authoritative and will
-       * return a maximum of 15 live signals.
-       */
       setNodes(
         data.nodes ?? [],
       );
@@ -3581,9 +3619,7 @@ export default function NaniteBreak() {
 
   /*
    * Camera follows the player's displayed
-   * position. Increasing the CSS world size
-   * therefore increases zoom without changing
-   * any map coordinates.
+   * position.
    */
   useEffect(() => {
     const viewport =
@@ -3621,18 +3657,18 @@ export default function NaniteBreak() {
   }, [displayPos]);
 
   /*
-   * Enter an encounter when the player reaches
-   * its signal.
+   * Enter encounter on proximity.
    *
-   * Cancelled encounters remain in the world.
-   * Moving away and returning allows another
-   * attempt.
+   * Tracing disables this so the admin can
+   * click directly over encounter signals
+   * without opening encounters.
    */
   useEffect(() => {
     if (
       activeNode ||
       clearing ||
-      reward
+      reward ||
+      mapTraceMode
     ) {
       return;
     }
@@ -3657,6 +3693,7 @@ export default function NaniteBreak() {
     activeNode,
     clearing,
     reward,
+    mapTraceMode,
   ]);
 
   async function persistPosition(
@@ -3710,7 +3747,8 @@ export default function NaniteBreak() {
     if (
       activeNode ||
       clearing ||
-      reward
+      reward ||
+      mapTraceMode
     ) {
       return;
     }
@@ -3724,10 +3762,6 @@ export default function NaniteBreak() {
       y,
     };
 
-    /*
-     * Destination AND entire route must stay
-     * within the gold perimeter.
-     */
     if (
       !insidePolygon(
         x,
@@ -3802,11 +3836,6 @@ export default function NaniteBreak() {
             eased,
       };
 
-      /*
-       * Hard client wall. Even during the
-       * animation we refuse to render a point
-       * outside the gold boundary.
-       */
       if (
         !insidePolygon(
           next.x,
@@ -3853,10 +3882,6 @@ export default function NaniteBreak() {
         x,
         y,
       ).catch((err) => {
-        /*
-         * Worker rejection wins. Restore the
-         * last authoritative position.
-         */
         if (self) {
           const authoritative = {
             x: self.x,
@@ -3885,9 +3910,154 @@ export default function NaniteBreak() {
       );
   }
 
+  /*
+   * Convert a click on the giant map world
+   * directly to normalized map coordinates.
+   *
+   * These are the same 0..100 coordinates used
+   * by player movement, nodes and MAP_POLYGON.
+   */
+  function addMapTracePoint(
+    event: PointerEvent<HTMLDivElement>,
+  ) {
+    if (
+      !isMapAdmin ||
+      !mapTraceMode
+    ) {
+      return;
+    }
+
+    if (
+      event.pointerType ===
+        "mouse" &&
+      event.button !== 0
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const world =
+      worldRef.current;
+
+    if (!world) {
+      return;
+    }
+
+    const rect =
+      world.getBoundingClientRect();
+
+    const x =
+      ((event.clientX -
+        rect.left) /
+        rect.width) *
+      100;
+
+    const y =
+      ((event.clientY -
+        rect.top) /
+        rect.height) *
+      100;
+
+    if (
+      x < 0 ||
+      x > 100 ||
+      y < 0 ||
+      y > 100
+    ) {
+      return;
+    }
+
+    setMapTracePoints(
+      (current) => [
+        ...current,
+        {
+          x: Number(
+            x.toFixed(3),
+          ),
+          y: Number(
+            y.toFixed(3),
+          ),
+        },
+      ],
+    );
+
+    setMapTraceMessage("");
+  }
+
+  async function copyMapTrace() {
+    if (
+      mapTracePoints.length <
+      3
+    ) {
+      return;
+    }
+
+    /*
+     * Export both names so the result can be
+     * dropped directly into the React and
+     * Worker implementations.
+     */
+    const frontend = [
+      "const MAP_POLYGON: Array<[number, number]> = [",
+      ...mapTracePoints.map(
+        (point) =>
+          `  [${point.x}, ${point.y}],`,
+      ),
+      "];",
+    ].join("\n");
+
+    const worker = [
+      "const OPNB_MAP_POLYGON: Array<[number, number]> = [",
+      ...mapTracePoints.map(
+        (point) =>
+          `  [${point.x}, ${point.y}],`,
+      ),
+      "];",
+    ].join("\n");
+
+    const output = [
+      "/* FRONTEND */",
+      frontend,
+      "",
+      "/* WORKER */",
+      worker,
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(
+        output,
+      );
+
+      setMapTraceMessage(
+        "POLYGON COPIED",
+      );
+    } catch {
+      setMapTraceMessage(
+        "COPY FAILED",
+      );
+    }
+  }
+
   function handleMapPointer(
     event: PointerEvent<HTMLDivElement>,
   ) {
+    /*
+     * Admin tracing completely replaces normal
+     * map movement while active.
+     */
+    if (
+      isMapAdmin &&
+      mapTraceMode
+    ) {
+      addMapTracePoint(
+        event,
+      );
+
+      return;
+    }
+
     if (
       event.pointerType ===
         "mouse" &&
@@ -3929,28 +4099,12 @@ export default function NaniteBreak() {
       return;
     }
 
-    /*
-     * No API call:
-     * - node is not deleted
-     * - no rewards
-     * - no clear count
-     * - no weapon roll
-     */
     setActiveNode(
       null,
     );
 
     setError("");
 
-    /*
-     * Move the local signal slightly away from
-     * the encounter so the proximity effect
-     * does not immediately reopen it.
-     *
-     * This is only a local visual nudge. The
-     * next deliberate map movement will persist
-     * normally.
-     */
     const current =
       displayPosRef.current;
 
@@ -4021,10 +4175,6 @@ export default function NaniteBreak() {
     const completedNode =
       activeNode;
 
-    /*
-     * Immediately return to the public map
-     * while the Worker resolves the clear.
-     */
     setActiveNode(
       null,
     );
@@ -4046,13 +4196,6 @@ export default function NaniteBreak() {
               "Content-Type":
                 "application/json",
             },
-
-            /*
-             * Existing Workers safely ignore
-             * this extra field. The matching
-             * Worker update will validate it
-             * authoritatively per encounter.
-             */
             body: JSON.stringify({
               proof:
                 proof ?? {
@@ -4090,11 +4233,6 @@ export default function NaniteBreak() {
           : "Encounter clear rejected.",
       );
 
-      /*
-       * A rejected clear does not delete the
-       * encounter locally. The next world poll
-       * restores the authoritative node state.
-       */
       await loadWorld(
         true,
       );
@@ -4143,13 +4281,22 @@ export default function NaniteBreak() {
         ref={viewportRef}
       >
         <div
-          className="opnb-map-world"
+          className={[
+            "opnb-map-world",
+            mapTraceMode
+              ? "tracing"
+              : "",
+          ].join(" ")}
           ref={worldRef}
           onPointerDown={
             handleMapPointer
           }
           role="application"
-          aria-label="Plaguelands traversal map. Click or tap inside the gold perimeter to move."
+          aria-label={
+            mapTraceMode
+              ? "Map boundary tracing mode"
+              : "Plaguelands traversal map. Click or tap inside the gold perimeter to move."
+          }
         >
           <img
             className="opnb-map-image"
@@ -4159,6 +4306,103 @@ export default function NaniteBreak() {
           />
 
           <div className="opnb-map-vignette" />
+
+          {/*
+           * ADMIN BOUNDARY OVERLAY
+           *
+           * Because the SVG uses 0..100 for both
+           * axes, every clicked point corresponds
+           * directly to the exported polygon.
+           */}
+          {isMapAdmin &&
+            mapTraceMode && (
+              <svg
+                className="opnb-map-tracer"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                {mapTracePoints.length >
+                  1 && (
+                  <polyline
+                    points={mapTracePoints
+                      .map(
+                        (point) =>
+                          `${point.x},${point.y}`,
+                      )
+                      .join(" ")}
+                    fill="none"
+                    stroke="#73ff99"
+                    strokeWidth="0.24"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+
+                {mapTracePoints.length >=
+                  3 && (
+                  <line
+                    x1={
+                      mapTracePoints[
+                        mapTracePoints.length -
+                          1
+                      ].x
+                    }
+                    y1={
+                      mapTracePoints[
+                        mapTracePoints.length -
+                          1
+                      ].y
+                    }
+                    x2={
+                      mapTracePoints[0].x
+                    }
+                    y2={
+                      mapTracePoints[0].y
+                    }
+                    stroke="rgba(115,255,153,.58)"
+                    strokeWidth="0.18"
+                    strokeDasharray="0.8 0.6"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
+
+                {mapTracePoints.map(
+                  (
+                    point,
+                    index,
+                  ) => (
+                    <g
+                      key={`${point.x}-${point.y}-${index}`}
+                    >
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r="0.48"
+                        fill="#ffffff"
+                        stroke="#73ff99"
+                        strokeWidth="0.16"
+                        vectorEffect="non-scaling-stroke"
+                      />
+
+                      <text
+                        x={
+                          point.x +
+                          0.65
+                        }
+                        y={
+                          point.y -
+                          0.65
+                        }
+                        fill="#ffffff"
+                        fontSize="1.1"
+                      >
+                        {index + 1}
+                      </text>
+                    </g>
+                  ),
+                )}
+              </svg>
+            )}
 
           {nodes.map(
             (node) => (
@@ -4226,6 +4470,192 @@ export default function NaniteBreak() {
         </div>
       </section>
 
+      {/*
+       * MAP ADMIN exists only for Discordiny
+       * user_id 1.
+       */}
+      {isMapAdmin && (
+        <>
+          <button
+            type="button"
+            className="opnb-map-admin-toggle"
+            onClick={() =>
+              setShowMapAdmin(
+                (current) =>
+                  !current,
+              )
+            }
+          >
+            MAP ADMIN
+          </button>
+
+          {showMapAdmin && (
+            <aside className="opnb-map-admin">
+              <div className="opnb-map-admin-heading">
+                <div>
+                  <span>
+                    ADMIN // USER 1
+                  </span>
+
+                  <strong>
+                    MAP BOUNDARY TRACER
+                  </strong>
+                </div>
+
+                <button
+                  type="button"
+                  aria-label="Close map admin"
+                  onClick={() =>
+                    setShowMapAdmin(
+                      false,
+                    )
+                  }
+                >
+                  ×
+                </button>
+              </div>
+
+              <p>
+                Start tracing and click directly
+                along the center of the gold
+                perimeter. Add a point whenever
+                the wall changes direction.
+              </p>
+
+              <div className="opnb-map-admin-status">
+                <span>
+                  TRACE
+                </span>
+
+                <strong>
+                  {mapTraceMode
+                    ? "ACTIVE"
+                    : "OFF"}
+                </strong>
+
+                <span>
+                  POINTS
+                </span>
+
+                <strong>
+                  {mapTracePoints.length}
+                </strong>
+              </div>
+
+              <button
+                type="button"
+                className={
+                  mapTraceMode
+                    ? "active"
+                    : ""
+                }
+                onClick={() => {
+                  setMapTraceMode(
+                    (current) =>
+                      !current,
+                  );
+
+                  setMapTraceMessage("");
+                }}
+              >
+                {mapTraceMode
+                  ? "STOP TRACING"
+                  : "START TRACING"}
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  !mapTracePoints.length
+                }
+                onClick={() => {
+                  setMapTracePoints(
+                    (current) =>
+                      current.slice(
+                        0,
+                        -1,
+                      ),
+                  );
+
+                  setMapTraceMessage("");
+                }}
+              >
+                UNDO LAST POINT
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  !mapTracePoints.length
+                }
+                onClick={() => {
+                  setMapTracePoints(
+                    [],
+                  );
+
+                  setMapTraceMessage("");
+                }}
+              >
+                CLEAR TRACE
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  mapTracePoints.length <
+                  3
+                }
+                onClick={() =>
+                  void copyMapTrace()
+                }
+              >
+                COPY POLYGON
+              </button>
+
+              {mapTraceMessage && (
+                <div className="opnb-map-admin-message">
+                  {mapTraceMessage}
+                </div>
+              )}
+
+              {mapTracePoints.length >=
+                3 && (
+                <div className="opnb-map-admin-preview">
+                  <span>
+                    FIRST
+                  </span>
+
+                  <code>
+                    {mapTracePoints[0].x},{" "}
+                    {mapTracePoints[0].y}
+                  </code>
+
+                  <span>
+                    LAST
+                  </span>
+
+                  <code>
+                    {
+                      mapTracePoints[
+                        mapTracePoints.length -
+                          1
+                      ].x
+                    }
+                    ,{" "}
+                    {
+                      mapTracePoints[
+                        mapTracePoints.length -
+                          1
+                      ].y
+                    }
+                  </code>
+                </div>
+              )}
+            </aside>
+          )}
+        </>
+      )}
+
       <footer className="opnb-footer">
         <div>
           <span
@@ -4242,12 +4672,16 @@ export default function NaniteBreak() {
           </span>
 
           <span>
-            CLICK / TAP MAP TO MOVE
+            {mapTraceMode
+              ? "ADMIN // CLICK GOLD WALL TO TRACE"
+              : "CLICK / TAP MAP TO MOVE"}
           </span>
         </div>
 
         <strong>
-          GOLD WALL // HARD PERIMETER
+          {mapTraceMode
+            ? `${mapTracePoints.length} BOUNDARY POINTS`
+            : "GOLD WALL // HARD PERIMETER"}
         </strong>
       </footer>
 
