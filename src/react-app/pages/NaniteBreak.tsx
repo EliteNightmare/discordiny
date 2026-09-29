@@ -538,7 +538,7 @@ export default function NaniteBreak() {
                   ? "HIDDEN SIGNAL // TRIPLE REWARDS"
                   : "SIVA ENCOUNTER"}
               </span>
-              <h2>{activeNode.encounter.replaceAll("_", " ").toUpperCase()}</h2>
+              <h2>{activeNode.encounter.replace(/_/g, " ").toUpperCase()}</h2>
 
               {activeNode.kind === "normal" && <NormalMinigame onWin={finishEncounter} />}
               {activeNode.encounter === "clear" && <ClearMinigame onWin={finishEncounter} />}
