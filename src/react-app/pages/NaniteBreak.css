@@ -1,0 +1,316 @@
+.opnb-page {
+  height: 100vh;
+  overflow: hidden;
+  color: #fff;
+  background: #050608;
+}
+
+.opnb-hud {
+  position: fixed;
+  z-index: 40;
+  top: 72px;
+  left: 0;
+  right: 0;
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 14px 30px;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+  background: linear-gradient(180deg, rgba(5,6,8,.98), rgba(5,6,8,.87));
+  backdrop-filter: blur(12px);
+}
+
+.opnb-hud span,
+.opnb-footer,
+.opnb-start-overlay span,
+.opnb-encounter-card span {
+  font-size: .58rem;
+  font-weight: 850;
+  letter-spacing: .16em;
+  color: rgba(255,255,255,.42);
+}
+
+.opnb-hud h1 {
+  margin: 3px 0 0;
+  font-size: 1.45rem;
+  letter-spacing: -.025em;
+}
+
+.opnb-hud-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.opnb-hud-status strong {
+  color: #df4a55;
+  font-size: .72rem;
+  letter-spacing: .1em;
+}
+
+.opnb-viewport {
+  position: fixed;
+  top: 158px;
+  right: 0;
+  bottom: 52px;
+  left: 0;
+  overflow: hidden;
+  background: #08090b;
+  scrollbar-width: none;
+}
+
+.opnb-viewport::-webkit-scrollbar { display: none; }
+
+.opnb-map-world {
+  position: relative;
+  width: max(185vw, 1900px);
+  aspect-ratio: 877 / 677;
+  overflow: hidden;
+}
+
+.opnb-map-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  user-select: none;
+  pointer-events: none;
+}
+
+.opnb-map-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 150px rgba(0,0,0,.72),
+    inset 0 0 35px rgba(0,0,0,.45);
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.018) 3px 4px);
+}
+
+.opnb-node {
+  position: absolute;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: default;
+}
+
+.opnb-node i {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 50%;
+  background: rgba(15,16,18,.85);
+  box-shadow: 0 0 0 5px rgba(255,255,255,.035);
+}
+
+.opnb-node.unknown { opacity: .25; }
+.opnb-node.discovered { opacity: .85; }
+
+.opnb-node.reachable {
+  cursor: pointer;
+  opacity: 1;
+}
+
+.opnb-node.reachable::before,
+.opnb-node.current::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(234,207,116,.55);
+  border-radius: 50%;
+  animation: opnb-pulse 1.6s ease-out infinite;
+}
+
+.opnb-node.reachable i {
+  border-color: #f2d47a;
+  background: #5d501f;
+  box-shadow: 0 0 12px rgba(242,212,122,.48);
+}
+
+.opnb-node.kind-encounter i {
+  border-color: #ed4652;
+  background: #8c121c;
+  box-shadow: 0 0 13px rgba(237,70,82,.6);
+}
+
+.opnb-node.kind-cache i {
+  border-radius: 2px;
+  border-color: #e6c66e;
+  background: #786124;
+}
+
+.opnb-node.current {
+  z-index: 10;
+  width: 38px;
+  height: 38px;
+}
+
+.opnb-node.current i {
+  inset: 9px;
+  border: 2px solid #fff;
+  background: #c42b37;
+  box-shadow: 0 0 18px rgba(226,56,69,.9);
+}
+
+.opnb-node b {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: .52rem;
+  letter-spacing: .13em;
+  text-shadow: 0 2px 6px #000;
+}
+
+.opnb-footer {
+  position: fixed;
+  z-index: 40;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  padding: 0 30px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  background: rgba(5,6,8,.97);
+}
+
+.opnb-legend {
+  display: flex;
+  gap: 22px;
+}
+
+.opnb-legend span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.opnb-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #aaa;
+}
+
+.opnb-legend i.encounter { background: #d93440; }
+.opnb-legend i.cache { border-radius: 1px; background: #d7b65d; }
+
+.opnb-orders { color: rgba(255,255,255,.3); }
+
+.opnb-start-overlay,
+.opnb-encounter-overlay {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2,3,5,.76);
+  backdrop-filter: blur(10px);
+}
+
+.opnb-start-overlay section {
+  width: min(560px, 100%);
+  padding: 34px;
+  border: 1px solid rgba(218,50,62,.35);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #0c0e12, #16090c);
+  box-shadow: 0 30px 90px rgba(0,0,0,.5);
+}
+
+.opnb-start-overlay h2,
+.opnb-encounter-card h2 {
+  margin: 8px 0 12px;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  letter-spacing: -.05em;
+}
+
+.opnb-start-overlay p,
+.opnb-encounter-card p {
+  color: rgba(255,255,255,.52);
+  line-height: 1.65;
+}
+
+.opnb-start-overlay button,
+.opnb-encounter-card button {
+  min-height: 46px;
+  margin-top: 18px;
+  padding: 0 20px;
+  border: 1px solid rgba(226,56,69,.48);
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(142,15,25,.35);
+  font: inherit;
+  font-size: .65rem;
+  font-weight: 850;
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+
+.opnb-error {
+  margin-top: 16px;
+  color: #ff7780;
+  font-size: .72rem;
+}
+
+.opnb-encounter-card {
+  width: min(820px, 100%);
+  display: grid;
+  grid-template-columns: minmax(240px, .9fr) 1.1fr;
+  overflow: hidden;
+  border: 1px solid rgba(225,50,62,.4);
+  border-radius: 16px;
+  background: #0b0d11;
+  box-shadow: 0 35px 110px rgba(0,0,0,.58);
+}
+
+.opnb-encounter-card img {
+  width: 100%;
+  height: 100%;
+  min-height: 340px;
+  object-fit: cover;
+  filter: saturate(.8) contrast(1.1);
+}
+
+.opnb-encounter-card > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 34px;
+}
+
+@keyframes opnb-pulse {
+  0% { transform: scale(.55); opacity: 1; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+
+@media (max-width: 720px) {
+  .opnb-hud { padding: 12px 16px; }
+  .opnb-hud-status { display: none; }
+  .opnb-map-world { width: max(260vw, 1500px); }
+  .opnb-footer { padding: 0 16px; }
+  .opnb-orders { display: none; }
+  .opnb-encounter-card { grid-template-columns: 1fr; }
+  .opnb-encounter-card img { min-height: 190px; max-height: 240px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opnb-node.reachable::before,
+  .opnb-node.current::before { animation: none; }
+}
