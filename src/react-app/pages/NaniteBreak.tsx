@@ -1009,192 +1009,132 @@ function PerfectedSquadMinigame({
 
 /* ================================================================
    RAHNDEL
-   Identify the real target from changing diagnostic clues.
+   Find the real target using rotating clues.
    ================================================================ */
 
-type RahndelCopy = {
+type RahndelTarget = {
   id: number;
+  rune: string;
   pulse: number;
-  stable: boolean;
-  echo: boolean;
+  real: boolean;
 };
 
-function makeRahndels() {
+function makeRahndels(): RahndelTarget[] {
   const real =
     Math.floor(
       Math.random() * 6,
     );
 
-  return {
-    real,
-    copies: Array.from(
-      { length: 6 },
-      (_, id): RahndelCopy => ({
-        id,
-        pulse:
-          id === real
-            ? 7
-            : 2 +
-              Math.floor(
-                Math.random() * 8,
-              ),
-        stable:
-          id === real,
-        echo:
-          id !== real &&
-          Math.random() > 0.5,
-      }),
-    ),
-  };
+  const runes = shuffle([
+    "I",
+    "II",
+    "III",
+    "IV",
+    "V",
+    "VI",
+  ]);
+
+  return Array.from(
+    { length: 6 },
+    (_, id) => ({
+      id,
+      rune: runes[id],
+      pulse:
+        1 +
+        Math.floor(
+          Math.random() * 9,
+        ),
+      real: id === real,
+    }),
+  );
 }
 
 function RahndelMinigame({
   onWin,
 }: MiniProps) {
-  const initial = useMemo(
-    makeRahndels,
-    [],
-  );
+  const [targets, setTargets] =
+    useState<RahndelTarget[]>(
+      makeRahndels,
+    );
 
-  const [real, setReal] =
-    useState(initial.real);
-
-  const [copies, setCopies] =
-    useState(initial.copies);
-
-  const [scan, setScan] =
-    useState<
-      "pulse" | "stability" | "echo"
-    >("pulse");
-
-  const [misses, setMisses] =
+  const [reshuffles, setReshuffles] =
     useState(0);
 
-  function reshuffle() {
-    const next =
-      makeRahndels();
+  const real =
+    targets.find(
+      (target) => target.real,
+    );
 
-    setReal(next.real);
-    setCopies(next.copies);
-  }
+  const clue = real
+    ? `TRUE SIGNAL // RUNE ${real.rune} // PULSE ${real.pulse}`
+    : "SIGNAL LOST";
 
-  function strike(
-    id: number,
+  function choose(
+    target: RahndelTarget,
   ) {
-    if (id === real) {
+    if (target.real) {
       onWin({
         type: "rahndel_identity",
         data: {
-          misses,
-          scan,
+          rune: target.rune,
+          pulse: target.pulse,
+          reshuffles,
         },
       });
 
       return;
     }
 
-    setMisses(
+    setReshuffles(
       (value) => value + 1,
     );
 
-    reshuffle();
+    setTargets(
+      makeRahndels(),
+    );
   }
 
   return (
     <div className="opnb-mini opnb-rahndel">
       <p>
-        Rahndel is masking himself with SIVA
-        duplicates. Change scanner modes and
-        identify the only copy with the correct
-        diagnostic profile.
+        Multiple identical Rahndels are flooding
+        the scanner. Match the intercepted rune
+        and pulse frequency to the real target.
+        Hitting a decoy reshuffles the field.
       </p>
 
-      <div className="opnb-scan-tabs">
-        <button
-          type="button"
-          className={
-            scan === "pulse"
-              ? "active"
-              : ""
-          }
-          onClick={() =>
-            setScan("pulse")
-          }
-        >
-          PULSE
-        </button>
-
-        <button
-          type="button"
-          className={
-            scan === "stability"
-              ? "active"
-              : ""
-          }
-          onClick={() =>
-            setScan("stability")
-          }
-        >
-          STABILITY
-        </button>
-
-        <button
-          type="button"
-          className={
-            scan === "echo"
-              ? "active"
-              : ""
-          }
-          onClick={() =>
-            setScan("echo")
-          }
-        >
-          ECHO
-        </button>
+      <div className="opnb-rahndel-clue">
+        {clue}
       </div>
 
       <div className="opnb-rahndel-grid">
-        {copies.map((copy) => (
-          <button
-            key={copy.id}
-            type="button"
-            onClick={() =>
-              strike(copy.id)
-            }
-          >
-            <span>
-              RAHNDEL //
-              {copy.id + 1}
-            </span>
+        {targets.map(
+          (target) => (
+            <button
+              key={`${reshuffles}-${target.id}`}
+              type="button"
+              onClick={() =>
+                choose(target)
+              }
+            >
+              <span>
+                RAHNDEL
+              </span>
 
-            <strong>
-              {scan === "pulse" &&
-                `PULSE ${copy.pulse}`}
+              <strong>
+                {target.rune}
+              </strong>
 
-              {scan ===
-                "stability" &&
-                (copy.stable
-                  ? "STABLE"
-                  : "FLUCTUATING")}
-
-              {scan === "echo" &&
-                (copy.echo
-                  ? "ECHO DETECTED"
-                  : "NO ECHO")}
-            </strong>
-          </button>
-        ))}
+              <small>
+                PULSE {target.pulse}
+              </small>
+            </button>
+          ),
+        )}
       </div>
 
       <strong>
-        PROFILE: PULSE 7 // STABLE // NO ECHO
-        {misses > 0
-          ? ` // ${misses} DECOY${
-              misses === 1
-                ? ""
-                : "S"
-            } STRUCK`
-          : ""}
+        DECOY SHUFFLES // {reshuffles}
       </strong>
     </div>
   );
@@ -1202,52 +1142,56 @@ function RahndelMinigame({
 
 /* ================================================================
    SERVITORS
-   Read the pulse values and hit the linked Servitors in ascending
-   pulse order. Wrong input resets the network.
+   Infer the sequence from linked pulse values.
    ================================================================ */
 
 type Servitor = {
   id: number;
+  symbol: string;
   pulse: number;
 };
 
 function ServitorsMinigame({
   onWin,
 }: MiniProps) {
-  const servitors = useMemo<Servitor[]>(
-    () => {
-      const pulses = shuffle([
-        11,
-        23,
-        37,
-        49,
-        62,
-        78,
-      ]);
-
-      return pulses.map(
-        (pulse, id) => ({
-          id,
-          pulse,
-        }),
-      );
-    },
-    [],
-  );
-
-  const correctOrder = useMemo(
-    () =>
-      [...servitors]
-        .sort(
-          (a, b) =>
-            a.pulse - b.pulse,
-        )
-        .map(
-          (servitor) =>
-            servitor.id,
+  const servitors =
+    useMemo<Servitor[]>(
+      () =>
+        shuffle([
+          "▲",
+          "◆",
+          "●",
+          "■",
+          "✦",
+        ]).map(
+          (symbol, id) => ({
+            id,
+            symbol,
+            pulse:
+              10 +
+              Math.floor(
+                Math.random() * 80,
+              ),
+          }),
         ),
-    [servitors],
-  );
+      [],
+    );
+
+  const solution =
+    useMemo(
+      () =>
+        [...servitors]
+          .sort(
+            (a, b) =>
+              a.pulse -
+              b.pulse,
+          )
+          .map(
+            (servitor) =>
+              servitor.id,
+          ),
+      [servitors],
+    );
 
   const [step, setStep] =
     useState(0);
@@ -1255,58 +1199,43 @@ function ServitorsMinigame({
   const [resets, setResets] =
     useState(0);
 
-  const [disabled, setDisabled] =
-    useState<number[]>([]);
-
-  function strike(id: number) {
+  function fire(
+    servitor: Servitor,
+  ) {
     if (
-      disabled.includes(id)
-    ) {
-      return;
-    }
-
-    if (
-      id !==
-      correctOrder[step]
+      servitor.id !==
+      solution[step]
     ) {
       setStep(0);
-      setDisabled([]);
+
       setResets(
-        (value) => value + 1,
+        (value) =>
+          value + 1,
       );
 
       return;
     }
 
-    const nextDisabled = [
-      ...disabled,
-      id,
-    ];
-
-    const nextStep =
+    const next =
       step + 1;
 
-    setDisabled(
-      nextDisabled,
-    );
-
-    setStep(nextStep);
+    setStep(next);
 
     if (
-      nextStep >=
-      correctOrder.length
+      next >=
+      solution.length
     ) {
       window.setTimeout(
         () =>
           onWin({
-            type: "servitors_network",
+            type: "servitor_network",
             data: {
               order:
-                correctOrder,
+                solution,
               resets,
             },
           }),
-        220,
+        180,
       );
     }
   }
@@ -1314,64 +1243,60 @@ function ServitorsMinigame({
   return (
     <div className="opnb-mini opnb-servitors">
       <p>
-        The Servitors are feeding one another
-        through a synchronized SIVA network.
-        Their pulse readings expose the firing
-        order. Break the network from the lowest
-        pulse to the highest.
+        The Servitors are linked by a shared
+        replication network. Destroy them from
+        the lowest pulse frequency to the
+        highest.
       </p>
 
       <div className="opnb-servitor-network">
         {servitors.map(
-          (servitor) => {
-            const down =
-              disabled.includes(
-                servitor.id,
-              );
-
-            return (
-              <button
-                key={
-                  servitor.id
-                }
-                type="button"
-                className={
-                  down
-                    ? "disabled"
-                    : ""
-                }
-                disabled={down}
-                onClick={() =>
-                  strike(
+          (servitor) => (
+            <button
+              key={servitor.id}
+              type="button"
+              className={
+                solution
+                  .slice(
+                    0,
+                    step,
+                  )
+                  .includes(
                     servitor.id,
                   )
-                }
-              >
-                <i />
+                  ? "disabled"
+                  : ""
+              }
+              disabled={solution
+                .slice(0, step)
+                .includes(
+                  servitor.id,
+                )}
+              onClick={() =>
+                fire(servitor)
+              }
+            >
+              <span>
+                {servitor.symbol}
+              </span>
 
-                <span>
-                  SERVITOR{" "}
-                  {servitor.id +
-                    1}
-                </span>
+              <strong>
+                {servitor.pulse}
+              </strong>
 
-                <strong>
-                  {down
-                    ? "LINK BROKEN"
-                    : `PULSE ${servitor.pulse}`}
-                </strong>
-              </button>
-            );
-          },
+              <small>
+                PULSE
+              </small>
+            </button>
+          ),
         )}
       </div>
 
       <strong>
-        {step}/
-        {correctOrder.length} LINKS
-        BROKEN
+        {step}/{solution.length} NETWORK
+        NODES SEVERED
         {resets > 0
-          ? ` // ${resets} NETWORK RESET${
+          ? ` // ${resets} RESET${
               resets === 1
                 ? ""
                 : "S"
@@ -1384,60 +1309,35 @@ function ServitorsMinigame({
 
 /* ================================================================
    SHANK SWARM
-   Destroy priority Shanks while avoiding volatile units.
+   Moving lanes with priority and volatile targets.
    ================================================================ */
 
-type ShankTarget = {
+type Shank = {
   id: number;
-  x: number;
-  y: number;
-  priority: boolean;
-  volatile: boolean;
+  lane: number;
+  progress: number;
+  speed: number;
+  kind: "priority" | "volatile" | "normal";
 };
 
-function makeShankWave(
-  wave: number,
-): ShankTarget[] {
-  const priorityIndex =
-    Math.floor(
-      Math.random() * 6,
-    );
-
-  let volatileIndex =
-    Math.floor(
-      Math.random() * 6,
-    );
-
-  if (
-    volatileIndex ===
-    priorityIndex
-  ) {
-    volatileIndex =
-      (volatileIndex + 1) %
-      6;
-  }
-
+function makeShanks(): Shank[] {
   return Array.from(
-    { length: 6 },
+    { length: 16 },
     (_, id) => ({
-      id:
-        wave * 10 +
-        id,
-      x:
-        10 +
-        (id % 3) * 34 +
-        Math.random() * 8,
-      y:
-        18 +
-        Math.floor(id / 3) *
-          46 +
-        Math.random() * 8,
-      priority:
-        id ===
-        priorityIndex,
-      volatile:
-        id ===
-        volatileIndex,
+      id,
+      lane:
+        id % 4,
+      progress:
+        -Math.random() * 80,
+      speed:
+        1.2 +
+        Math.random() * 1.8,
+      kind:
+        id % 5 === 0
+          ? "priority"
+          : id % 4 === 0
+            ? "volatile"
+            : "normal",
     }),
   );
 }
@@ -1445,12 +1345,9 @@ function makeShankWave(
 function ShankSwarmMinigame({
   onWin,
 }: MiniProps) {
-  const [wave, setWave] =
-    useState(1);
-
-  const [targets, setTargets] =
-    useState<ShankTarget[]>(
-      () => makeShankWave(1),
+  const [shanks, setShanks] =
+    useState<Shank[]>(
+      makeShanks,
     );
 
   const [priorityKills, setPriorityKills] =
@@ -1459,126 +1356,190 @@ function ShankSwarmMinigame({
   const [volatileHits, setVolatileHits] =
     useState(0);
 
-  function hit(
-    target: ShankTarget,
+  const [escapes, setEscapes] =
+    useState(0);
+
+  const requiredPriority =
+    useMemo(
+      () =>
+        shanks.filter(
+          (shank) =>
+            shank.kind ===
+            "priority",
+        ).length,
+      [],
+    );
+
+  useEffect(() => {
+    const timer =
+      window.setInterval(() => {
+        setShanks(
+          (current) => {
+            let escaped = 0;
+
+            const next =
+              current
+                .map(
+                  (shank) => ({
+                    ...shank,
+                    progress:
+                      shank.progress +
+                      shank.speed,
+                  }),
+                )
+                .filter(
+                  (shank) => {
+                    if (
+                      shank.progress >=
+                      100
+                    ) {
+                      escaped += 1;
+                      return false;
+                    }
+
+                    return true;
+                  },
+                );
+
+            if (escaped) {
+              setEscapes(
+                (value) =>
+                  value +
+                  escaped,
+              );
+            }
+
+            return next;
+          },
+        );
+      }, 100);
+
+    return () =>
+      window.clearInterval(timer);
+  }, []);
+
+  function hitShank(
+    shank: Shank,
   ) {
-    if (target.volatile) {
+    if (
+      shank.kind ===
+      "volatile"
+    ) {
       setVolatileHits(
-        (value) => value + 1,
+        (value) =>
+          value + 1,
       );
 
-      setTargets(
-        makeShankWave(wave),
+      setShanks(
+        makeShanks(),
+      );
+
+      setPriorityKills(
+        0,
       );
 
       return;
     }
 
-    if (!target.priority) {
-      setTargets((current) =>
+    setShanks(
+      (current) =>
         current.filter(
           (candidate) =>
             candidate.id !==
-            target.id,
+            shank.id,
         ),
-      );
-
-      return;
-    }
-
-    const nextKills =
-      priorityKills + 1;
-
-    setPriorityKills(
-      nextKills,
     );
 
-    if (nextKills >= 4) {
-      window.setTimeout(
-        () =>
-          onWin({
-            type: "shankswarm_priority",
-            data: {
-              priorityKills:
-                nextKills,
-              volatileHits,
-            },
-          }),
-        200,
+    if (
+      shank.kind ===
+      "priority"
+    ) {
+      const next =
+        priorityKills + 1;
+
+      setPriorityKills(
+        next,
       );
 
-      return;
+      if (
+        next >=
+        requiredPriority
+      ) {
+        window.setTimeout(
+          () =>
+            onWin({
+              type: "shankswarm_priority",
+              data: {
+                priorityKills:
+                  next,
+                volatileHits,
+                escapes,
+              },
+            }),
+          220,
+        );
+      }
     }
-
-    const nextWave =
-      wave + 1;
-
-    setWave(nextWave);
-
-    setTargets(
-      makeShankWave(
-        nextWave,
-      ),
-    );
   }
 
   return (
     <div className="opnb-mini opnb-shanks">
       <p>
-        The swarm is masking command Shanks
-        behind disposable units. Destroy the
-        priority signal. Avoid volatile Shanks:
-        striking one causes the formation to
-        scatter and reform.
+        Priority Shanks are carrying SIVA
+        command relays. Destroy every priority
+        unit while avoiding volatile Shanks.
       </p>
 
-      <div className="opnb-mini-field opnb-shank-field">
-        {targets.map(
-          (target) => (
-            <button
-              key={target.id}
-              type="button"
-              className={[
-                "opnb-shank",
-                target.priority
-                  ? "priority"
-                  : "",
-                target.volatile
-                  ? "volatile"
-                  : "",
-              ].join(" ")}
-              style={{
-                left: `${target.x}%`,
-                top: `${target.y}%`,
-              }}
-              onClick={() =>
-                hit(target)
-              }
+      <div className="opnb-shank-lanes">
+        {Array.from(
+          { length: 4 },
+          (_, lane) => (
+            <div
+              key={lane}
+              className="opnb-shank-lane"
             >
-              <i />
-
-              <span>
-                {target.priority
-                  ? "PRIORITY"
-                  : target.volatile
-                    ? "UNSTABLE"
-                    : "SHANK"}
-              </span>
-            </button>
+              {shanks
+                .filter(
+                  (shank) =>
+                    shank.lane ===
+                    lane,
+                )
+                .map(
+                  (shank) => (
+                    <button
+                      key={shank.id}
+                      type="button"
+                      className={
+                        shank.kind
+                      }
+                      style={{
+                        left: `${shank.progress}%`,
+                      }}
+                      onClick={() =>
+                        hitShank(
+                          shank,
+                        )
+                      }
+                    >
+                      {shank.kind ===
+                      "priority"
+                        ? "◆"
+                        : shank.kind ===
+                            "volatile"
+                          ? "!"
+                          : "•"}
+                    </button>
+                  ),
+                )}
+            </div>
           ),
         )}
       </div>
 
       <strong>
-        {priorityKills}/4 PRIORITY
-        SIGNALS DESTROYED
-        {volatileHits > 0
-          ? ` // ${volatileHits} VOLATILE HIT${
-              volatileHits === 1
-                ? ""
-                : "S"
-            }`
-          : ""}
+        {priorityKills}/{requiredPriority} PRIORITY
+        TARGETS // {volatileHits} VOLATILE
+        HITS
       </strong>
     </div>
   );
@@ -1586,7 +1547,7 @@ function ShankSwarmMinigame({
 
 /* ================================================================
    STEALTH SWARM
-   Scanner periodically exposes invisible targets.
+   Scanner sweeps expose moving signatures.
    ================================================================ */
 
 type StealthTarget = {
@@ -1619,7 +1580,6 @@ function makeStealthTargets() {
     }),
   );
 }
-
 function StealthSwarmMinigame({
   onWin,
 }: MiniProps) {
@@ -2392,7 +2352,6 @@ function DefenseMinigame({
 
 /* ================================================================
    HIDDEN // INFILTRATE
-
    Free-movement stealth arena.
    ================================================================ */
 
@@ -2438,42 +2397,10 @@ const INFILTRATE_EXIT: Rect = {
 };
 
 const INFILTRATE_DRONES: InfiltrationDrone[] = [
-  {
-    id: 1,
-    x: 29,
-    y: 32,
-    angle: 15,
-    speed: 24,
-    fov: 62,
-    range: 28,
-  },
-  {
-    id: 2,
-    x: 49,
-    y: 72,
-    angle: 150,
-    speed: -19,
-    fov: 58,
-    range: 26,
-  },
-  {
-    id: 3,
-    x: 69,
-    y: 36,
-    angle: 225,
-    speed: 27,
-    fov: 64,
-    range: 27,
-  },
-  {
-    id: 4,
-    x: 88,
-    y: 64,
-    angle: 300,
-    speed: -22,
-    fov: 56,
-    range: 25,
-  },
+  { id: 1, x: 29, y: 32, angle: 15, speed: 24, fov: 62, range: 28 },
+  { id: 2, x: 49, y: 72, angle: 150, speed: -19, fov: 58, range: 26 },
+  { id: 3, x: 69, y: 36, angle: 225, speed: 27, fov: 64, range: 27 },
+  { id: 4, x: 88, y: 64, angle: 300, speed: -22, fov: 56, range: 25 },
 ];
 
 function pointInRect(
@@ -2507,17 +2434,10 @@ function segmentsIntersect(
   c: Point,
   d: Point,
 ) {
-  const o1 =
-    orientation(a, b, c);
-
-  const o2 =
-    orientation(a, b, d);
-
-  const o3 =
-    orientation(c, d, a);
-
-  const o4 =
-    orientation(c, d, b);
+  const o1 = orientation(a, b, c);
+  const o2 = orientation(a, b, d);
+  const o3 = orientation(c, d, a);
+  const o4 = orientation(c, d, b);
 
   return (
     ((o1 > 0 && o2 < 0) ||
@@ -2539,51 +2459,19 @@ function lineHitsRect(
     return true;
   }
 
-  const topLeft = {
-    x: rect.x,
-    y: rect.y,
-  };
-
-  const topRight = {
-    x: rect.x + rect.w,
-    y: rect.y,
-  };
-
-  const bottomLeft = {
-    x: rect.x,
-    y: rect.y + rect.h,
-  };
-
+  const topLeft = { x: rect.x, y: rect.y };
+  const topRight = { x: rect.x + rect.w, y: rect.y };
+  const bottomLeft = { x: rect.x, y: rect.y + rect.h };
   const bottomRight = {
     x: rect.x + rect.w,
     y: rect.y + rect.h,
   };
 
   return (
-    segmentsIntersect(
-      from,
-      to,
-      topLeft,
-      topRight,
-    ) ||
-    segmentsIntersect(
-      from,
-      to,
-      topRight,
-      bottomRight,
-    ) ||
-    segmentsIntersect(
-      from,
-      to,
-      bottomRight,
-      bottomLeft,
-    ) ||
-    segmentsIntersect(
-      from,
-      to,
-      bottomLeft,
-      topLeft,
-    )
+    segmentsIntersect(from, to, topLeft, topRight) ||
+    segmentsIntersect(from, to, topRight, bottomRight) ||
+    segmentsIntersect(from, to, bottomRight, bottomLeft) ||
+    segmentsIntersect(from, to, bottomLeft, topLeft)
   );
 }
 
@@ -2688,15 +2576,6 @@ function droneSeesPlayer(
   return !blocked;
 }
 
-/*
- * Builds the actual visual FOV triangle using
- * the SAME angle/range/FOV values used by the
- * detection calculation above.
- *
- * The SVG uses the arena's normalized 0..100
- * coordinate system, so the visible cone and
- * detection math remain aligned.
- */
 function infiltrationFovPoints(
   drone: InfiltrationDrone,
   angle: number,
@@ -3148,15 +3027,6 @@ function InfiltrateMinigame({
           EXTRACTION
         </div>
 
-        {/*
-         * The FOV is one arena-sized SVG.
-         *
-         * This avoids percentage sizing relative
-         * to a zero-sized drone wrapper, which is
-         * why the old triangular FOV could exist
-         * in the DOM but render at effectively
-         * zero dimensions.
-         */}
         <svg
           className="opnb-infiltration-fov-layer"
           viewBox="0 0 100 100"
@@ -3220,12 +3090,6 @@ function InfiltrateMinigame({
           )}
         </svg>
 
-        {/*
-         * Walls render ABOVE the cones. Visually
-         * this makes the wall cut the FOV off,
-         * matching the existing detection logic
-         * where walls block line of sight.
-         */}
         {INFILTRATE_WALLS.map(
           (wall, index) => (
             <div
@@ -3303,7 +3167,6 @@ function InfiltrateMinigame({
     </div>
   );
 }
-
 /* ================================================================
    NORMAL ENCOUNTER ROUTER
    ================================================================ */
@@ -3317,67 +3180,31 @@ function NormalEncounter({
 }) {
   switch (encounter) {
     case "dresiks":
-      return (
-        <DresiksMinigame
-          onWin={onWin}
-        />
-      );
+      return <DresiksMinigame onWin={onWin} />;
 
     case "monster":
-      return (
-        <MonsterMinigame
-          onWin={onWin}
-        />
-      );
+      return <MonsterMinigame onWin={onWin} />;
 
     case "nanitecrew":
-      return (
-        <NaniteCrewMinigame
-          onWin={onWin}
-        />
-      );
+      return <NaniteCrewMinigame onWin={onWin} />;
 
     case "perfectedsquad":
-      return (
-        <PerfectedSquadMinigame
-          onWin={onWin}
-        />
-      );
+      return <PerfectedSquadMinigame onWin={onWin} />;
 
     case "rahndel":
-      return (
-        <RahndelMinigame
-          onWin={onWin}
-        />
-      );
+      return <RahndelMinigame onWin={onWin} />;
 
     case "servitors":
-      return (
-        <ServitorsMinigame
-          onWin={onWin}
-        />
-      );
+      return <ServitorsMinigame onWin={onWin} />;
 
     case "shankswarm":
-      return (
-        <ShankSwarmMinigame
-          onWin={onWin}
-        />
-      );
+      return <ShankSwarmMinigame onWin={onWin} />;
 
     case "stealthswarm":
-      return (
-        <StealthSwarmMinigame
-          onWin={onWin}
-        />
-      );
+      return <StealthSwarmMinigame onWin={onWin} />;
 
     case "walker":
-      return (
-        <WalkerMinigame
-          onWin={onWin}
-        />
-      );
+      return <WalkerMinigame onWin={onWin} />;
 
     default:
       return null;
@@ -3397,32 +3224,16 @@ function HiddenEncounter({
 }) {
   switch (encounter) {
     case "clear":
-      return (
-        <ClearMinigame
-          onWin={onWin}
-        />
-      );
+      return <ClearMinigame onWin={onWin} />;
 
     case "cyclone":
-      return (
-        <CycloneMinigame
-          onWin={onWin}
-        />
-      );
+      return <CycloneMinigame onWin={onWin} />;
 
     case "defense":
-      return (
-        <DefenseMinigame
-          onWin={onWin}
-        />
-      );
+      return <DefenseMinigame onWin={onWin} />;
 
     case "infiltrate":
-      return (
-        <InfiltrateMinigame
-          onWin={onWin}
-        />
-      );
+      return <InfiltrateMinigame onWin={onWin} />;
 
     default:
       return null;
@@ -3432,6 +3243,7 @@ function HiddenEncounter({
 /* ================================================================
    PAGE
    ================================================================ */
+
 export default function NaniteBreak() {
   const viewportRef =
     useRef<HTMLDivElement>(
@@ -3514,10 +3326,28 @@ export default function NaniteBreak() {
   const isMapAdmin =
     Number(self?.userId) === 1;
 
+  const adminOverview =
+    isMapAdmin &&
+    showMapAdmin;
+
   useEffect(() => {
     displayPosRef.current =
       displayPos;
   }, [displayPos]);
+
+  /*
+   * Defensive cleanup:
+   * if the authenticated account ever changes
+   * away from user_id 1, admin state is closed.
+   */
+  useEffect(() => {
+    if (isMapAdmin) {
+      return;
+    }
+
+    setShowMapAdmin(false);
+    setMapTraceMode(false);
+  }, [isMapAdmin]);
 
   async function loadWorld(
     silent = false,
@@ -3571,6 +3401,14 @@ export default function NaniteBreak() {
         data.players ?? [],
       );
 
+      /*
+       * The frontend displays every authoritative
+       * signal returned by the Worker.
+       *
+       * The Worker must use OPNB_MAX_NODES = 15
+       * so this array actually contains 15 live
+       * encounter signals.
+       */
       setNodes(
         data.nodes ?? [],
       );
@@ -3621,7 +3459,12 @@ export default function NaniteBreak() {
 
   /*
    * Camera follows the player's displayed
-   * position.
+   * position during normal play.
+   *
+   * Opening MAP ADMIN disables the follow camera
+   * and resets the viewport to the top-left.
+   * CSS for .admin-overview fits the entire map
+   * inside the viewport for boundary tracing.
    */
   useEffect(() => {
     const viewport =
@@ -3634,6 +3477,16 @@ export default function NaniteBreak() {
       !viewport ||
       !world
     ) {
+      return;
+    }
+
+    if (adminOverview) {
+      viewport.scrollTo({
+        left: 0,
+        top: 0,
+        behavior: "auto",
+      });
+
       return;
     }
 
@@ -3656,21 +3509,24 @@ export default function NaniteBreak() {
       top,
       behavior: "auto",
     });
-  }, [displayPos]);
+  }, [
+    displayPos,
+    adminOverview,
+  ]);
 
   /*
    * Enter encounter on proximity.
    *
-   * Tracing disables this so the admin can
-   * click directly over encounter signals
-   * without opening encounters.
+   * Admin overview and tracing both disable
+   * automatic encounter entry.
    */
   useEffect(() => {
     if (
       activeNode ||
       clearing ||
       reward ||
-      mapTraceMode
+      mapTraceMode ||
+      adminOverview
     ) {
       return;
     }
@@ -3696,6 +3552,7 @@ export default function NaniteBreak() {
     clearing,
     reward,
     mapTraceMode,
+    adminOverview,
   ]);
 
   async function persistPosition(
@@ -3750,7 +3607,8 @@ export default function NaniteBreak() {
       activeNode ||
       clearing ||
       reward ||
-      mapTraceMode
+      mapTraceMode ||
+      adminOverview
     ) {
       return;
     }
@@ -3912,18 +3770,12 @@ export default function NaniteBreak() {
       );
   }
 
-  /*
-   * Convert a click on the giant map world
-   * directly to normalized map coordinates.
-   *
-   * These are the same 0..100 coordinates used
-   * by player movement, nodes and MAP_POLYGON.
-   */
   function addMapTracePoint(
     event: PointerEvent<HTMLDivElement>,
   ) {
     if (
       !isMapAdmin ||
+      !showMapAdmin ||
       !mapTraceMode
     ) {
       return;
@@ -3996,11 +3848,6 @@ export default function NaniteBreak() {
       return;
     }
 
-    /*
-     * Export both names so the result can be
-     * dropped directly into the React and
-     * Worker implementations.
-     */
     const frontend = [
       "const MAP_POLYGON: Array<[number, number]> = [",
       ...mapTracePoints.map(
@@ -4045,18 +3892,19 @@ export default function NaniteBreak() {
   function handleMapPointer(
     event: PointerEvent<HTMLDivElement>,
   ) {
-    /*
-     * Admin tracing completely replaces normal
-     * map movement while active.
-     */
     if (
       isMapAdmin &&
+      showMapAdmin &&
       mapTraceMode
     ) {
       addMapTracePoint(
         event,
       );
 
+      return;
+    }
+
+    if (adminOverview) {
       return;
     }
 
@@ -4279,7 +4127,12 @@ export default function NaniteBreak() {
       </header>
 
       <section
-        className="opnb-viewport"
+        className={[
+          "opnb-viewport",
+          adminOverview
+            ? "admin-overview"
+            : "",
+        ].join(" ")}
         ref={viewportRef}
       >
         <div
@@ -4287,6 +4140,9 @@ export default function NaniteBreak() {
             "opnb-map-world",
             mapTraceMode
               ? "tracing"
+              : "",
+            adminOverview
+              ? "admin-overview"
               : "",
           ].join(" ")}
           ref={worldRef}
@@ -4297,7 +4153,9 @@ export default function NaniteBreak() {
           aria-label={
             mapTraceMode
               ? "Map boundary tracing mode"
-              : "Plaguelands traversal map. Click or tap inside the gold perimeter to move."
+              : adminOverview
+                ? "Plaguelands full map admin overview"
+                : "Plaguelands traversal map. Click or tap inside the gold perimeter to move."
           }
         >
           <img
@@ -4309,14 +4167,8 @@ export default function NaniteBreak() {
 
           <div className="opnb-map-vignette" />
 
-          {/*
-           * ADMIN BOUNDARY OVERLAY
-           *
-           * Because the SVG uses 0..100 for both
-           * axes, every clicked point corresponds
-           * directly to the exported polygon.
-           */}
           {isMapAdmin &&
+            showMapAdmin &&
             mapTraceMode && (
               <svg
                 className="opnb-map-tracer"
@@ -4473,20 +4325,32 @@ export default function NaniteBreak() {
       </section>
 
       {/*
-       * MAP ADMIN exists only for Discordiny
-       * user_id 1.
+       * MAP ADMIN is rendered ONLY for
+       * authenticated Discordiny user_id 1.
        */}
       {isMapAdmin && (
         <>
           <button
             type="button"
             className="opnb-map-admin-toggle"
-            onClick={() =>
+            onClick={() => {
               setShowMapAdmin(
-                (current) =>
-                  !current,
-              )
-            }
+                (current) => {
+                  const next =
+                    !current;
+
+                  if (!next) {
+                    setMapTraceMode(
+                      false,
+                    );
+                  }
+
+                  return next;
+                },
+              );
+
+              setMapTraceMessage("");
+            }}
           >
             MAP ADMIN
           </button>
@@ -4507,17 +4371,26 @@ export default function NaniteBreak() {
                 <button
                   type="button"
                   aria-label="Close map admin"
-                  onClick={() =>
+                  onClick={() => {
                     setShowMapAdmin(
                       false,
-                    )
-                  }
+                    );
+
+                    setMapTraceMode(
+                      false,
+                    );
+
+                    setMapTraceMessage(
+                      "",
+                    );
+                  }}
                 >
                   ×
                 </button>
               </div>
 
               <p>
+                Full-map overview is active.
                 Start tracing and click directly
                 along the center of the gold
                 perimeter. Add a point whenever
@@ -4676,14 +4549,18 @@ export default function NaniteBreak() {
           <span>
             {mapTraceMode
               ? "ADMIN // CLICK GOLD WALL TO TRACE"
-              : "CLICK / TAP MAP TO MOVE"}
+              : adminOverview
+                ? "ADMIN // FULL MAP OVERVIEW"
+                : "CLICK / TAP MAP TO MOVE"}
           </span>
         </div>
 
         <strong>
           {mapTraceMode
             ? `${mapTracePoints.length} BOUNDARY POINTS`
-            : "GOLD WALL // HARD PERIMETER"}
+            : adminOverview
+              ? "BOUNDARY ADMIN // USER 1"
+              : "GOLD WALL // HARD PERIMETER"}
         </strong>
       </footer>
 
