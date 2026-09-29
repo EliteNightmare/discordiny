@@ -1621,6 +1621,8 @@ function ShankSwarmMinigame({
    ================================================================ */
 
 type StealthTarget = {
+  id: number;
+  x: number;
   y: number;
   vx: number;
   vy: number;
