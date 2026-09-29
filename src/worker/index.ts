@@ -280,7 +280,7 @@ async function ensureOpnbNodes(c: any) {
     const hidden = Math.random() < OPNB_HIDDEN_CHANCE;
     const pool = hidden ? OPNB_HIDDEN_ENCOUNTERS : OPNB_NORMAL_ENCOUNTERS;
     const encounter = pool[Math.floor(Math.random() * pool.length)];
-    const kind = hidden ? "hidden" : "normal";
+    const kind: "hidden" | "normal" = hidden ? "hidden" : "normal";
     const node = {
       id: crypto.randomUUID(),
       x: point.x,
