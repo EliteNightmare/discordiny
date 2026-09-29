@@ -241,20 +241,31 @@ async function ensureCleanseSchema(c: any) {
   `).run();
 }
 
+type OpnbNodeRow = {
+  id: string;
+  x: number;
+  y: number;
+  kind: "normal" | "hidden";
+  encounter: string;
+  image: string;
+  spawned_at?: string;
+};
+
+type OpnbPresenceRow = {
+  user_id: number;
+  x: number;
+  y: number;
+  updated_at: string;
+  username?: string;
+  global_name?: string | null;
+};
+
 async function ensureOpnbNodes(c: any) {
   const rows = await c.env.DB.prepare(`
     SELECT id, x, y, kind, encounter, image, spawned_at
     FROM opnb_nodes
     ORDER BY spawned_at ASC
-  `).all<{
-    id: string;
-    x: number;
-    y: number;
-    kind: "normal" | "hidden";
-    encounter: string;
-    image: string;
-    spawned_at: string;
-  }>();
+  `).all() as { results?: OpnbNodeRow[] };
 
   let count = rows.results?.length ?? 0;
   const existing = [...(rows.results ?? [])];
@@ -308,9 +319,7 @@ async function opnbWorld(c: any, user: { user_id: number; username: string; glob
     FROM opnb_player_presence
     WHERE user_id = ?
     LIMIT 1
-  `).bind(user.user_id).first<{
-    user_id: number; x: number; y: number; updated_at: string;
-  }>();
+  `).bind(user.user_id).first() as OpnbPresenceRow | null;
 
   const cutoff = new Date(Date.now() - OPNB_PRESENCE_SECONDS * 1000).toISOString();
   const players = await c.env.DB.prepare(`
@@ -325,20 +334,17 @@ async function opnbWorld(c: any, user: { user_id: number; username: string; glob
     INNER JOIN users ON users.id = opnb_player_presence.user_id
     WHERE opnb_player_presence.updated_at >= ?
     ORDER BY opnb_player_presence.updated_at DESC
-  `).bind(cutoff).all<{
-    user_id: number; x: number; y: number; updated_at: string;
-    username: string; global_name: string | null;
-  }>();
+  `).bind(cutoff).all() as { results?: Array<OpnbPresenceRow & {
+    username: string;
+    global_name: string | null;
+  }> };
 
   const nodes = await c.env.DB.prepare(`
     SELECT id, x, y, kind, encounter, image
     FROM opnb_nodes
     ORDER BY spawned_at ASC
     LIMIT ?
-  `).bind(OPNB_MAX_NODES).all<{
-    id: string; x: number; y: number; kind: "normal" | "hidden";
-    encounter: string; image: string;
-  }>();
+  `).bind(OPNB_MAX_NODES).all() as { results?: OpnbNodeRow[] };
 
   return {
     success: true,
@@ -373,7 +379,7 @@ app.get("/api/events/operation-cleanse", async (c) => {
   await ensureCleanseSchema(c);
   const state = await c.env.DB.prepare(`
     SELECT progress FROM operation_cleanse_state WHERE id = 1 LIMIT 1
-  `).first<{ progress: number }>();
+  `).first() as { progress: number } | null;
   const progress = Math.max(0, Math.min(CLEANSE_TARGET, Number(state?.progress ?? 0)));
   return c.json({
     success: true,
@@ -436,16 +442,13 @@ app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", asyn
     FROM opnb_nodes
     WHERE id = ?
     LIMIT 1
-  `).bind(nodeId).first<{
-    id: string; x: number; y: number; kind: "normal" | "hidden";
-    encounter: string; image: string;
-  }>();
+  `).bind(nodeId).first() as OpnbNodeRow | null;
 
   if (!node) return c.json({ success: false, error: "ENCOUNTER SIGNAL NO LONGER EXISTS" }, 409);
 
   const presence = await c.env.DB.prepare(`
     SELECT x, y FROM opnb_player_presence WHERE user_id = ? LIMIT 1
-  `).bind(user.user_id).first<{ x: number; y: number }>();
+  `).bind(user.user_id).first() as { x: number; y: number } | null;
 
   if (!presence || opnbDistance(Number(presence.x), Number(presence.y), Number(node.x), Number(node.y)) > OPNB_ENCOUNTER_RADIUS) {
     return c.json({ success: false, error: "PLAYER SIGNAL IS NOT WITHIN ENCOUNTER RANGE" }, 403);
@@ -474,7 +477,10 @@ app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", asyn
     FROM opnb_player_state
     WHERE user_id = ?
     LIMIT 1
-  `).bind(user.user_id).first<{ encounters_cleared: number; next_weapon_roll: number }>();
+  `).bind(user.user_id).first() as {
+    encounters_cleared: number;
+    next_weapon_roll: number;
+  } | null;
 
   if (!state) {
     const firstRoll = 3 + Math.floor(Math.random() * 3);
@@ -494,7 +500,7 @@ app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", asyn
   if (cleared >= nextWeaponRoll) {
     const statsRow = await c.env.DB.prepare(`
       SELECT stats FROM player_stats WHERE user_id = ? LIMIT 1
-    `).bind(user.user_id).first<{ stats: string }>();
+    `).bind(user.user_id).first() as { stats: string } | null;
 
     let baseChance = 0.2;
     if (statsRow?.stats) {
@@ -520,11 +526,11 @@ app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", asyn
         FROM weapons
         WHERE lower(source) = 'opnb'
         ORDER BY name
-      `).all<{ name: string; rarity: string | null }>();
+      `).all() as { results?: Array<{ name: string; rarity: string | null }> };
 
       const owned = await c.env.DB.prepare(`
         SELECT weapon_name FROM player_weapons WHERE user_id = ?
-      `).bind(user.user_id).all<{ weapon_name: string }>();
+      `).bind(user.user_id).all() as { results?: Array<{ weapon_name: string }> };
 
       const ownedNames = new Set((owned.results ?? []).map((row) => row.weapon_name.toLowerCase()));
       const available = (catalog.results ?? []).filter((row) => !ownedNames.has(row.name.toLowerCase()));
@@ -593,7 +599,7 @@ app.post("/api/events/operation-cleanse/nanite-break/encounters/:id/clear", asyn
 
   const progressRow = await c.env.DB.prepare(`
     SELECT progress FROM operation_cleanse_state WHERE id = 1 LIMIT 1
-  `).first<{ progress: number }>();
+  `).first() as { progress: number } | null;
 
   const rewards: Record<string, number> = {
     Glimmer: glimmer,
