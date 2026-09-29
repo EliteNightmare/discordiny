@@ -116,7 +116,7 @@ const BUNGIE_STATE_DURATION_SECONDS =
 ========================================================= */
 
 const CLEANSE_TARGET = 777_777;
-const OPNB_MAX_NODES = 7;
+const OPNB_MAX_NODES = 15;
 const OPNB_HIDDEN_CHANCE = 0.08;
 const OPNB_PRESENCE_SECONDS = 20;
 const OPNB_ENCOUNTER_RADIUS = 3.25;
