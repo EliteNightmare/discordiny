@@ -220,8 +220,6 @@ export default function NaniteBreak() {
     }
   }
 
-  const remaining = run ? Math.max(0, run.maxMoves - run.moves) : 12;
-
   return (
     <main className="opnb-page">
       <TopBar />
