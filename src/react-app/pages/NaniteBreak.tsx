@@ -32,7 +32,7 @@ type ApiResponse = {
 };
 
 const encounterAssets = import.meta.glob(
-  "../assets/siva/opnb/*.{png,jpg,jpeg,webp}",
+  "../assets/siva/opnb/*.png",
   {
     eager: true,
     query: "?url",
@@ -40,13 +40,51 @@ const encounterAssets = import.meta.glob(
   },
 ) as Record<string, string>;
 
-function basename(path: string) {
-  return path.split("/").pop()?.toLowerCase() ?? "";
-}
+const NORMAL_ENCOUNTERS = [
+  "nanitebreak_encounter_dresiks.png",
+  "nanitebreak_encounter_monster.png",
+  "nanitebreak_encounter_nanitecrew.png",
+  "nanitebreak_encounter_perfectedsquad.png",
+  "nanitebreak_encounter_rahndel.png",
+  "nanitebreak_encounter_servitors.png",
+  "nanitebreak_encounter_shankswarm.png",
+  "nanitebreak_encounter_stealthswarm.png",
+  "nanitebreak_encounter_walker.png",
+] as const;
 
-const encounterImages = Object.entries(encounterAssets)
-  .filter(([path]) => !basename(path).startsWith("map."))
-  .map(([, url]) => url);
+const HIDDEN_ENCOUNTERS = [
+  "nanitebreak_hidden_clear.png",
+  "nanitebreak_hidden_cyclone.png",
+  "nanitebreak_hidden_defense.png",
+  "nanitebreak_hidden_infiltrate.png",
+] as const;
+
+const encounterImageByName = Object.fromEntries(
+  Object.entries(encounterAssets).map(([path, url]) => [
+    path.split("/").pop()?.toLowerCase() ?? path,
+    url,
+  ]),
+) as Record<string, string>;
+
+function encounterImage(node: MapNode) {
+  if (node.encounterImage) {
+    const direct = encounterImageByName[
+      node.encounterImage.split("/").pop()?.toLowerCase() ?? ""
+    ];
+    if (direct) return direct;
+  }
+
+  const pool =
+    node.kind === "encounter"
+      ? NORMAL_ENCOUNTERS
+      : HIDDEN_ENCOUNTERS;
+
+  const hash = Math.abs(
+    node.id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0),
+  );
+
+  return encounterImageByName[pool[hash % pool.length]] ?? null;
+}
 
 export default function NaniteBreak() {
   const [run, setRun] = useState<RunState | null>(null);
@@ -87,7 +125,7 @@ export default function NaniteBreak() {
     setError("");
 
     try {
-      const response = await fetch("/api/events/operation-cleanse/nanite-break", {
+      const response = await fetch("/api/events/operation_cleanse/nanite-break", {
         credentials: "include",
       });
 
@@ -115,7 +153,7 @@ export default function NaniteBreak() {
 
     try {
       const response = await fetch(
-        "/api/events/operation-cleanse/nanite-break/start",
+        "/api/events/operation_cleanse/nanite-break/start",
         {
           method: "POST",
           credentials: "include",
@@ -146,7 +184,7 @@ export default function NaniteBreak() {
 
     try {
       const response = await fetch(
-        "/api/events/operation-cleanse/nanite-break/move",
+        "/api/events/operation_cleanse/nanite-break/move",
         {
           method: "POST",
           credentials: "include",
@@ -195,8 +233,8 @@ export default function NaniteBreak() {
         </div>
 
         <div className="opnb-hud-status">
-          <span>WEAPON SOURCE // OPNB</span>
-          <strong>{remaining} MOVES REMAIN</strong>
+          <span>PUBLIC ACTIVITY // WEAPON SOURCE OPNB</span>
+          <strong>{run?.nodes.length ?? 0} / 7 ACTIVE NODES</strong>
         </div>
       </header>
 
@@ -255,7 +293,7 @@ export default function NaniteBreak() {
         </div>
 
         <div className="opnb-orders">
-          Select a connected node to traverse. The camera follows your position.
+          Public activity uplink active. Other Guardians can occupy the Plaguelands while encounters rotate across the map.
         </div>
       </footer>
 
@@ -272,9 +310,7 @@ export default function NaniteBreak() {
             </h2>
 
             <p>
-              A route will be generated inside the Plaguelands perimeter.
-              You have twelve moves. Explore connected nodes and clear whatever
-              SIVA has left in your path.
+              Up to seven encounter nodes can be active across the Plaguelands. Clear a node and the network replaces it elsewhere on the map. Hidden signals are rare and considerably more valuable.
             </p>
 
             {error && <div className="opnb-error">{error}</div>}
@@ -291,31 +327,15 @@ export default function NaniteBreak() {
       {encounter && (
         <div className="opnb-encounter-overlay">
           <section className="opnb-encounter-card">
-            {encounterImages.length > 0 && (
-              <img
-                src={
-                  encounter.encounterImage &&
-                  encounterImages.includes(encounter.encounterImage)
-                    ? encounter.encounterImage
-                    : encounterImages[
-                        Math.abs(
-                          encounter.id
-                            .split("")
-                            .reduce((sum, char) => sum + char.charCodeAt(0), 0),
-                        ) % encounterImages.length
-                      ]
-                }
-                alt=""
-              />
+            {encounterImage(encounter) && (
+              <img src={encounterImage(encounter) ?? ""} alt="" />
             )}
 
             <div>
               <span>SIVA CONTACT // NODE {encounter.id.toUpperCase()}</span>
               <h2>ENCOUNTER DETECTED</h2>
               <p>
-                Hostile activity is blocking this route. Encounter resolution
-                is server-authoritative and will be wired to the encounter
-                action for this node.
+                Hostile activity has surfaced at this node. Clear its minigame to claim the shifting reward package and force a replacement node to spawn elsewhere in the Plaguelands.
               </p>
               <button type="button" onClick={() => setEncounter(null)}>
                 ACKNOWLEDGE
