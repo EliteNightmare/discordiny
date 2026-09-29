@@ -8,6 +8,8 @@ import Profile from "./pages/Profile";
 import Account from "./pages/Account";
 import Activities from "./pages/Activities";
 import Events from "./pages/Events";
+import OperationCleanse from "./pages/OperationCleanse";
+import NaniteBreak from "./pages/NaniteBreak";
 import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
 import WeaponVault from "./pages/WeaponVault";
@@ -256,6 +258,14 @@ function App() {
 
   if (path === "/activities") {
     return <Activities />;
+  }
+
+  if (path === "/events/operation_cleanse/nanite-break") {
+    return <NaniteBreak />;
+  }
+
+  if (path === "/events/operation_cleanse") {
+    return <OperationCleanse />;
   }
 
   if (path === "/events") {
