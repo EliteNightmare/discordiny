@@ -43,7 +43,7 @@ export default function OperationCleanse() {
       : Math.min(100, (progress / CLEANSE_TARGET) * 100);
 
   function openActivity(activity: "nanite-break" | "archons-forge") {
-    window.location.href = `/events/operation_cleanse/${activity}`;
+    window.location.href = `/events/operation-cleanse/${activity}`;
   }
 
   return (
