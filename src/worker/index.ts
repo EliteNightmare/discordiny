@@ -10,6 +10,7 @@ declare global {
 import { Hono } from "hono";
 import { registerArticleRoutes } from "./articles.routes";
 import { registerAdminAssetRoutes } from "./admin-assets.routes";
+import { registerAdminManagementRoutes } from "./admin-management.routes";
 import {
   deleteCookie,
   getCookie,
@@ -10252,6 +10253,11 @@ registerArticleRoutes(app, async (c) => {
 });
 
 registerAdminAssetRoutes(app, async (c) => {
+  const user = await getTerminalUser(c);
+  return user ? { id: user.user_id } : null;
+});
+
+registerAdminManagementRoutes(app, async (c) => {
   const user = await getTerminalUser(c);
   return user ? { id: user.user_id } : null;
 });
