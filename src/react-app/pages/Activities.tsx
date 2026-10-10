@@ -1860,11 +1860,11 @@ export default function Activities() {
             >
               <header className="activities-header">
                 <span className="activities-eyebrow">
-                  DIRECTOR
+                  ACTIVITIES
                 </span>
 
                 <h1>
-                  Activities
+                  Director
                 </h1>
 
                 <p>
@@ -2411,6 +2411,11 @@ export default function Activities() {
                   }}
                   aria-label="Fishing activity"
                 >
+                  <span className="fishing-bubbles" aria-hidden="true">
+                    {Array.from({ length: 14 }, (_, index) => (
+                      <i key={index} />
+                    ))}
+                  </span>
                   <div className="fishing-activity-card-content">
                     <span className="fishing-activity-eyebrow">
                       PLAY CATCH
@@ -2440,9 +2445,13 @@ export default function Activities() {
                       PLAYLIST
                     </span>
 
-                    <h2>
-                      Vanguard Operations
-                    </h2>
+                    <div className="activities-heading-title-row">
+                      <h2>Vanguard Operations</h2>
+                      <p className="activities-heading-timer">
+                        <AnimatedClock />
+                        {rotationTimer(data.rotation.nightfall)}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -2491,12 +2500,6 @@ export default function Activities() {
                         .nightfall
                         .activity
                     }
-                    timer={
-                      rotationTimer(
-                        data.rotation
-                          .nightfall,
-                      )
-                    }
                     backgroundImage={
                       getNightfallBanner(
                         data.rotation
@@ -2536,12 +2539,6 @@ export default function Activities() {
                       data.rotation
                         .grandmaster
                         .activity
-                    }
-                    timer={
-                      rotationTimer(
-                        data.rotation
-                          .grandmaster,
-                      )
                     }
                     backgroundImage={
                       getGrandmasterBanner(
