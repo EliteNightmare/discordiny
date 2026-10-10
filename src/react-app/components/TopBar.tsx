@@ -776,6 +776,13 @@ export default function TopBar() {
                 Account
               </button>
 
+              {user.id === 1 && (
+                <button type="button" className="account-menu-profile" onClick={() => {
+                  setAccountMenuOpen(false);
+                  goTo("/command/8b6f9e2c4a71d05f3b8c92a6e14d7f0c");
+                }}>Admin Panel</button>
+              )}
+
               <button
                 type="button"
                 className="account-menu-logout"
