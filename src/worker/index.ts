@@ -7,6 +7,7 @@ declare global {
 }
 
 import { Hono } from "hono";
+import { registerArticleRoutes } from "./articles.routes";
 import {
   deleteCookie,
   getCookie,
@@ -10240,6 +10241,12 @@ app.get("/api/game/activity/feed", async (c) => {
         }),
       ),
   });
+});
+
+/* Articles: reuse the existing, expiry-checked Discord session resolver. */
+registerArticleRoutes(app, async (c) => {
+  const user = await getTerminalUser(c);
+  return user ? { id: user.user_id } : null;
 });
 
 export default app;
