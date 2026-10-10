@@ -444,11 +444,11 @@ export default function TopBar() {
                   role="menuitem"
                   onClick={() =>
                     goTo(
-                      "/updates",
+                      "/articles",
                     )
                   }
                 >
-                  Updates
+                  Articles
                 </button>
 
                 <button
@@ -675,12 +675,12 @@ export default function TopBar() {
             {mobileNewsOpen && (
               <div className="mobile-submenu">
                 <a
-                  href="/updates"
+                  href="/articles"
                   onClick={
                     closeMobileMenu
                   }
                 >
-                  Updates
+                  Articles
                 </a>
 
                 <a
