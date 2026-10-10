@@ -16,6 +16,7 @@ import WeaponVault from "./pages/WeaponVault";
 import Terminal from "./pages/Terminal";
 import Root from "./pages/Root";
 import Articles from "./pages/Articles";
+import AdminPanel from "./pages/AdminPanel";
 
 import SiteGate, {
   shouldGateSite,
@@ -252,6 +253,10 @@ function App() {
   if (path === "/updates") {
     window.location.replace("/articles");
     return null;
+  }
+
+  if (path === "/command/8b6f9e2c4a71d05f3b8c92a6e14d7f0c") {
+    return <AdminPanel />;
   }
 
   if (path === "/articles" || path.startsWith("/articles/")) {
