@@ -1846,3 +1846,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Shared rotation countdowns beside section titles */
+.activities-heading-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 16px;
+  row-gap: 7px;
+}
+
+.activities-heading-title-row .activities-heading-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-size: 0.76rem;
+}
+
+/* Daily rotation header and countdown use the charge-pip gold. */
+.activities-daily-section .activities-heading-title-row h2,
+.activities-daily-section .activities-heading-title-row .activities-heading-timer {
+  color: rgba(255, 221, 130, 0.95);
+}

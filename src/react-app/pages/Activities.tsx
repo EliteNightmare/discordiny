@@ -1868,34 +1868,34 @@ export default function Activities() {
                 </h1>
 
                 <p>
-                  Choose an activity
-                  to begin.
+                  Click an activity to engage.
                 </p>
               </header>
 
 
               {/* DAILY ROTATION */}
 
-              <section className="activities-section">
+              <section className="activities-section activities-daily-section">
                 <div className="activities-section-heading">
                   <div>
                     <span>
-                      GLOBAL ROTATION
+                      DAILY ROTATION
                     </span>
 
-                    <h2>
+                    <div className="activities-heading-title-row">
+                      <h2>
                       Daily Activities
-                    </h2>
-                  </div>
+                      </h2>
+                      <p className="activities-heading-timer">
+                        <AnimatedClock />
 
-                  <p className="activities-heading-timer">
-                    <AnimatedClock />
-
-                    {rotationTimer(
+                        {rotationTimer(
                       data.rotation
                         .dailyRaid,
                     )}
-                  </p>
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="activities-grid activities-grid-three">
@@ -2590,22 +2590,23 @@ export default function Activities() {
                 <div className="activities-section-heading">
                   <div>
                     <span>
-                      5 MINUTE ROTATION
+                      PLAYLIST
                     </span>
 
-                    <h2>
-                      Special Activities
-                    </h2>
-                  </div>
+                    <div className="activities-heading-title-row">
+                      <h2>
+                      Pinnacle Operations
+                      </h2>
+                      <p className="activities-heading-timer">
+                        <AnimatedClock />
 
-                  <p className="activities-heading-timer">
-                    <AnimatedClock />
-
-                    {rotationTimer(
+                        {rotationTimer(
                       data.rotation
                         .infiltration,
                     )}
-                  </p>
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="activities-grid activities-grid-three">
@@ -2615,12 +2616,6 @@ export default function Activities() {
                       data.rotation
                         .infiltration
                         .activity
-                    }
-                    timer={
-                      rotationTimer(
-                        data.rotation
-                          .infiltration,
-                      )
                     }
                     backgroundImage={
                       getGeneralActivityBanner(
@@ -2656,12 +2651,6 @@ export default function Activities() {
                       data.rotation
                         .showdown
                         .activity
-                    }
-                    timer={
-                      rotationTimer(
-                        data.rotation
-                          .showdown,
-                      )
                     }
                     backgroundImage={
                       getGeneralActivityBanner(
@@ -2735,8 +2724,7 @@ export default function Activities() {
                 <div className="activities-section-heading">
                   <div>
                     <span>
-                      DESTINATION
-                      ACTIVITIES
+                      ENDGAME ACTIVITIES
                     </span>
 
                     <h2>
