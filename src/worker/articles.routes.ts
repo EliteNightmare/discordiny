@@ -8,8 +8,8 @@ type ArticlePayload = {
 };
 
 /** Register on the EXISTING Hono app. Supply your existing session/auth resolver. */
-export function registerArticleRoutes(
-  app: Hono<{ Bindings: ArticleBindings }>,
+export function registerArticleRoutes<TBindings extends ArticleBindings>(
+  app: Hono<{ Bindings: TBindings }>,
   getAuthenticatedUser: (c: any) => Promise<AuthUser>,
 ) {
   const requireAdmin = async (c: any): Promise<boolean> => {
