@@ -15,6 +15,7 @@ import VaultCategory from "./pages/VaultCategory";
 import WeaponVault from "./pages/WeaponVault";
 import Terminal from "./pages/Terminal";
 import Root from "./pages/Root";
+import Articles from "./pages/Articles";
 
 import SiteGate, {
   shouldGateSite,
@@ -246,6 +247,15 @@ function App() {
         }
       />
     );
+  }
+
+  if (path === "/updates") {
+    window.location.replace("/articles");
+    return null;
+  }
+
+  if (path === "/articles" || path.startsWith("/articles/")) {
+    return <Articles />;
   }
 
   if (path === "/profile") {
