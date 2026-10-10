@@ -1,3 +1,4 @@
+import { PlayerManagement, EventManagement, AuditManagement } from "./AdminManagement";
 import { useEffect, useState, type FormEvent } from "react";
 import TopBar from "../components/TopBar";
 import "./AdminPanel.css";
@@ -8,7 +9,6 @@ const links = [
   { name: "Terminal", description: "Manage terminal files and discoveries", url: "https://terminal.discordiny.com/" },
   { name: "Root", description: "Manage the Root filesystem", url: "https://root.discordiny.com/5dfg46df4gs4gs6" },
   { name: "Events", description: "View current operations", url: "/events" },
-  { name: "Player Accounts", description: "Existing Terminal user discovery management", url: "https://terminal.discordiny.com/" },
 ];
 
 export default function AdminPanel() {
@@ -19,7 +19,7 @@ export default function AdminPanel() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("");
-  const [active, setActive] = useState<"overview" | "assets">("overview");
+  const [active, setActive] = useState<"overview" | "assets" | "players" | "events" | "audit">("overview");
   async function loadAssets() {
     const res = await fetch("/api/admin/assets", { credentials: "include" });
     const data = await res.json().catch(() => ({}));
@@ -68,11 +68,11 @@ export default function AdminPanel() {
   if (!authorized) return <><TopBar/><main className="dc-admin"><h1>Access denied</h1><p>This section is restricted to the Discordiny administrator.</p><a href="/">Return home</a></main></>;
   return <><TopBar/><main className="dc-admin"><div className="dc-admin-wrap">
     <header className="dc-admin-head"><div><span>DISCORDINY // RESTRICTED</span><h1>ADMIN COMMAND CENTER</h1><p>Central administration · Account #1</p></div><b>◆</b></header>
-    <nav className="dc-admin-tabs"><button className={active === "overview" ? "selected" : ""} onClick={() => setActive("overview")}>Overview</button><button className={active === "assets" ? "selected" : ""} onClick={() => setActive("assets")}>Assets ({assets.length})</button></nav>
-    {active === "overview" ? <><section className="dc-admin-grid">
+    <nav className="dc-admin-tabs"><button className={active === "overview" ? "selected" : ""} onClick={() => setActive("overview")}>Overview</button><button className={active === "assets" ? "selected" : ""} onClick={() => setActive("assets")}>Assets ({assets.length})</button><button className={active === "players" ? "selected" : ""} onClick={() => setActive("players")}>Player Accounts</button><button className={active === "events" ? "selected" : ""} onClick={() => setActive("events")}>Events</button><button className={active === "audit" ? "selected" : ""} onClick={() => setActive("audit")}>Audit Log</button></nav>
+    {active === "players" ? <PlayerManagement/> : active === "events" ? <EventManagement/> : active === "audit" ? <AuditManagement/> : active === "overview" ? <><section className="dc-admin-grid">
       {links.map(link => <a className="dc-admin-card" href={link.url} key={link.name}><span>ADMIN MODULE</span><h2>{link.name} ↗</h2><p>{link.description}</p></a>)}
-      <button className="dc-admin-card" onClick={() => setActive("assets")}><span>ASSET MANAGEMENT</span><h2>Assets ↗</h2><p>Upload images to your custom asset domain</p></button>
-    </section><p className="dc-admin-note">Existing Root, Terminal, and Articles editors remain available via their original pages. Player inventory grants and event creation require separate backend modules and are not enabled by this package.</p></> : <>
+      <button className="dc-admin-card" onClick={() => setActive("players")}><span>PLAYER MANAGEMENT</span><h2>Account Access ↗</h2><p>Search players and grant items</p></button><button className="dc-admin-card" onClick={() => setActive("events")}><span>EVENT MANAGEMENT</span><h2>Create Events ↗</h2><p>Publish new community events</p></button><button className="dc-admin-card" onClick={() => setActive("assets")}><span>ASSET MANAGEMENT</span><h2>Assets ↗</h2><p>Upload images to your custom asset domain</p></button>
+    </section><p className="dc-admin-note">Root, Terminal and Articles remain linked to their existing editors. Account grants and event creation are now available in this dashboard.</p></> : <>
     <section className="dc-admin-panel"><h2>Upload a new asset</h2><p>Choose an unused public path on assets.discordiny.com. Allowed: PNG, JPG, GIF, WebP, AVIF. Maximum 10 MB.</p>
       <form className="dc-admin-form" onSubmit={upload}><label>Asset path<input value={path} onChange={e => setPath(e.target.value)} placeholder="events/beta-banner.webp" required/></label><label>Image<input id="admin-asset-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" onChange={e => setFile(e.target.files?.[0] ?? null)} required/></label><button disabled={uploading || !file || !path.trim()} type="submit">{uploading ? "Uploading…" : "Upload image"}</button></form>
       {path && <p className="dc-admin-preview-url">URL: https://assets.discordiny.com/{path}</p>}

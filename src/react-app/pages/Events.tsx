@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
 import "./Events.css";
 
@@ -12,6 +13,7 @@ type EventDefinition = {
   destination: string;
   objective: string;
   accent: "siva" | "neutral";
+  managed?: boolean;
 };
 
 const events: EventDefinition[] = [
@@ -38,7 +40,10 @@ function EventStatusPill({ status }: { status: EventStatus }) {
 }
 
 export default function Events() {
-  const featured = events.find((event) => event.status === "ACTIVE") ?? events[0];
+  const [managed, setManaged] = useState<EventDefinition[]>([]);
+  useEffect(() => { let alive = true; fetch("/api/events/managed").then(r => r.ok ? r.json() : Promise.reject()).then(d => { if (alive) setManaged((d.events ?? []).map((e: EventDefinition) => ({ ...e, managed: true }))); }).catch(() => {}); return () => { alive = false; }; }, []);
+  const allEvents = [...events, ...managed.filter(e => !events.some(original => original.id === e.id))];
+  const featured = allEvents.find((event) => event.status === "ACTIVE") ?? allEvents[0];
 
   return (
     <div className="events-screen">
@@ -96,11 +101,9 @@ export default function Events() {
                   <button
                     type="button"
                     className="event-enter-button"
-                    onClick={() =>
-                      window.location.assign(`/events/${featured.id}`)
-                    }
+                    onClick={() => { if (!featured.managed) window.location.assign(`/events/${featured.id}`); }}
                   >
-                    <span>ENTER EVENT</span>
+                    <span>{featured.managed ? "EVENT DETAILS" : "ENTER EVENT"}</span>
                     <b aria-hidden="true">→</b>
                   </button>
                 </div>
@@ -138,16 +141,16 @@ export default function Events() {
                 <span>EVENT DIRECTORY</span>
                 <h2>Operations</h2>
               </div>
-              <p>{events.length.toString().padStart(2, "0")} REGISTERED</p>
+              <p>{allEvents.length.toString().padStart(2, "0")} REGISTERED</p>
             </div>
 
             <div className="events-card-grid">
-              {events.map((event, index) => (
+              {allEvents.map((event, index) => (
                 <button
                   type="button"
                   className={`event-card event-card-${event.accent}`}
                   key={event.id}
-                  onClick={() => window.location.assign(`/events/${event.id}`)}
+                  onClick={() => { if (!event.managed) window.location.assign(`/events/${event.id}`); }}
                 >
                   <div className="event-card-index">
                     {(index + 1).toString().padStart(2, "0")}
