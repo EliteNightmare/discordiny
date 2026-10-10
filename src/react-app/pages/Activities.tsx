@@ -2447,10 +2447,19 @@ export default function Activities() {
 
                     <div className="activities-heading-title-row">
                       <h2>Vanguard Operations</h2>
-                      <p className="activities-heading-timer">
-                        <AnimatedClock />
-                        {rotationTimer(data.rotation.nightfall)}
-                      </p>
+                      <div className="activities-vanguard-rotations" aria-label="Nightfall and Grandmaster rotation countdowns">
+                        <p className="activities-heading-timer">
+                          <strong className="activities-rotation-label">NF</strong>
+                          <AnimatedClock />
+                          {rotationTimer(data.rotation.nightfall)}
+                        </p>
+                        <span className="activities-rotation-separator" aria-hidden="true" />
+                        <p className="activities-heading-timer">
+                          <strong className="activities-rotation-label">GM</strong>
+                          <AnimatedClock />
+                          {rotationTimer(data.rotation.grandmaster)}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

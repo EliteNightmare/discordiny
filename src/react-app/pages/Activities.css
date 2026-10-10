@@ -1979,3 +1979,29 @@
   .fishing-activity-card:hover .fishing-bubbles i,
   .fishing-activity-card:focus-visible .fishing-bubbles i { animation: none; }
 }
+
+/* Separate, clearly labelled Nightfall and Grandmaster rotation clocks. */
+.activities-vanguard-rotations {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #f5f6f9;
+}
+.activities-vanguard-rotations .activities-heading-timer {
+  color: inherit;
+  margin: 0;
+}
+.activities-rotation-label {
+  color: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.activities-rotation-separator {
+  display: inline-block;
+  width: 1px;
+  height: 21px;
+  background: rgba(255,255,255,0.45);
+  flex: 0 0 1px;
+}
