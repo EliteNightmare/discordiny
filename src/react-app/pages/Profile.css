@@ -1207,3 +1207,37 @@
 .feed-type{font-size:9px;color:#e2b96c;text-transform:uppercase;letter-spacing:.08em;margin-left:10px}
 .feed-entry time{font-size:10px;color:#8197a6;white-space:nowrap}
 @media(max-width:720px){.profile-duo,.travel-panels{grid-template-columns:1fr}.guardian-hero{align-items:flex-start;flex-direction:column;padding:20px}.guardian-power{text-align:left}.travel-actions{flex-wrap:wrap}.travel-actions label{width:100%}.travel-actions select{flex-basis:100%}.travel-actions button{width:100%}.profile-redesign .profile-block{padding:16px}.feed-entry time{white-space:normal;max-width:75px}}
+
+/* Guardian Dossier 2.2 */
+.profile-redesign .guardian-identity .profile-title{margin-top:7px;color:#a9bdcb;font-size:11px;letter-spacing:.04em}
+.profile-redesign .guardian-identity .profile-title span{color:#e8bc71;font-weight:800;opacity:1}
+.travel-director-trigger{position:relative;display:block;width:100%;height:140px;border:1px solid rgba(130,201,238,.25);border-radius:7px;overflow:hidden;text-align:left;background:#101d2b;color:#eaf5ff;cursor:pointer}
+.travel-trigger-image{position:absolute;inset:0;background-position:center;background-size:cover;transition:transform .25s}
+.travel-director-trigger:hover .travel-trigger-image{transform:scale(1.025)}
+.travel-trigger-copy{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding:20px 25px;text-shadow:0 2px 8px #000}
+.travel-trigger-copy small{font-size:10px;letter-spacing:.15em;color:#a9d8ef}
+.travel-trigger-copy strong{font-size:25px;margin:4px 0}
+.travel-trigger-copy em{font-size:10px;font-style:normal;letter-spacing:.12em;color:#e9c078;font-weight:800}
+.travel-director-menu{margin-top:14px;padding:12px;background:#0b1622;border:1px solid rgba(130,201,238,.2);border-radius:7px}
+.travel-destination-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.travel-destination-tile{position:relative;height:100px;overflow:hidden;border:1px solid rgba(147,190,215,.2);border-radius:5px;background:#0b1622;color:#fff;text-align:left;cursor:pointer}
+.travel-tile-image{position:absolute;inset:0;background-size:cover;background-position:center;transition:transform .2s}
+.travel-destination-tile:hover .travel-tile-image{transform:scale(1.06)}
+.travel-destination-tile-selected{border:2px solid #92d9ff;box-shadow:0 0 12px rgba(97,194,244,.22)}
+.travel-destination-tile-siva{border-color:#ac3543;color:#ffb3b3}
+.travel-destination-tile-siva .travel-tile-image{box-shadow:inset 0 0 40px rgba(190,13,28,.36)}
+.travel-destination-tile-siva.travel-destination-tile-selected{border-color:#f25c67;box-shadow:0 0 15px rgba(220,40,50,.35)}
+.travel-tile-label{position:absolute;bottom:12px;left:12px;font-weight:800;font-size:13px;text-shadow:0 2px 8px #000}
+.travel-tile-current{position:absolute;top:8px;right:8px;font-size:8px;letter-spacing:.08em;background:rgba(5,16,26,.8);padding:5px 6px}
+.travel-director-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 3px 3px;color:#9ebacc;font-size:11px;letter-spacing:.05em}
+.travel-director-footer strong{color:#e8f4ff}
+.travel-director-footer button{background:#92d6f3;border:0;border-radius:4px;padding:11px 18px;font-weight:800;color:#0a1724;cursor:pointer}
+.travel-director-footer button:disabled{opacity:.45;cursor:default}
+.profile-main-and-feed{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,360px);gap:16px;align-items:start}
+.profile-main-stack{min-width:0}
+.profile-main-stack .profile-duo{grid-template-columns:1fr}
+.profile-feed-rail{position:sticky!important;top:90px;max-height:calc(100vh - 112px);display:flex;flex-direction:column;min-width:0}
+.profile-feed-rail .global-feed{overflow-y:auto;min-height:0;scrollbar-width:thin}
+.profile-feed-rail .feed-entry{align-items:flex-start}
+.profile-feed-rail .feed-entry time{font-size:9px;white-space:normal;max-width:65px;text-align:right}
+@media(max-width:850px){.profile-main-and-feed{grid-template-columns:1fr}.profile-feed-rail{position:static!important;max-height:480px}.travel-destination-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
