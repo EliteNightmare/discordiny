@@ -3,6 +3,9 @@ import TopBar from "../components/TopBar";
 import "./Profile.css";
 import glimmerIcon from "../assets/icons/currencies/glimmer.png";
 import lumiaLeavesIcon from "../assets/icons/currencies/lumia-leaves.png";
+import armorPlatingIcon from "../assets/icons/currencies/armor-plating.png";
+import synthweaveIcon from "../assets/icons/currencies/synthweave.png";
+import spoilsIcon from "../assets/icons/currencies/spoils-of-conquest.png";
 
 type ProfileResponse = {
   authenticated: boolean;
@@ -20,6 +23,16 @@ const DESTINATIONS = [
   ["Moon","moon"],["Europa","europa"],["Throne World","throne_world"],["Neomuna","neomuna"],
   ["Pale Heart","pale_heart"],["Plaguelands","plaguelands"]
 ] as const;
+const CURRENCY_ICONS: Record<string,string> = {"Glimmer":glimmerIcon,"Lumia Leaves":lumiaLeavesIcon,"Armor Plating":armorPlatingIcon,"Synthweave":synthweaveIcon,"Spoils of Conquest":spoilsIcon};
+// Discover existing upgrade-material icons at build time; no extra assets required.
+const upgradeMaterialIconFiles = import.meta.glob("../assets/icons/upgrade-materials/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const normalizeMaterialName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
+const upgradeMaterialIcons = Object.fromEntries(
+  Object.entries(upgradeMaterialIconFiles).map(([path, url]) => [
+    normalizeMaterialName(path.split("/").pop()?.replace(/\.[^.]+$/, "") || ""), url,
+  ]),
+);
+const getUpgradeMaterialIcon = (name: string) => upgradeMaterialIcons[normalizeMaterialName(name)];
 const fmt=(value:number)=>Number(value||0).toLocaleString();
 const pretty=(s:string)=>s.replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 const destinationImage=(name:string)=>`/destinations/${DESTINATIONS.find(d=>d[0].toLowerCase()===name.toLowerCase())?.[1]||"cosmodrome"}.png`;
@@ -31,6 +44,7 @@ function Profile(){
   const [error,setError]=useState("");
   const [traveling,setTraveling]=useState(false);
   const [selected,setSelected]=useState("");
+  const [travelOpen,setTravelOpen]=useState(false);
   const [fishSearch,setFishSearch]=useState("");
   const [feedError,setFeedError]=useState(false);
   useEffect(()=>{
@@ -77,6 +91,7 @@ function Profile(){
       const result=await response.json() as {success?:boolean;zone?:string;error?:string};
       if(!response.ok||!result.success)throw new Error(result.error||"Travel failed");
       setData(previous=>previous?{...previous,profile:{...previous.profile,zone:result.zone||selected}}:previous);
+      setTravelOpen(false);
     }catch(e){setError(e instanceof Error?e.message:"Travel failed");}
     finally{setTraveling(false);}
   }
@@ -88,7 +103,7 @@ function Profile(){
   return <div className="profile-screen"><TopBar/><main className="profile-page profile-page-static"><div className="profile-container profile-redesign">
     <header className="guardian-hero">
       <div className="guardian-identity">{avatar?<img className="profile-avatar" src={avatar} alt=""/>:<div className="profile-avatar profile-avatar-placeholder">{name.slice(0,1)}</div>}
-        <div><div className="profile-eyebrow">GUARDIAN DOSSIER</div><h1>{name}</h1><div className="guardian-subtitle">LEVEL {fmt(data.level.current)} <span>·</span> {fmt(data.weapons.owned)} / {fmt(data.weapons.total)} WEAPONS</div></div></div>
+        <div><div className="profile-eyebrow">GUARDIAN DOSSIER</div><h1>{name}</h1><div className="profile-title">Title: <span>COMING SOON</span></div><div className="guardian-subtitle">LEVEL {fmt(data.level.current)} <span>·</span> {fmt(data.weapons.owned)} / {fmt(data.weapons.total)} WEAPONS</div></div></div>
       <div className="guardian-power"><span>TOTAL POWER</span><strong>{fmt(data.power.total)}</strong></div>
     </header>
     {error&&<div className="travel-error" role="alert">{error}</div>}
@@ -104,25 +119,30 @@ function Profile(){
       </section>
     </div>
     <section className="profile-block travel-director"><div className="profile-block-header"><div><div className="profile-eyebrow">DESTINATION DIRECTOR</div><h2>Travel</h2></div><span className="profile-chip">CURRENT: {data.profile.zone}</span></div>
-      <div className="travel-panels"><div className="travel-banner" style={{backgroundImage:`linear-gradient(0deg,rgba(4,9,18,.9),rgba(4,9,18,.05)),url("${destinationImage(data.profile.zone)}")`}}><span>CURRENT LOCATION</span><strong>{data.profile.zone}</strong></div>
-        <div className="travel-banner" style={{backgroundImage:`linear-gradient(0deg,rgba(4,9,18,.9),rgba(4,9,18,.05)),url("${destinationImage(selected)}")`}}><span>SELECTED DESTINATION</span><strong>{selected}</strong></div></div>
-      <div className="travel-actions"><label htmlFor="profile-destination-select">DESTINATION</label><select id="profile-destination-select" value={selected} onChange={e=>setSelected(e.target.value)}>{DESTINATIONS.map(([name])=><option key={name} value={name}>{name}</option>)}</select><button type="button" disabled={traveling||selected===data.profile.zone} onClick={()=>void travel()}>{traveling?"TRAVELING…":selected===data.profile.zone?"CURRENT LOCATION":"TRAVEL →"}</button></div>
+      <button className="travel-director-trigger" type="button" aria-expanded={travelOpen} onClick={()=>setTravelOpen(open=>!open)}>
+        <span className="travel-trigger-image" style={{backgroundImage:`linear-gradient(90deg,rgba(5,12,22,.1),rgba(5,12,22,.85)),url("${destinationImage(data.profile.zone)}")`}}/>
+        <span className="travel-trigger-copy"><small>CURRENT DESTINATION</small><strong>{data.profile.zone}</strong><em>{travelOpen?"CLOSE DIRECTOR ↑":"SELECT DESTINATION ↓"}</em></span>
+      </button>
+      {travelOpen&&<div className="travel-director-menu"><div className="travel-destination-grid">{DESTINATIONS.map(([name,image])=><button key={name} type="button" className={`travel-destination-tile ${name==="Plaguelands"?"travel-destination-tile-siva":""} ${selected===name?"travel-destination-tile-selected":""}`} onClick={()=>setSelected(name)} aria-pressed={selected===name}>
+        <span className="travel-tile-image" style={{backgroundImage:`linear-gradient(0deg,rgba(4,9,18,.9),rgba(4,9,18,.04)),url("/destinations/${image}.png")`}}/><span className="travel-tile-label">{name}</span>{data.profile.zone===name&&<span className="travel-tile-current">CURRENT</span>}
+      </button>)}</div>
+      <div className="travel-director-footer"><span>DESTINATION: <strong>{selected}</strong></span><button type="button" disabled={traveling||selected===data.profile.zone} onClick={()=>void travel()}>{traveling?"TRAVELING…":selected===data.profile.zone?"CURRENT LOCATION":"TRAVEL →"}</button></div></div>}
     </section>
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">WALLET</div><h2>All Currencies</h2></div><span className="profile-chip">{currencies.length} TYPES</span></div>
-      {currencies.length?<div className="currency-grid">{currencies.map(([name,amount])=><div className="currency-card" key={name}><div className="currency-card-label">{name==="Glimmer"||name==="Lumia Leaves"?<img className="currency-icon" src={name==="Glimmer"?glimmerIcon:lumiaLeavesIcon} alt=""/>:<span className="currency-fallback">◆</span>}<span className="currency-name">{name}</span></div><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No currency balances recorded.</p>}
+      {currencies.length?<div className="currency-grid">{currencies.map(([name,amount])=><div className="currency-card" key={name}><div className="currency-card-label">{CURRENCY_ICONS[name]?<img className="currency-icon" src={CURRENCY_ICONS[name]} alt=""/>:<span className="currency-fallback">◆</span>}<span className="currency-name">{name}</span></div><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No currency balances recorded.</p>}
     </section>
-    <div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
-      {materials.length?<div className="currency-grid">{materials.map(([name,amount])=><div className="currency-card" key={name}><span className="currency-name">{pretty(name)}</span><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No upgrade materials recorded.</p>}
+    <div className="profile-main-and-feed"><div className="profile-main-stack"><div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
+      {materials.length?<div className="currency-grid">{materials.map(([name,amount])=><div className="currency-card" key={name}><span className="currency-card-label">{getUpgradeMaterialIcon(name) && <img className="currency-icon" src={getUpgradeMaterialIcon(name)} alt="" loading="lazy" />}<span className="currency-name">{pretty(name)}</span></span><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No upgrade materials recorded.</p>}
     </section>
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COLLECTIONS</div><h2>Fishing Catalogue</h2></div><span className="profile-chip">{Object.keys(fish).length} DISCOVERED</span></div>
       <input className="fish-search" value={fishSearch} onChange={e=>setFishSearch(e.target.value)} placeholder="Search your fish collection…" aria-label="Search fish"/>
       <div className="fish-catalogue">{fishes.length?fishes.map(([name,amount])=><div className="fish-entry" key={name}><span>◇ {pretty(name)}</span><strong>× {fmt(amount)}</strong></div>):<p className="profile-help">{fishSearch?"No matching fish.":"No fish recorded yet."}</p>}</div>
       <p className="profile-help">Shows collected fish reported by your account. Undiscovered species require a complete fish catalogue.</p>
-    </section></div>
-    <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COMMUNITY NETWORK</div><h2>Global Activity Feed</h2></div><span className="profile-chip">LATEST 30 · AUTO-REFRESH</span></div>
+    </section></div></div>
+    <section className="profile-block profile-feed-rail"><div className="profile-block-header"><div><div className="profile-eyebrow">COMMUNITY NETWORK</div><h2>Global Activity Feed</h2></div><span className="profile-chip">LATEST 30 · AUTO-REFRESH</span></div>
       {feedError&&<p className="profile-help">The activity feed is temporarily unavailable.</p>}
       <div className="global-feed">{feed.map(event=><article className="feed-entry" key={event.id}>{event.avatarUrl?<img className="feed-avatar" src={event.avatarUrl} alt=""/>:<div className="feed-avatar feed-placeholder">◇</div>}<div className="feed-content"><div><strong>{event.player}</strong><span className="feed-type">{pretty(event.activityType||"Activity")}</span></div><p>{event.activity} · {pretty(event.result)}{event.weapon?` · ${event.weapon.name}${event.weapon.adept?" (Adept)":""}`:""}</p></div><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString("en-US",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})}</time></article>)}{!feed.length&&!feedError&&<p className="profile-help">No global activity recorded yet.</p>}</div>
-    </section>
+    </section></div>
   </div></main></div>;
 }
 export default Profile;
