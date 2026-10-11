@@ -30,7 +30,9 @@ case "Button":return url?<a className="dc-block-button" href={url} target="_blan
 case "Audio":return url?<audio controls src={url}/>:null;
 case "Video":{if(!url)return null;const id=getYouTubeId(url);return <figure className="dc-media-video">{id?<iframe src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`} title={b.title||"YouTube video"} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/>:<video src={url} controls preload="metadata"/>}{b.caption&&<figcaption>{b.caption}</figcaption>}</figure>;}
 case "Tweet": {
- const match=url.match(/^https?:\\/\\/(?:www\\.|mobile\\.)?(?:x\\.com|twitter\\.com)\\/[^/]+\\/status\\/(\\d+)/i);
+ const match = url.match(
+   /^https?:\/\/(?:www\.|mobile\.)?(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i
+ );
  return match?<div className="dc-block-tweet"><iframe title="X post" src={`https://platform.twitter.com/embed/Tweet.html?id=${match[1]}&theme=dark`} loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer-when-downgrade"/><a href={url} target="_blank" rel="noopener noreferrer">View post on X ↗</a></div>:url?<a href={url} target="_blank" rel="noopener noreferrer">View post on X ↗</a>:null;
 }
 case "Embed":return url?<a href={url} target="_blank" rel="noopener noreferrer">Open linked content ↗</a>:null;
