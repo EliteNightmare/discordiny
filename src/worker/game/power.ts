@@ -1,4 +1,4 @@
-const MAX_LEVEL = 100;
+const MAX_LEVEL_POWER_BONUS = 250;
 
 const NORMAL_WEAPON_POWER = 100;
 const ADEPT_WEAPON_POWER = 200;
@@ -152,7 +152,7 @@ export function calculateLevelPower(
     0,
     Math.min(
       Number(level) || 0,
-      MAX_LEVEL
+      MAX_LEVEL_POWER_BONUS
     )
   );
 
