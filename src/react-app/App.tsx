@@ -17,6 +17,7 @@ import Terminal from "./pages/Terminal";
 import Root from "./pages/Root";
 import Articles from "./pages/Articles";
 import AdminPanel from "./pages/AdminPanel";
+import Patchnotes from "./pages/Patchnotes";
 
 import SiteGate, {
   shouldGateSite,
