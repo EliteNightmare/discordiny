@@ -1,54 +1,56 @@
-import { useCallback, useEffect, useState } from "react";
-import { BLOCK_TYPES, markdownToBlocks, parseBlocks, renderBlock, serializeBlocks, type Block } from "./ArticleBlocks";
-import "./ArticleManagement.css";
-type Article={id:number;slug:string;title:string;subtitle:string;category:string;cover_url:string;banner_url:string;body:string;featured:number;status:"draft"|"published";published_at:string|null};
-type Form={title:string;subtitle:string;category:string;cover_url:string;banner_url:string;featured:number;status:"draft"|"published"};
-const empty:Form={title:"",subtitle:"",category:"NEWS",cover_url:"",banner_url:"",featured:0,status:"draft"};
-const makeBlock=(type:string):Block=>({id:crypto.randomUUID(),type,text:"",title:"",caption:"",url:"",items:[],level:2});
-export default function ArticleManagement(){
- const [items,setItems]=useState<Article[]>([]),[form,setForm]=useState<Form>({...empty}),[blocks,setBlocks]=useState<Block[]>([]);
- const [id,setId]=useState<number|null>(null),[editor,setEditor]=useState(false),[picker,setPicker]=useState(false),[preview,setPreview]=useState(false),[assets,setAssets]=useState(false);
- const [assetList,setAssetList]=useState<{url:string;path:string}[]>([]),[assetTarget,setAssetTarget]=useState<"cover"|"banner"|string>("cover");
- const [busy,setBusy]=useState(false),[message,setMessage]=useState(""),[search,setSearch]=useState("");
- const load=useCallback(async()=>{const r=await fetch("/api/news/articles",{credentials:"include"});if(!r.ok)throw Error("Could not load articles");const d=await r.json();setItems(d.articles??[]);},[]);
- useEffect(()=>{void load().catch(e=>setMessage(String(e)))},[load]);
- const patch=(k:keyof Form,v:string|number)=>setForm(f=>({...f,[k]:v}));
- const update=(blockId:string,patch:Partial<Block>)=>setBlocks(xs=>xs.map(b=>b.id===blockId?{...b,...patch}:b));
- const open=(a?:Article)=>{setId(a?.id??null);setForm(a?{title:a.title,subtitle:a.subtitle,category:a.category,cover_url:a.cover_url,banner_url:a.banner_url??"",featured:a.featured,status:a.status}:{...empty});setBlocks(a?(parseBlocks(a.body)??markdownToBlocks(a.body)):[]);setEditor(true);setMessage("");setPreview(false);};
- const save=async()=>{if(!form.title.trim()||blocks.length===0){setMessage("A title and at least one content block are required.");return;}setBusy(true);setMessage("");try{const r=await fetch(id?`/api/news/admin/articles/${id}`:"/api/news/admin/articles",{method:id?"PUT":"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,body:serializeBlocks(blocks)})});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Save failed");await load();setEditor(false);setMessage("Article saved successfully.");}catch(e){setMessage(e instanceof Error?e.message:"Save failed")}finally{setBusy(false)}};
- const remove=async(a:Article)=>{if(!window.confirm(`Permanently delete ${a.title}?`))return;try{const r=await fetch(`/api/news/admin/articles/${a.id}`,{method:"DELETE",credentials:"include"});if(!r.ok)throw Error("Delete failed");await load();setMessage("Article deleted.")}catch(e){setMessage(String(e))}};
- const browse=async(target:"cover"|"banner"|string)=>{setAssetTarget(target);setAssets(true);try{const r=await fetch("/api/admin/assets",{credentials:"include"});if(!r.ok)throw Error("Assets unavailable");const d=await r.json();setAssetList(d.assets??[])}catch(e){setMessage(String(e))}};
- const choose=(url:string)=>{if(assetTarget==="cover")patch("cover_url",url);else if(assetTarget==="banner")patch("banner_url",url);else update(assetTarget,{url});setAssets(false)};
- const move=(i:number,delta:number)=>setBlocks(xs=>{const j=i+delta;if(j<0||j>=xs.length)return xs;const next=[...xs];[next[i],next[j]]=[next[j],next[i]];return next});
- return <div className="dc-article-admin">
- {!editor?<><div className="dc-article-toolbar"><div><span className="dc-article-kicker">EDITORIAL CONTROL</span><h2>Articles</h2><p>Manage all Discordiny publications from the Command Center.</p></div><button className="dc-article-primary" onClick={()=>open()}>+ Create article</button></div><input className="dc-article-search" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search articles, categories, slugs…"/>
- <div className="dc-article-list">{items.filter(a=>`${a.title} ${a.category} ${a.slug}`.toLowerCase().includes(search.toLowerCase())).map(a=><article key={a.id}><div className="dc-article-thumb">{a.cover_url?<img src={a.cover_url} alt=""/>:"◈"}</div><div className="dc-article-info"><strong>{a.title}</strong><small>{a.slug} · {a.category} · {a.status.toUpperCase()} {a.featured?"· FEATURED":""}</small></div><button onClick={()=>open(a)}>Edit</button><a href={`/articles/${encodeURIComponent(a.slug)}`} target="_blank" rel="noreferrer">View ↗</a><button className="dc-article-danger" onClick={()=>void remove(a)}>Delete</button></article>)}</div></>:
- <div className="dc-article-editor"><header className="dc-article-editor-header"><div><span>ARTICLE / {id?"EDIT":"CREATE"}</span><h2>{form.title||"Untitled article"}</h2></div><div className="dc-article-actions"><button onClick={()=>setPreview(x=>!x)}>{preview?"Edit":"Preview"}</button><button onClick={()=>{if(window.confirm("Close editor? Unsaved changes will be lost."))setEditor(false)}}>Back</button><button className="dc-article-primary" disabled={busy} onClick={()=>void save()}>{busy?"Saving…":"Save changes"}</button></div></header>
- <div className="dc-article-editor-grid"><aside className="dc-article-metadata"><h3>METADATA</h3><label>Title<input value={form.title} maxLength={160} onChange={e=>patch("title",e.target.value)}/></label><label>Summary<textarea rows={4} maxLength={320} value={form.subtitle} onChange={e=>patch("subtitle",e.target.value)}/></label><label>Category<input maxLength={40} value={form.category} onChange={e=>patch("category",e.target.value.toUpperCase())}/></label><div style={{display:"grid",gap:18,margin:"20px 0"}}>
-  <section aria-label="Article thumbnail" style={{border:"1px solid rgba(160,180,210,.35)",borderRadius:12,padding:16,display:"grid",gap:10}}>
-    <div><strong style={{display:"block",fontSize:15}}>ARTICLE THUMBNAIL</strong><small>Clickable image shown on the Articles listing card. Independent from the banner.</small></div>
-    <button type="button" onClick={()=>void browse("cover")} style={{width:"100%",minHeight:form.cover_url?60:125,border:"1px dashed rgba(160,180,210,.65)",borderRadius:9,display:"grid",placeItems:"center",gap:8,cursor:"pointer",background:"transparent",color:"inherit",overflow:"hidden"}}>
-      {form.cover_url?<img src={form.cover_url} alt="Selected article thumbnail" style={{width:"100%",height:"auto",maxHeight:210,objectFit:"contain",objectPosition:"center"}}/>:<span style={{fontSize:17}}>＋ Add Thumbnail</span>}
-      <span style={{fontSize:12}}> {form.cover_url?"Change thumbnail from Assets":"Choose thumbnail from Assets"}</span>
-    </button>
-    <label>Thumbnail image URL<input value={form.cover_url} onChange={e=>patch("cover_url",e.target.value)} placeholder="https://assets.discordiny.com/thumbnails/…"/></label>
-    {form.cover_url&&<button type="button" onClick={()=>patch("cover_url","")}>Remove thumbnail</button>}
-  </section>
-  <section aria-label="Article banner" style={{border:"1px solid rgba(160,180,210,.35)",borderRadius:12,padding:16,display:"grid",gap:10}}>
-    <div><strong style={{display:"block",fontSize:15}}>ARTICLE BANNER</strong><small>Wide image displayed below the TopBar on the article page. Independent from the thumbnail.</small></div>
-    <button type="button" onClick={()=>void browse("banner")} style={{width:"100%",minHeight:form.banner_url?60:145,border:"1px dashed rgba(160,180,210,.65)",borderRadius:9,display:"grid",placeItems:"center",gap:8,cursor:"pointer",background:"transparent",color:"inherit",overflow:"hidden"}}>
-      {form.banner_url?<img src={form.banner_url} alt="Selected article banner" style={{width:"100%",aspectRatio:"32 / 5",height:"auto",maxHeight:220,objectFit:"contain",objectPosition:"center"}}/>:<span style={{fontSize:17}}>＋ Add Banner</span>}
-      <span style={{fontSize:12}}>{form.banner_url?"Change banner from Assets":"Choose banner from Assets"}</span>
-    </button>
-    <label>Banner image URL<input value={form.banner_url} onChange={e=>patch("banner_url",e.target.value)} placeholder="https://assets.discordiny.com/banners/…"/></label>
-    {form.banner_url&&<button type="button" onClick={()=>patch("banner_url","")}>Remove banner</button>}
-  </section>
-</div><label className="dc-article-check"><input type="checkbox" checked={!!form.featured} onChange={e=>patch("featured",e.target.checked?1:0)}/> Featured</label><label>Publication<select value={form.status} onChange={e=>patch("status",e.target.value)}><option value="draft">Draft</option><option value="published">Published</option></select></label><p>Article URL slug is assigned on creation and preserved on edits.</p></aside>
- <section className="dc-article-content"><span className="dc-article-kicker">CONTENT</span>{preview?<div className="dc-article-preview"><h1>{form.title}</h1>{form.banner_url&&<img src={form.banner_url} alt="Article banner" style={{width:"100%",display:"block"}}/>}{blocks.map(b=><div key={b.id}>{renderBlock(b)}</div>)}</div>:<>{blocks.map((b,i)=><div className="dc-article-block" key={b.id}><div className="dc-article-block-top"><strong>{i+1}. {b.type}</strong><div><button onClick={()=>move(i,-1)} disabled={!i}>↑</button><button onClick={()=>move(i,1)} disabled={i===blocks.length-1}>↓</button><button onClick={()=>setBlocks(xs=>[...xs.slice(0,i+1),{...b,id:crypto.randomUUID()},...xs.slice(i+1)])}>Duplicate</button><button onClick={()=>setBlocks(xs=>xs.filter(x=>x.id!==b.id))}>×</button></div></div>
- {!["Divider"].includes(b.type)&&<>{!["Paragraph","Bullet List","Numbered List","Gallery","Row","Table","Conversation","Tweet"].includes(b.type)&&<input placeholder="Block heading / label (optional)" value={b.title??""} onChange={e=>update(b.id,{title:e.target.value})}/>}{b.type==="Title"&&<select value={b.level??2} onChange={e=>update(b.id,{level:Number(e.target.value)})}><option value={1}>H1</option><option value={2}>H2</option><option value={3}>H3</option></select>}{!["Image","Audio","Video","Tweet","Embed","Button"].includes(b.type)&&<textarea rows={b.type==="Paragraph"?5:3} placeholder={b.type==="Gallery"?"One image URL per line":b.type==="Table"?"Column 1|Column 2 (one row per line)":b.type.includes("List")?"One item per line":"Block text"} value={b.items?.length?b.items.join("\n"):b.text??""} onChange={e=>update(b.id,{text:e.target.value,items:["Bullet List","Numbered List","Gallery","Table","Row","Conversation","Tabs"].includes(b.type)?e.target.value.split("\n"):undefined})}/>}{["Image","Audio","Video","Tweet","Embed","Button","Author"].includes(b.type)&&<div className="dc-article-url"><input placeholder={b.type==="Tweet"?"https://x.com/username/status/123456789":b.type==="Author"?"Author avatar image URL":"https://…"} value={b.url??""} onChange={e=>update(b.id,{url:e.target.value})}/><button onClick={()=>void browse(b.id)}>Assets</button></div>}{["Image","Quote","Author"].includes(b.type)&&<input placeholder={b.type==="Author"?"Author subtitle (e.g. Void Crystal)":"Caption / attribution"} value={b.caption??""} onChange={e=>update(b.id,{caption:e.target.value})}/>}</>}
- </div>)}<button className="dc-article-add" onClick={()=>setPicker(true)}>+ Add a block</button></>}</section></div></div>}
- {message&&<p role="status" className="dc-admin-message">{message}</p>}
- {picker&&<div className="dc-article-modal" role="dialog" aria-modal="true" aria-label="Add a block"><div className="dc-article-modal-box"><header><h3>Add a block</h3><button onClick={()=>setPicker(false)}>×</button></header><div className="dc-article-picker">{BLOCK_TYPES.map(t=><button key={t} onClick={()=>{setBlocks(xs=>[...xs,makeBlock(t)]);setPicker(false)}}>{t}</button>)}</div></div></div>}
- {assets&&<div className="dc-article-modal" role="dialog" aria-modal="true" aria-label="Browse assets"><div className="dc-article-modal-box"><header><h3>Choose an asset</h3><button onClick={()=>setAssets(false)}>×</button></header><div className="dc-article-assets">{assetList.map(a=><button key={a.path} onClick={()=>choose(a.url)}><img src={a.url} alt=""/><span>{a.path}</span></button>)}{!assetList.length&&<p>No assets found. Upload images in Admin → Assets first.</p>}</div></div></div>}
- </div>;
+import { useEffect, useState, type FormEvent } from "react";
+
+type Player = { id: number; username: string; global_name: string | null };
+type Inventory = { user: Player; weapons: {weapon_name:string;masterwork:number}[]; currencies:{currency_name:string;amount:number}[]; materials:{material_name:string;amount:number}[] };
+type EventRow = { slug:string; title:string; status:string; eyebrow:string; description:string; destination:string; objective:string; accent:string; published:number|boolean; start_at:string|null; end_at:string|null };
+const blankEvent: EventRow = { slug:"",title:"",status:"UPCOMING",eyebrow:"",description:"",destination:"",objective:"",accent:"neutral",published:0,start_at:null,end_at:null };
+async function api(path:string, init?:RequestInit) {
+  const response = await fetch(path,{...init,credentials:"include",headers:{...(init?.body?{"Content-Type":"application/json"}:{}),...init?.headers}});
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+  return data;
 }
+export function PlayerManagement(){
+  const [query,setQuery]=useState(""); const [players,setPlayers]=useState<Player[]>([]); const [selected,setSelected]=useState<Player|null>(null);
+  const [inventory,setInventory]=useState<Inventory|null>(null); const [kind,setKind]=useState("weapon"); const [name,setName]=useState(""); const [amount,setAmount]=useState(1);
+  const [catalog,setCatalog]=useState<{name:string;rarity:string}[]>([]); const [message,setMessage]=useState(""); const [busy,setBusy]=useState(false);
+  async function refresh(id:number){ const d=await api(`/api/admin/players/${id}/inventory`);setInventory(d); }
+  async function search(e:FormEvent){e.preventDefault();setMessage("");try{const d=await api(`/api/admin/players?q=${encodeURIComponent(query)}`);setPlayers(d.players);setSelected(null);setInventory(null);}catch(e){setMessage(String(e));}}
+  useEffect(()=>{if(kind!=="weapon"||name.trim().length<2){setCatalog([]);return;}let alive=true;api(`/api/admin/weapon-catalog?q=${encodeURIComponent(name)}`).then(d=>{if(alive)setCatalog(d.weapons)}).catch(()=>{});return()=>{alive=false}},[kind,name]);
+  async function grant(e:FormEvent){e.preventDefault();if(!selected)return;if(!window.confirm(`Grant ${kind === "weapon" ? name : `${amount} ${name}`} to ${selected.global_name||selected.username} (#${selected.id})?`))return;
+    setBusy(true);setMessage("");try{await api(`/api/admin/players/${selected.id}/grants`,{method:"POST",body:JSON.stringify({kind,name,amount})});await refresh(selected.id);setMessage("Grant completed and logged.");setName("");}catch(e){setMessage(e instanceof Error?e.message:"Grant failed");}finally{setBusy(false)}}
+  return <div className="dc-admin-panel"><h2>Player Account Access</h2><p>Search accounts and grant supported items. Weapons must exist in the weapon catalog; existing weapon ownership is preserved.</p>
+    <form className="dc-admin-inline" onSubmit={search}><input placeholder="Username or user ID" value={query} onChange={e=>setQuery(e.target.value)} required/><button>Search players</button></form>
+    <div className="dc-admin-chip-row">{players.map(p=><button key={p.id} className={selected?.id===p.id?"selected":""} onClick={()=>{setSelected(p);setMessage("");void refresh(p.id).catch(e=>setMessage(String(e)))}}>{p.global_name||p.username} · #{p.id}</button>)}</div>
+    {inventory&&<><div className="dc-admin-inventory"><div><h3>Weapons ({inventory.weapons.length})</h3>{inventory.weapons.map(w=><p key={w.weapon_name}>{w.weapon_name}{w.masterwork?" · Masterworked":""}</p>)}</div><div><h3>Currencies</h3>{inventory.currencies.map(x=><p key={x.currency_name}>{x.currency_name}: {x.amount}</p>)}</div><div><h3>Materials</h3>{inventory.materials.map(x=><p key={x.material_name}>{x.material_name}: {x.amount}</p>)}</div></div>
+      <form className="dc-admin-inline dc-admin-grant" onSubmit={grant}><select value={kind} onChange={e=>{setKind(e.target.value);setName("")}}><option value="weapon">Weapon</option><option value="currency">Currency</option><option value="material">Upgrade material</option></select><input value={name} onChange={e=>setName(e.target.value)} placeholder={kind==="weapon"?"Search catalog weapon":"Exact item name"} required/>{kind!=="weapon"&&<input type="number" min={1} max={1000000} value={amount} onChange={e=>setAmount(Number(e.target.value))} required/>}<button disabled={busy}>Grant item</button></form>
+      {kind==="weapon"&&catalog.length>0&&<div className="dc-admin-chip-row">{catalog.map(w=><button key={w.name} type="button" onClick={()=>setName(w.name)}>{w.name} · {w.rarity}</button>)}</div>}
+    </>}{message&&<p role="status" className="dc-admin-message">{message}</p>}
+  </div>
+}
+export function EventManagement(){
+  const [events,setEvents]=useState<EventRow[]>([]);const [draft,setDraft]=useState<EventRow>({...blankEvent});const [editing,setEditing]=useState(false);const [message,setMessage]=useState("");const [busy,setBusy]=useState(false);
+  async function load(){const d=await api("/api/admin/events");setEvents(d.events)}
+  useEffect(()=>{void load().catch(e=>setMessage(String(e)))},[]);
+  function set(key:keyof EventRow,value:string|number|null){setDraft(d=>({...d,[key]:value}))}
+  async function save(e:FormEvent){e.preventDefault();setBusy(true);setMessage("");try{await api(editing?`/api/admin/events/${encodeURIComponent(draft.slug)}`:"/api/admin/events",{method:editing?"PUT":"POST",body:JSON.stringify({...draft,published:Boolean(draft.published)})});setMessage(editing?"Event updated":"Event created");setDraft({...blankEvent});setEditing(false);await load();}catch(e){setMessage(e instanceof Error?e.message:"Save failed")}finally{setBusy(false)}}
+  async function remove(slug:string){if(!window.confirm(`Delete event ${slug}? This cannot be undone.`))return;try{await api(`/api/admin/events/${encodeURIComponent(slug)}`,{method:"DELETE"});await load();setMessage("Event deleted");}catch(e){setMessage(String(e))}}
+  return <div className="dc-admin-panel"><h2>Event Management</h2><p>Published events appear on the Events hub. Scheduling fields record the planned dates; status is changed manually.</p>
+    <div className="dc-admin-event-list">{events.map(ev=><article key={ev.slug}><div><strong>{ev.title}</strong><small>{ev.slug} · {ev.status} · {ev.published?"Published":"Draft"}</small></div><button onClick={()=>{setDraft({...ev});setEditing(true)}}>Edit</button><button className="danger" onClick={()=>void remove(ev.slug)}>Delete</button></article>)}</div>
+    <form className="dc-admin-event-form" onSubmit={save}><h3>{editing?`Editing ${draft.slug}`:"Create an event"}</h3>
+      <label>URL slug<input value={draft.slug} disabled={editing} onChange={e=>set("slug",e.target.value)} placeholder="new-operation" required pattern="[a-z0-9]+(-[a-z0-9]+)*"/></label>
+      <label>Title<input value={draft.title} onChange={e=>set("title",e.target.value)} required/></label>
+      <label>Eyebrow<input value={draft.eyebrow} onChange={e=>set("eyebrow",e.target.value)}/></label>
+      <label>Description<textarea rows={4} value={draft.description} onChange={e=>set("description",e.target.value)}/></label>
+      <label>Destination<input value={draft.destination} onChange={e=>set("destination",e.target.value)}/></label>
+      <label>Objective<input value={draft.objective} onChange={e=>set("objective",e.target.value)}/></label>
+      <label>Status<select value={draft.status} onChange={e=>set("status",e.target.value)}><option>UPCOMING</option><option>ACTIVE</option><option>CONCLUDED</option></select></label>
+      <label>Accent<select value={draft.accent} onChange={e=>set("accent",e.target.value)}><option value="neutral">Neutral</option><option value="siva">SIVA</option></select></label>
+      <label>Start (optional)<input type="datetime-local" value={draft.start_at?.slice(0,16)??""} onChange={e=>set("start_at",e.target.value||null)}/></label>
+      <label>End (optional)<input type="datetime-local" value={draft.end_at?.slice(0,16)??""} onChange={e=>set("end_at",e.target.value||null)}/></label>
+      <label className="dc-admin-check"><input type="checkbox" checked={Boolean(draft.published)} onChange={e=>set("published",e.target.checked?1:0)}/> Publish event</label>
+      <div className="dc-admin-inline"><button disabled={busy}>{busy?"Saving…":editing?"Save changes":"Create event"}</button>{editing&&<button type="button" onClick={()=>{setDraft({...blankEvent});setEditing(false)}}>Cancel</button>}</div>
+    </form>{message&&<p role="status" className="dc-admin-message">{message}</p>}
+  </div>
+}
+export function AuditManagement(){const [entries,setEntries]=useState<{id:number;action:string;target:string;details_json:string;created_at:string}[]>([]);const [message,setMessage]=useState("");useEffect(()=>{void api("/api/admin/audit").then(d=>setEntries(d.entries)).catch(e=>setMessage(String(e)))},[]);return <div className="dc-admin-panel"><h2>Recent admin actions</h2>{message&&<p>{message}</p>}{entries.map(e=><div className="dc-admin-audit" key={e.id}><strong>{e.action}</strong><span>Target #{e.target}</span><small>{e.created_at}</small><code>{e.details_json}</code></div>)}</div>}
