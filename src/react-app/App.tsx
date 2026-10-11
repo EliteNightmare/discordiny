@@ -18,6 +18,7 @@ import Root from "./pages/Root";
 import Articles from "./pages/Articles";
 import AdminPanel from "./pages/AdminPanel";
 import Patchnotes from "./pages/Patchnotes";
+import About from "./pages/About";
 
 import SiteGate, {
   shouldGateSite,
@@ -266,6 +267,10 @@ function App() {
 
   if (path === "/profile") {
     return <Profile />;
+  }
+
+  if (path === "/about") {
+    return <About />;
   }
 
   if (path === "/account") {
