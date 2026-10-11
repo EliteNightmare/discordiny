@@ -37,3 +37,19 @@
 .news-card-art { background-size:100% 100%, contain !important; background-position:center center, center center !important; background-repeat:no-repeat, no-repeat !important; }
 .news-card-lead .news-card-art { background-size:100% 100%, contain !important; }
 @media(max-width:580px) { .news-article-banner { aspect-ratio:32 / 5; height:auto; } .news-article-banner img { height:100%; } }
+
+/* Featured story: image and text occupy the SAME card, not side-by-side. */
+.news-card.news-card-lead{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:420px;isolation:isolate;overflow:hidden;grid-template-columns:none;background:#101620}
+.news-card-lead .news-card-art{position:absolute;inset:0;width:100%;height:100%;min-height:0;box-sizing:border-box;background-size:cover;background-position:center center;z-index:-1}
+.news-card-lead .news-card-art::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(3,7,13,.94) 0%,rgba(3,7,13,.68) 38%,transparent 85%);pointer-events:none}
+.news-card-lead .news-category{position:relative;z-index:1}
+.news-card-lead .news-card-copy{position:relative;z-index:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;width:100%;max-width:850px;box-sizing:border-box;padding:44px;color:white;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.news-card-lead .news-card-copy h2{font-size:clamp(27px,3.5vw,52px);margin:10px 0}
+.news-card-lead .news-card-copy p{color:#e2e7f0;min-height:0;margin:0 0 16px}
+/* All article cards use a predictable 1200:630 image window. */
+.news-grid .news-card-art{aspect-ratio:40 / 21;height:auto;background-size:cover;background-position:center}
+/* Banner is exactly 1600:533 at any viewport width, never top-left aligned. */
+.news-article-banner{aspect-ratio:1600 / 533!important;width:100%;height:auto!important;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.news-article-banner img{width:100%;height:100%;object-fit:contain;object-position:center center}
+@media(max-width:900px){.news-card.news-card-lead{min-height:340px}.news-card-lead .news-card-art{position:absolute;inset:0;height:100%;min-height:0}.news-card-lead .news-card-copy{padding:28px}}
+@media(max-width:580px){.news-card.news-card-lead{min-height:300px}.news-card-lead .news-card-art{height:100%;min-height:0}.news-card-lead .news-card-copy{padding:20px}.news-card-lead .news-card-copy p{font-size:13px}}
