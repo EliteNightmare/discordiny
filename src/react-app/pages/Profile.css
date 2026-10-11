@@ -1157,3 +1157,53 @@
     font-size: 8px;
   }
 }
+
+/* Guardian Dossier 2.1 — isolated layout overrides */
+.profile-redesign{width:min(1180px,100%);color:#eaf2fb}
+.profile-redesign .profile-block{background:linear-gradient(145deg,rgba(15,28,41,.97),rgba(8,15,25,.97));border:1px solid rgba(111,180,218,.17);border-radius:9px;backdrop-filter:none;padding:22px;margin-top:16px}
+.profile-redesign .profile-block-header h2{font-size:19px;letter-spacing:.015em}
+.profile-eyebrow{color:#79c9ed;font-size:10px;letter-spacing:.2em;font-weight:800;margin-bottom:8px}
+.guardian-hero{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:30px;border:1px solid rgba(128,205,242,.28);border-radius:10px;background:radial-gradient(ellipse at 90% 0%,rgba(30,100,143,.32),transparent 65%),#101c2a}
+.guardian-identity{display:flex;align-items:center;gap:20px;min-width:0}
+.guardian-identity h1{margin:0;font-size:clamp(23px,3vw,36px);overflow-wrap:anywhere}
+.guardian-subtitle{color:#a4b9c8;font-size:12px;letter-spacing:.09em;margin-top:8px}
+.guardian-subtitle span{color:#e9ba62;padding:0 8px}
+.guardian-power{text-align:right;flex-shrink:0}
+.guardian-power span,.guardian-metrics span{display:block;font-size:10px;color:#8da9ba;letter-spacing:.09em;text-transform:uppercase}
+.guardian-power strong{display:block;font-size:clamp(28px,4vw,48px);color:#e6bc6a;line-height:1.1}
+.profile-duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.profile-chip{font-size:9px;letter-spacing:.09em;color:#93d5f5;border:1px solid rgba(113,198,239,.3);padding:7px 9px;border-radius:3px;text-align:right}
+.profile-redesign .xp-bar{margin-top:10px;background:#243647;height:9px;border-radius:20px;overflow:hidden}
+.profile-redesign .xp-bar-fill{background:linear-gradient(90deg,#4789b6,#9ce4ff);height:100%;border-radius:20px}
+.profile-redesign .xp-header{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:#b7c8d6}
+.guardian-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
+.guardian-metrics>div{padding:14px;background:rgba(113,177,217,.065);border:1px solid rgba(113,177,217,.08);border-radius:5px}
+.guardian-metrics strong{display:block;margin-top:5px;font-size:20px}
+.profile-help{font-size:12px;line-height:1.6;color:#93a9b8;margin:12px 0 0}
+.travel-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.travel-banner{height:175px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;padding:20px;background-size:cover;background-position:center;border:1px solid rgba(126,193,230,.24);border-radius:5px}
+.travel-banner span{font-size:10px;letter-spacing:.15em;color:#a7d5ee;font-weight:700}
+.travel-banner strong{font-size:24px;text-shadow:0 2px 8px #000}
+.travel-actions{display:flex;align-items:center;gap:12px;margin-top:16px}
+.travel-actions label{font-size:10px;font-weight:800;letter-spacing:.12em;color:#9dbbce}
+.travel-actions select,.fish-search{background:#0c1825;border:1px solid #38546a;border-radius:4px;color:#e8f5ff;padding:11px;min-width:0}
+.travel-actions select{flex:1}
+.travel-actions button{background:#89cfee;border:0;border-radius:4px;color:#081523;font-weight:900;letter-spacing:.07em;padding:12px 20px;cursor:pointer}
+.travel-actions button:disabled{opacity:.45;cursor:default}
+.profile-redesign .currency-grid{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.profile-redesign .currency-card{border:1px solid rgba(128,197,231,.11);background:rgba(110,175,215,.055)}
+.currency-fallback{color:#d9b46c;font-size:18px;width:26px;text-align:center}
+.fish-search{width:100%;box-sizing:border-box;margin:4px 0 12px}
+.fish-catalogue{max-height:330px;overflow-y:auto}
+.fish-entry{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(132,182,212,.12);padding:10px 4px;font-size:12px}
+.fish-entry strong{color:#b5dff5}
+.global-feed{display:grid;gap:2px}
+.feed-entry{display:flex;align-items:center;gap:12px;padding:13px 6px;border-bottom:1px solid rgba(129,188,222,.12)}
+.feed-avatar{width:38px;height:38px;object-fit:cover;border-radius:50%;flex-shrink:0}
+.feed-placeholder{display:grid;place-items:center;background:#1b3548;color:#9bd5f4}
+.feed-content{min-width:0;flex:1}
+.feed-content strong{color:#c0e9ff}
+.feed-content p{margin:4px 0 0;color:#aebfca;font-size:12px;overflow-wrap:anywhere}
+.feed-type{font-size:9px;color:#e2b96c;text-transform:uppercase;letter-spacing:.08em;margin-left:10px}
+.feed-entry time{font-size:10px;color:#8197a6;white-space:nowrap}
+@media(max-width:720px){.profile-duo,.travel-panels{grid-template-columns:1fr}.guardian-hero{align-items:flex-start;flex-direction:column;padding:20px}.guardian-power{text-align:left}.travel-actions{flex-wrap:wrap}.travel-actions label{width:100%}.travel-actions select{flex-basis:100%}.travel-actions button{width:100%}.profile-redesign .profile-block{padding:16px}.feed-entry time{white-space:normal;max-width:75px}}
