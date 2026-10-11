@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
 import "./Profile.css";
 import glimmerIcon from "../assets/icons/currencies/glimmer.png";
@@ -33,6 +33,19 @@ const upgradeMaterialIcons = Object.fromEntries(
   ]),
 );
 const getUpgradeMaterialIcon = (name: string) => upgradeMaterialIcons[normalizeMaterialName(name)];
+const weaponImages = import.meta.glob("../assets/weapons/**/*.png", { eager: true, query: "?url", import: "default" }) as Record<string,string>;
+const normalizeAsset = (value:string) => value.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+const getWeaponImage = (name:string) => Object.entries(weaponImages).find(([path]) => normalizeAsset(path.split("/").pop()?.replace(/\.png$/i,"") || "") === normalizeAsset(name.replace(/\s*\(Adept\)\s*$/i,"")))?.[1];
+function formatFeedTime(createdAt:string, now:number):string {
+  const parsed=Date.parse(createdAt.includes("T")?createdAt:`${createdAt.replace(" ","T")}Z`);
+  if(!Number.isFinite(parsed))return "";
+  const seconds=Math.max(0,Math.floor((now-parsed)/1000));
+  if(seconds<60)return "JUST NOW";
+  const minutes=Math.floor(seconds/60);if(minutes<60)return `${minutes}M AGO`;
+  const hours=Math.floor(minutes/60);if(hours<24)return `${hours}H AGO`;
+  const days=Math.floor(hours/24);if(days<7)return `${days}D AGO`;
+  return new Date(parsed).toLocaleDateString(undefined,{month:"short",day:"numeric"}).toUpperCase();
+}
 const fmt=(value:number)=>Number(value||0).toLocaleString();
 const pretty=(s:string)=>s.replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
 const destinationImage=(name:string)=>`/destinations/${DESTINATIONS.find(d=>d[0].toLowerCase()===name.toLowerCase())?.[1]||"cosmodrome"}.png`;
@@ -47,6 +60,12 @@ function Profile(){
   const [travelOpen,setTravelOpen]=useState(false);
   const [fishSearch,setFishSearch]=useState("");
   const [feedError,setFeedError]=useState(false);
+  const [feedLoading,setFeedLoading]=useState(true);
+  const [feedClock,setFeedClock]=useState(Date.now());
+  const [isMobileFeed,setIsMobileFeed]=useState(()=>typeof window!=="undefined"&&window.matchMedia("(max-width: 650px)").matches);
+  const feedRefreshingRef=useRef(false);
+  const profileMainRef=useRef<HTMLDivElement|null>(null);
+  const globalFeedRef=useRef<HTMLElement|null>(null);
   useEffect(()=>{
     let active=true;
     async function load(){
@@ -65,21 +84,45 @@ function Profile(){
   useEffect(()=>{
     if(!data)return;
     let active=true;
-    const refresh=async()=>{
-      try {
-        const [fishResponse,feedResponse]=await Promise.all([
-          fetch("/api/game/fish",{credentials:"include"}),
-          fetch("/api/game/activity/feed",{credentials:"include"})
-        ]);
-        if(active&&fishResponse.ok){const result=await fishResponse.json() as {fish?:Record<string,number>};setFish(result.fish||{});}
-        if(active&&feedResponse.ok){const result=await feedResponse.json() as {events?:FeedEvent[]};setFeed(result.events||[]);setFeedError(false);}
-        else if(active)setFeedError(true);
-      }catch{if(active)setFeedError(true);}
-    };
-    void refresh();
-    const timer=window.setInterval(()=>{void refresh();},60000);
+    const loadFish=async()=>{try{const response=await fetch("/api/game/fish",{credentials:"include"});if(response.ok){const result=await response.json() as {fish?:Record<string,number>};if(active)setFish(result.fish||{});}}catch{/* Fish is supplemental. */}};
+    void loadFish();
+    const timer=window.setInterval(()=>{void loadFish();},60000);
     return ()=>{active=false;window.clearInterval(timer);};
   },[data?.user.id]);
+  const loadGlobalActivityFeed=useCallback(async()=>{
+    if(feedRefreshingRef.current)return;
+    feedRefreshingRef.current=true;
+    try{
+      const response=await fetch("/api/game/activity/feed",{credentials:"include"});
+      const result=await response.json() as {authenticated?:boolean;events?:FeedEvent[]};
+      if(!response.ok||!result.authenticated)throw new Error("Unable to load feed");
+      setFeed(Array.isArray(result.events)?result.events:[]);setFeedError(false);
+    }catch{setFeedError(true);}
+    finally{feedRefreshingRef.current=false;setFeedLoading(false);}
+  },[]);
+  useEffect(()=>{
+    if(!data)return;
+    void loadGlobalActivityFeed();
+    const refresh=window.setInterval(()=>{void loadGlobalActivityFeed();},15000);
+    const clock=window.setInterval(()=>setFeedClock(Date.now()),30000);
+    return ()=>{window.clearInterval(refresh);window.clearInterval(clock);};
+  },[data?.user.id,loadGlobalActivityFeed]);
+  useEffect(()=>{
+    const media=window.matchMedia("(max-width: 650px)");
+    const update=()=>setIsMobileFeed(media.matches);
+    update();media.addEventListener("change",update);
+    return ()=>media.removeEventListener("change",update);
+  },[]);
+  useEffect(()=>{
+    if(!data)return;
+    const main=profileMainRef.current,rail=globalFeedRef.current;
+    if(!main||!rail)return;
+    const sync=()=>rail.style.setProperty("--global-feed-max-height",`${Math.max(0,Math.floor(main.getBoundingClientRect().height))}px`);
+    sync();
+    const observer=new ResizeObserver(sync);observer.observe(main);
+    window.addEventListener("resize",sync);
+    return ()=>{observer.disconnect();window.removeEventListener("resize",sync);};
+  },[data,fish,travelOpen]);
   const currencies=useMemo(()=>Object.entries(data?.currencies||{}).sort(([a],[b])=>a.localeCompare(b)),[data]);
   const materials=useMemo(()=>Object.entries(data?.upgradeMaterials||{}).sort(([a],[b])=>a.localeCompare(b)),[data]);
   const fishes=useMemo(()=>Object.entries(fish).filter(([name])=>name.toLowerCase().includes(fishSearch.toLowerCase())).sort(([a],[b])=>a.localeCompare(b)),[fish,fishSearch]);
@@ -131,7 +174,7 @@ function Profile(){
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">WALLET</div><h2>All Currencies</h2></div><span className="profile-chip">{currencies.length} TYPES</span></div>
       {currencies.length?<div className="currency-grid">{currencies.map(([name,amount])=><div className="currency-card" key={name}><div className="currency-card-label">{CURRENCY_ICONS[name]?<img className="currency-icon" src={CURRENCY_ICONS[name]} alt=""/>:<span className="currency-fallback">◆</span>}<span className="currency-name">{name}</span></div><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No currency balances recorded.</p>}
     </section>
-    <div className="profile-main-and-feed"><div className="profile-main-stack"><div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
+    <div className="profile-main-and-feed"><div className="profile-main-stack" ref={profileMainRef}><div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
       {materials.length?<div className="currency-grid">{materials.map(([name,amount])=><div className="currency-card" key={name}><span className="currency-card-label">{getUpgradeMaterialIcon(name) && <img className="currency-icon" src={getUpgradeMaterialIcon(name)} alt="" loading="lazy" />}<span className="currency-name">{pretty(name)}</span></span><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No upgrade materials recorded.</p>}
     </section>
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COLLECTIONS</div><h2>Fishing Catalogue</h2></div><span className="profile-chip">{Object.keys(fish).length} DISCOVERED</span></div>
@@ -139,10 +182,31 @@ function Profile(){
       <div className="fish-catalogue">{fishes.length?fishes.map(([name,amount])=><div className="fish-entry" key={name}><span>◇ {pretty(name)}</span><strong>× {fmt(amount)}</strong></div>):<p className="profile-help">{fishSearch?"No matching fish.":"No fish recorded yet."}</p>}</div>
       <p className="profile-help">Shows collected fish reported by your account. Undiscovered species require a complete fish catalogue.</p>
     </section></div></div>
-    <section className="profile-block profile-feed-rail"><div className="profile-block-header"><div><div className="profile-eyebrow">COMMUNITY NETWORK</div><h2>Global Activity Feed</h2></div><span className="profile-chip">LATEST 30 · AUTO-REFRESH</span></div>
-      {feedError&&<p className="profile-help">The activity feed is temporarily unavailable.</p>}
-      <div className="global-feed">{feed.map(event=><article className="feed-entry" key={event.id}>{event.avatarUrl?<img className="feed-avatar" src={event.avatarUrl} alt=""/>:<div className="feed-avatar feed-placeholder">◇</div>}<div className="feed-content"><div><strong>{event.player}</strong><span className="feed-type">{pretty(event.activityType||"Activity")}</span></div><p>{event.activity} · {pretty(event.result)}{event.weapon?` · ${event.weapon.name}${event.weapon.adept?" (Adept)":""}`:""}</p></div><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString("en-US",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hour12:false})}</time></article>)}{!feed.length&&!feedError&&<p className="profile-help">No global activity recorded yet.</p>}</div>
-    </section></div>
+    <aside ref={globalFeedRef} className="global-activity-feed profile-live-feed" aria-label="Global activity feed">
+      <div className="global-activity-feed-inner">
+        <div className="global-activity-feed-heading"><span>LIVE FEED</span><h2>Global Activity</h2></div>
+        {feedError&&<p className="profile-help">Feed temporarily unavailable. Retrying automatically.</p>}
+        {(isMobileFeed?feed.slice(0,5):feed).length>0?(
+          <div className="global-activity-feed-events">
+            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className="global-activity-event" key={event.id}>
+              <div className="global-activity-event-top">
+                <div className="global-activity-event-player-row">
+                  {event.avatarUrl&&<img className="global-activity-event-avatar" src={event.avatarUrl} alt="" aria-hidden="true"/>}
+                  <strong className="global-activity-event-player">{event.player}</strong>
+                </div>
+                <span className="global-activity-event-time">{formatFeedTime(event.createdAt,feedClock)}</span>
+              </div>
+              <span className="global-activity-event-activity">{event.activity}</span>
+              <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.result}</span>
+              {event.weapon&&<div className="global-activity-event-weapon">
+                {getWeaponImage(event.weapon.name)&&<img className="global-activity-event-weapon-icon" src={getWeaponImage(event.weapon.name)} alt="" aria-hidden="true"/>}
+                <div><span>WEAPON DROP</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
+              </div>}
+            </article>)}
+          </div>
+        ):<div className="global-activity-feed-empty"><span className="global-activity-feed-pulse" aria-hidden="true"/><strong>{feedLoading?"CONNECTING TO FEED":"WAITING FOR ACTIVITY"}</strong><p>Clears, wipes and weapon drops from all players will appear here.</p></div>}
+      </div>
+    </aside></div>
   </div></main></div>;
 }
 export default Profile;
