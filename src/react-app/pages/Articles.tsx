@@ -47,11 +47,11 @@ export default function Articles() {
       const listing = await fetch("/api/news/articles", { credentials: "include" });
       if (!listing.ok) throw new Error("Could not load articles.");
       const result = await listing.json();
-      setItems(result.articles ?? []);
+      setItems((result.articles ?? []).filter((a: Article) => a.category !== "PATCHNOTES"));
       if (slug) {
         const response = await fetch(`/api/news/articles/${encodeURIComponent(slug)}`, { credentials: "include" });
         if (!response.ok) throw new Error(response.status === 404 ? "Article not found." : "Could not load article.");
-        setArticle((await response.json()).article);
+        const selected = (await response.json()).article as Article; if(selected.category === "PATCHNOTES") throw new Error("This publication is available under /patchnotes."); setArticle(selected);
       } else setArticle(null);
     } catch (e) { setError(e instanceof Error ? e.message : "Unable to load news."); }
     finally { setLoading(false); }
