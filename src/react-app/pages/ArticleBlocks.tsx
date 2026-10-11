@@ -1,3 +1,4 @@
+import "./ArticleBlockStyles.css";
 import type { ReactNode } from "react";
 export type Block = { id:string; type:string; text?:string; url?:string; caption?:string; items?:string[]; columns?:string[]; title?:string; tone?:string; level?:number };
 export const BLOCK_TYPES = ["Paragraph","Title","Image","Divider","Bullet List","Numbered List","Row","Gallery","Quote","Author","Callout","Video","Tweet","Accordion","Table","Tabs","Embed","Conversation","Audio","Button","Community Challenge","Weapon Set"];
@@ -11,20 +12,23 @@ case "Title":return b.level===1?<h1>{b.text}</h1>:b.level===3?<h3>{b.text}</h3>:
 case "Image":return url?<figure><img src={url} alt={b.caption||""} loading="lazy"/>{b.caption&&<figcaption>{b.caption}</figcaption>}</figure>:null;
 case "Gallery":return <div className="dc-block-gallery">{lines.map((x,i)=>safeUrl(x)?<img key={i} src={safeUrl(x)} alt="" loading="lazy"/>:null)}</div>;
 case "Divider":return <hr/>;
-case "Bullet List":return <ul>{lines.map((x,i)=><li key={i}>{x}</li>)}</ul>;
+case "Bullet List":return <ul className="dc-block-bullets">{lines.map((x,i)=><li key={i}>{x}</li>)}</ul>;
 case "Numbered List":return <ol>{lines.map((x,i)=><li key={i}>{x}</li>)}</ol>;
 case "Quote":return <blockquote>{b.text}<footer>{b.caption}</footer></blockquote>;
-case "Callout":return <aside className="dc-block-callout"><strong>{b.title||"Notice"}</strong><p>{b.text}</p></aside>;
+case "Callout":return <aside className="dc-block-callout"><strong>{b.title||"NOTICE"}</strong><p>{b.text}</p></aside>;
 case "Row":return <div className="dc-block-row">{(b.columns??lines).map((x,i)=><p key={i}>{x}</p>)}</div>;
 case "Table":{const rows=lines.map(x=>x.split("|"));return <div className="dc-block-table"><table><tbody>{rows.map((r,i)=><tr key={i}>{r.map((cell,j)=>i===0?<th key={j}>{cell}</th>:<td key={j}>{cell}</td>)}</tr>)}</tbody></table></div>}
 case "Accordion":return <details><summary>{b.title||"Read more"}</summary><p>{b.text}</p></details>;
 case "Button":return url?<a className="dc-block-button" href={url} target="_blank" rel="noopener noreferrer">{b.title||"Learn more"} ↗</a>:null;
 case "Audio":return url?<audio controls src={url}/>:null;
 case "Video":return url?<a href={url} target="_blank" rel="noopener noreferrer">Watch video ↗</a>:null;
-case "Tweet":return url?<a href={url} target="_blank" rel="noopener noreferrer">View post on X ↗</a>:null;
+case "Tweet": {
+ const match=url.match(/^https?:\\/\\/(?:www\\.|mobile\\.)?(?:x\\.com|twitter\\.com)\\/[^/]+\\/status\\/(\\d+)/i);
+ return match?<div className="dc-block-tweet"><iframe title="X post" src={`https://platform.twitter.com/embed/Tweet.html?id=${match[1]}&theme=dark`} loading="lazy" sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" referrerPolicy="no-referrer-when-downgrade"/><a href={url} target="_blank" rel="noopener noreferrer">View post on X ↗</a></div>:url?<a href={url} target="_blank" rel="noopener noreferrer">View post on X ↗</a>:null;
+}
 case "Embed":return url?<a href={url} target="_blank" rel="noopener noreferrer">Open linked content ↗</a>:null;
 case "Tabs":return <div className="dc-block-callout"><strong>{b.title||"Sections"}</strong>{lines.map((x,i)=><p key={i}>{x}</p>)}</div>;
-case "Author":return <div className="dc-block-author"><strong>{b.title||"Author"}</strong><p>{b.text}</p>{url&&<img src={url} alt="" width="64"/>}</div>;
+case "Author":return <div className="dc-block-author">{url?<img src={url} alt="" loading="lazy"/>:<span className="dc-author-fallback">◈</span>}<div><strong>{b.title||"Author"}</strong>{(b.caption||b.text)&&<p>{b.caption||b.text}</p>}</div></div>;
 case "Community Challenge":return <aside className="dc-block-callout"><strong>{b.title||"Community challenge"}</strong><p>{b.text}</p><small>Editorial information · not live progress</small></aside>;
 case "Weapon Set":return <aside className="dc-block-callout"><strong>{b.title||"Weapon set"}</strong><p>{b.text}</p><small>Editorial listing · not connected to the weapon catalog</small></aside>;
 case "Conversation":return <div>{lines.map((x,i)=><blockquote key={i}>{x}</blockquote>)}</div>;
