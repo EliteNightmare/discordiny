@@ -28,7 +28,7 @@ export default function ArticleManagement(){
   <section aria-label="Article thumbnail" style={{border:"1px solid rgba(160,180,210,.35)",borderRadius:12,padding:16,display:"grid",gap:10}}>
     <div><strong style={{display:"block",fontSize:15}}>ARTICLE THUMBNAIL</strong><small>Clickable image shown on the Articles listing card. Independent from the banner.</small></div>
     <button type="button" onClick={()=>void browse("cover")} style={{width:"100%",minHeight:form.cover_url?60:125,border:"1px dashed rgba(160,180,210,.65)",borderRadius:9,display:"grid",placeItems:"center",gap:8,cursor:"pointer",background:"transparent",color:"inherit",overflow:"hidden"}}>
-      {form.cover_url?<img src={form.cover_url} alt="Selected article thumbnail" style={{width:"100%",maxHeight:210,objectFit:"contain"}}/>:<span style={{fontSize:17}}>＋ Add Thumbnail</span>}
+      {form.cover_url?<img src={form.cover_url} alt="Selected article thumbnail" style={{width:"100%",height:"auto",maxHeight:210,objectFit:"contain",objectPosition:"center"}}/>:<span style={{fontSize:17}}>＋ Add Thumbnail</span>}
       <span style={{fontSize:12}}> {form.cover_url?"Change thumbnail from Assets":"Choose thumbnail from Assets"}</span>
     </button>
     <label>Thumbnail image URL<input value={form.cover_url} onChange={e=>patch("cover_url",e.target.value)} placeholder="https://assets.discordiny.com/thumbnails/…"/></label>
@@ -37,7 +37,7 @@ export default function ArticleManagement(){
   <section aria-label="Article banner" style={{border:"1px solid rgba(160,180,210,.35)",borderRadius:12,padding:16,display:"grid",gap:10}}>
     <div><strong style={{display:"block",fontSize:15}}>ARTICLE BANNER</strong><small>Wide image displayed below the TopBar on the article page. Independent from the thumbnail.</small></div>
     <button type="button" onClick={()=>void browse("banner")} style={{width:"100%",minHeight:form.banner_url?60:145,border:"1px dashed rgba(160,180,210,.65)",borderRadius:9,display:"grid",placeItems:"center",gap:8,cursor:"pointer",background:"transparent",color:"inherit",overflow:"hidden"}}>
-      {form.banner_url?<img src={form.banner_url} alt="Selected article banner" style={{width:"100%",maxHeight:220,objectFit:"contain"}}/>:<span style={{fontSize:17}}>＋ Add Banner</span>}
+      {form.banner_url?<img src={form.banner_url} alt="Selected article banner" style={{width:"100%",aspectRatio:"32 / 5",height:"auto",maxHeight:220,objectFit:"contain",objectPosition:"center"}}/>:<span style={{fontSize:17}}>＋ Add Banner</span>}
       <span style={{fontSize:12}}>{form.banner_url?"Change banner from Assets":"Choose banner from Assets"}</span>
     </button>
     <label>Banner image URL<input value={form.banner_url} onChange={e=>patch("banner_url",e.target.value)} placeholder="https://assets.discordiny.com/banners/…"/></label>
