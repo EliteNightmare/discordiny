@@ -3657,7 +3657,8 @@ app.get("/api/game/profile", async (c) => {
 
     level: {
       current: levelProgress.level,
-      max: 100,
+      max: null,
+      powerBonusCap: 250,
       totalXp: levelProgress.totalXp,
       currentXp: levelProgress.currentXp,
       nextXp: levelProgress.nextXp,
