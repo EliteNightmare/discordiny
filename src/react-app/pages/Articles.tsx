@@ -39,6 +39,8 @@ export default function Articles() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("ALL");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 6;
   const load = useCallback(async () => {
     setLoading(true); setError("");
     try {
@@ -59,12 +61,19 @@ export default function Articles() {
   const visible = items.filter(x => x.status === "published" && (filter === "ALL" || x.category === filter));
   const featured = visible.find(x => x.featured) ?? visible[0];
   const others = visible.filter(x => x.id !== featured?.id);
-  const card = (item: Article, lead = false) => <a key={item.id} className={`news-card ${lead ? "news-card-lead" : ""}`} href={`/articles/${encodeURIComponent(item.slug)}`}>
-    <div className="news-card-art" style={item.cover_url ? { backgroundImage: `linear-gradient(0deg,rgba(5,8,13,.82),rgba(5,8,13,.08)),url("${item.cover_url.replace(/"/g, "%22")}")` } : undefined}>
-      <span className="news-category">{item.category}</span>
+  const pageCount = Math.ceil(others.length / PAGE_SIZE);
+  const currentPage = Math.min(page, Math.max(1, pageCount));
+  const pageItems = others.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const card = (item: Article, lead = false) => <a key={item.id} className={`news-card ${lead ? "news-card-lead" : "news-card-row"}`} href={`/articles/${encodeURIComponent(item.slug)}`}>
+    <div className="news-card-art" style={item.cover_url ? { backgroundImage: `url("${item.cover_url.replace(/"/g, "%22")}")` } : undefined}>
+      {lead && <span className="news-category">{item.category}</span>}
     </div>
-    <div className="news-card-copy"><span className="news-date">{formatPublishedAt(item.published_at)}</span>
-      <h2>{item.title}</h2><p>{item.subtitle}</p><span className="news-read">READ ARTICLE ↗</span>
+    <div className="news-card-copy">
+      {lead && <span className="news-date">{formatPublishedAt(item.published_at)}</span>}
+      <h2>{item.title}</h2>
+      {item.subtitle && <p>{item.subtitle}</p>}
+      {lead && <span className="news-read">READ ARTICLE ↗</span>}
+      {!lead && <span className="news-row-date">{formatPublishedAt(item.published_at)}</span>}
     </div>
   </a>;
   return <div className="news-page"><TopBar />
@@ -79,9 +88,14 @@ export default function Articles() {
         {article.subtitle && <p className="news-article-subtitle">{article.subtitle}</p>}
         <div className="news-article-body"><ArticleBody body={article.body} /></div>
       </article> : <>
-        <div className="news-filters">{categories.map(c => <button key={c} className={filter === c ? "active" : ""} onClick={() => setFilter(c)}>{c}</button>)}</div>
+        <div className="news-filters">{categories.map(c => <button key={c} className={filter === c ? "active" : ""} onClick={() => { setFilter(c); setPage(1); }}>{c}</button>)}</div>
         {featured && <><div className="news-section-label">FEATURED STORY</div>{card(featured, true)}</>}
-        {!!others.length && <><div className="news-section-label">MORE STORIES</div><div className="news-grid">{others.map(x => card(x))}</div></>}
+        {!!others.length && <><div className="news-section-label">MORE STORIES</div><div className="news-list">{pageItems.map(x => card(x))}</div>
+          {pageCount > 1 && <nav className="news-pagination" aria-label="Article pages">
+            <button disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>← Previous</button>
+            {Array.from({ length: pageCount }, (_, i) => i + 1).map(n => <button key={n} aria-current={currentPage === n ? "page" : undefined} className={currentPage === n ? "active" : ""} onClick={() => setPage(n)}>{n}</button>)}
+            <button disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>Next →</button>
+          </nav>}</>}
         {!visible.length && <div className="news-empty">NO ARTICLES PUBLISHED YET.</div>}
       </>}
     </main>
