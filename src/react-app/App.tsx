@@ -325,6 +325,8 @@ function App() {
     );
   }
 
+  if (path === "/patchnotes" || path.startsWith("/patchnotes/")) return <Patchnotes />;
+
   return <Home />;
 }
 
