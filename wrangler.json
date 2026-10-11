@@ -1,23 +1,33 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "vite-react-template",
-	"main": "./src/worker/index.ts",
-	"compatibility_date": "2025-10-08",
-	"compatibility_flags": ["nodejs_compat"],
-	"observability": {
-		"enabled": true
-	},
-	"upload_source_maps": true,
-	"d1_databases": [
-	  {
-	    "binding": "DB",
-	    "database_name": "discordiny",
-	    "database_id": "dd9fba3b-076f-475a-8641-e29db68b9505"
-	  }
-	],
-	"assets": {
-	  "directory": "./dist/client",
-	  "not_found_handling": "single-page-application",
-	  "run_worker_first": ["/api/*"]
-	}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vite-react-template",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2025-10-08",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "discordiny",
+      "database_id": "dd9fba3b-076f-475a-8641-e29db68b9505"
+    }
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "ASSETS_BUCKET",
+      "bucket_name": "discordiny-assets"
+    }
+  ]
 }
