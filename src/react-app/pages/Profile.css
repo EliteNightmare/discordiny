@@ -1241,3 +1241,237 @@
 .profile-feed-rail .feed-entry{align-items:flex-start}
 .profile-feed-rail .feed-entry time{font-size:9px;white-space:normal;max-width:65px;text-align:right}
 @media(max-width:850px){.profile-main-and-feed{grid-template-columns:1fr}.profile-feed-rail{position:static!important;max-height:480px}.travel-destination-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Matching Activities-page live feed */
+/* =========================================================
+   GLOBAL ACTIVITY FEED
+========================================================= */
+
+.global-activity-feed {
+  position: relative;
+  min-width: 0;
+  height: var(--global-feed-max-height, 0px);
+  max-height: var(--global-feed-max-height, 0px);
+  align-self: start;
+  overflow: hidden;
+  border-left:
+    1px solid rgba(255, 255, 255, 0.1);
+}
+
+.global-activity-feed-inner {
+  position: sticky;
+  top: 104px;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  padding: 4px 0 28px 26px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.global-activity-feed-events {
+  max-height: calc(100% - 64px);
+  overflow: hidden;
+}
+
+.global-activity-feed-heading {
+  margin-bottom: 24px;
+}
+
+.global-activity-feed-heading span {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.global-activity-feed-heading h2 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+
+.global-activity-feed-empty {
+  position: relative;
+  padding: 20px 0;
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.global-activity-feed-pulse {
+  display: block;
+  width: 7px;
+  height: 7px;
+  margin-bottom: 15px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 0 0 0 rgba(255, 255, 255, 0.2);
+  animation:
+    global-activity-pulse
+    2s ease-out infinite;
+}
+
+.global-activity-feed-empty strong {
+  display: block;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.global-activity-feed-empty p {
+  max-width: 225px;
+  margin: 9px 0 0;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+@keyframes global-activity-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0.22);
+  }
+
+  70% {
+    box-shadow:
+      0 0 0 8px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+
+/* Future feed event structure.
+   Global announcements intentionally contain ONLY:
+   - clear or wipe
+   - weapon reward, when one drops
+*/
+
+.global-activity-event {
+  position: relative;
+  padding: 15px 0 16px;
+  border-top:
+    1px solid rgba(255, 255, 255, 0.07);
+}
+
+.global-activity-event:first-child {
+  border-top: 0;
+}
+
+.global-activity-event-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.global-activity-event-player-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.global-activity-event-avatar {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.global-activity-event-player {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.global-activity-event-activity {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.global-activity-event-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.global-activity-event-result.clear {
+  color: rgba(183, 231, 194, 0.86);
+}
+
+.global-activity-event-result.wipe {
+  color: rgba(255, 137, 137, 0.82);
+}
+
+.global-activity-event-weapon {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left:
+    2px solid rgba(226, 195, 108, 0.48);
+}
+
+.global-activity-event-weapon-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.global-activity-event-weapon span {
+  display: block;
+  color: rgba(226, 195, 108, 0.58);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.global-activity-event-weapon strong {
+  display: block;
+  margin-top: 3px;
+  color: rgba(255, 236, 177, 0.94);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.global-activity-event-time {
+  display: block;
+  flex: 0 0 auto;
+  margin-top: 0;
+  color: rgba(255, 255, 255, 0.22);
+  font-size: 0.58rem;
+}
+
+
+.profile-redesign .profile-main-and-feed{grid-template-columns:minmax(0,1fr) 310px;gap:34px;align-items:start}
+.profile-redesign .profile-live-feed{margin-top:12px;max-height:var(--global-feed-max-height,0px);background:transparent;border-radius:0;box-shadow:none;backdrop-filter:none}
+.profile-redesign .profile-live-feed .global-activity-feed-inner{padding:4px 0 28px 26px}
+@media(max-width:1180px){.profile-redesign .profile-main-and-feed{grid-template-columns:1fr;gap:8px}.profile-redesign .profile-live-feed{height:auto;max-height:none;overflow:visible;border-left:0;border-top:1px solid rgba(255,255,255,.1)}.profile-redesign .profile-live-feed .global-activity-feed-inner{position:relative;top:auto;height:auto;max-height:none;min-height:220px;padding:28px 0 0;overflow:visible}.profile-redesign .profile-live-feed .global-activity-feed-events{max-height:none;overflow:visible}}
+@media(max-width:650px){.profile-redesign .profile-live-feed .global-activity-feed-inner{min-height:0}.profile-redesign .profile-live-feed .global-activity-feed-events{overflow:hidden}}
