@@ -10,14 +10,15 @@ type Panel = {
   detail: string;
   symbol: string;
   tone: string;
+  image: string;
   action?: { label: string; href: string };
 };
 
 // Set your official community URLs here when ready.
 const LINKS = {
   discord: "", // e.g. https://discord.gg/your-invite
-  patreon: "https://www.patreon.com/cw/discordiny", // e.g. https://www.patreon.com/your-page
-  communityHub: "https://d2communityhub.com", // Official D2CommunityHub link
+  patreon: "", // e.g. https://www.patreon.com/your-page
+  communityHub: "", // Official D2CommunityHub link
 };
 
 const PANELS: Panel[] = [
@@ -25,33 +26,33 @@ const PANELS: Panel[] = [
     number: "01", eyebrow: "THE EXPERIENCE", title: "WHAT IS DISCORDINY?",
     description: "A Destiny-inspired adventure built for Discord.",
     detail: "Collect weapons, build your Power, explore destinations, take on activities, and shape your Guardian's journey. Discordiny brings progression and discovery into the communities where you already play.",
-    symbol: "✦", tone: "cyan",
+    symbol: "✦", image: "https://assets.discordiny.com/about/discordinybanner.webp", tone: "cyan",
   },
   {
     number: "02", eyebrow: "THE COMMUNITY", title: "FIND YOUR FIRETEAM.",
     description: "More than a bot. A place to belong.",
     detail: "The Discord is where Guardians connect, share discoveries, report issues, suggest features, and see what's coming next. Join the conversation and help shape Discordiny's future.",
-    symbol: "◇", tone: "violet",
+    symbol: "◇", image: "https://assets.discordiny.com/about/discordthumbnail.webp", tone: "violet",
     ...(LINKS.discord ? { action: { label: "JOIN THE DISCORD", href: LINKS.discord } } : {}),
   },
   {
     number: "03", eyebrow: "SUPPORT THE PROJECT", title: "FUEL THE NEXT CHAPTER.",
     description: "Independent projects grow through community support.",
     detail: "Patreon is a way to support the time, care, and development behind Discordiny. Every contribution helps keep the project moving forward. Visit our Patreon for current support options and details.",
-    symbol: "✧", tone: "gold",
+    symbol: "✧", image: "https://assets.discordiny.com/about/patreonthumbnail.webp", tone: "gold",
     ...(LINKS.patreon ? { action: { label: "VISIT PATREON", href: LINKS.patreon } } : {}),
   },
   {
     number: "04", eyebrow: "BEHIND THE CODE", title: "THE LEAD DEVELOPER.",
     description: "One vision, built piece by piece.",
     detail: "Discordiny is driven by its Lead Developer, from the systems behind the bot to the experience across the website. It's an ongoing passion project shaped by iteration, feedback, and a love for the world that inspired it.",
-    symbol: "⌘", tone: "cyan",
+    symbol: "⌘", image: "https://assets.discordiny.com/nightmare-pfp.webp", tone: "cyan",
   },
   {
     number: "05", eyebrow: "COMMUNITY CONNECTIONS", title: "D2COMMUNITYHUB.",
     description: "Building stronger connections across the Destiny community.",
     detail: "Discordiny is proud to recognize its partnership with D2CommunityHub. We're excited to connect communities through a shared enthusiasm for Destiny and the people who make it special.",
-    symbol: "⬡", tone: "red",
+    symbol: "⬡", image: "https://assets.discordiny.com/about/d2ch-partner.webp", tone: "red",
     ...(LINKS.communityHub ? { action: { label: "EXPLORE D2COMMUNITYHUB", href: LINKS.communityHub } } : {}),
   },
 ];
@@ -84,8 +85,8 @@ function RevealSection({ panel, index }: { panel: Panel; index: number }) {
       aria-labelledby={`about-heading-${index}`}
     >
       <div className="about-panel-art" aria-hidden="true">
-        <span className="about-panel-orbit" />
-        <span className="about-panel-glyph">{panel.symbol}</span>
+        <img className="about-panel-image" src={panel.image} alt="" loading="lazy" decoding="async" />
+        <span className="about-panel-image-shade" />
         <span className="about-panel-art-number">{panel.number}</span>
       </div>
       <div className="about-panel-copy">
