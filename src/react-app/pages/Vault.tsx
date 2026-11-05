@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
 import VaultMaterials from "../components/arsenal/VaultMaterials";
-import WeaponVault from "./WeaponVault";
+import WeaponVault, { WeaponTierControl, type WeaponTier } from "./WeaponVault";
 import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
 
@@ -19,6 +19,7 @@ function Vault() {
   const [category, setCategory] = useState<VaultCategory | null>(null);
   const [activitySlug, setActivitySlug] = useState<string | undefined>();
   const [animationKey, setAnimationKey] = useState(0);
+  const [tier, setTier] = useState<WeaponTier>("normal");
   const closeRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -72,6 +73,7 @@ function Vault() {
     triggerRef.current = trigger;
     setCategory(next);
     setActivitySlug(next.activities?.[0]?.slug);
+    setTier("normal");
     setAnimationKey((value) => value + 1);
   }
 
@@ -128,7 +130,8 @@ function Vault() {
         }}>
           <section className="vault-collection-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-dialog-title">
             <header className="vault-collection-header">
-              <div><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2><p>{category.description}</p></div>
+              <div className="vault-collection-title"><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2><p>{category.description}</p></div>
+              <WeaponTierControl tier={tier} onChange={setTier} />
               <button ref={closeRef} type="button" className="vault-collection-close" aria-label="Close collection" onClick={() => setCategory(null)}>×</button>
             </header>
             {Boolean(category.activities?.length) && (
@@ -143,7 +146,7 @@ function Vault() {
             <div className="vault-collection-body">
               {hasCollection ? (
                 <div className="vault-collection-swoosh" key={`${category.slug}-${animationKey}`}>
-                  <WeaponVault embedded categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
+                  <WeaponVault embedded selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
                 </div>
               ) : <div className="vault-collection-empty">This collection does not have any configured loot pools yet.</div>}
             </div>
