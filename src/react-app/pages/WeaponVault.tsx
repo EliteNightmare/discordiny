@@ -360,7 +360,7 @@ function WeaponVault({
     useState("");
 
   const [hoverCosts, setHoverCosts] = useState<Record<string, Record<string, number>>>({});
-  const [masterworkCost, setMasterworkCost] =
+  const [, setMasterworkCost] =
     useState<Record<string, number>>({});
 
   const masterworkPreviews = useMemo(() => {
