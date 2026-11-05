@@ -1067,3 +1067,24 @@
 .weapon-masterwork-insufficient, .weapon-masterwork-unaffordable { color: #ff9292 !important; }
 .weapon-masterwork-unaffordable { display: block; font-size: 9px; margin: 6px 0; }
 @media (max-width: 560px) { .weapon-masterwork-costs { grid-template-columns: 1fr; } }
+
+/* The masterwork dialog scrolls inside the visible mobile viewport so MAX never sits under browser chrome. */
+.weapon-masterwork-backdrop { box-sizing: border-box; height: 100dvh; overflow-y: auto; overscroll-behavior: contain; padding: max(12px, env(safe-area-inset-top)) 12px max(20px, env(safe-area-inset-bottom)); }
+.weapon-masterwork-modal { box-sizing: border-box; max-height: calc(100dvh - 32px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+@media (max-width: 650px) {
+  .weapon-masterwork-backdrop { display: flex; align-items: safe center; justify-content: center; }
+  .weapon-masterwork-modal { width: 100%; padding: 16px; }
+  .weapon-masterwork-image { width: 90px; max-height: 65px; object-fit: contain; }
+  .weapon-masterwork-costs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .weapon-masterwork-costs .weapon-masterwork-cost { padding: 7px 5px; }
+  .weapon-masterwork-costs .weapon-masterwork-material-row { font-size: 8px; gap: 3px; }
+  .weapon-masterwork-costs .vault-masterwork-material-icon { width: 13px; height: 13px; flex-basis: 13px; }
+}
+@media (max-width: 420px) { .weapon-masterwork-costs { grid-template-columns: 1fr; } }
+@media (max-height: 520px) and (orientation: landscape) {
+  .vault-embedded-collection .weapon-vault-block { padding-top: 7px; }
+  .vault-embedded-collection .weapon-vault-heading h1 { font-size: 19px; }
+  .vault-embedded-collection .weapon-vault-heading p { margin-top: 2px; }
+  .weapon-masterwork-image { display: none; }
+  .weapon-masterwork-modal { padding: 12px; }
+}
