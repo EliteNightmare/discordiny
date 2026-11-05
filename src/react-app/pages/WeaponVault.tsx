@@ -16,6 +16,13 @@ import {
   getVaultCategory,
 } from "../data/vaultCategories";
 
+import glimmerIcon from "../assets/icons/currencies/glimmer.png";
+import lumiaLeavesIcon from "../assets/icons/currencies/lumia-leaves.png";
+import enhancementCoreIcon from "../assets/icons/upgrade-materials/enhancement-core.png";
+import enhancementPrismIcon from "../assets/icons/upgrade-materials/enhancement-prism.png";
+import ascendantShardIcon from "../assets/icons/upgrade-materials/ascendant-shard.png";
+import ascendantAlloyIcon from "../assets/icons/upgrade-materials/ascendant-alloy.png";
+
 import "./WeaponVault.css";
 
 type WeaponTier =
@@ -77,7 +84,69 @@ type MasterworkResponse = {
   cost?: Record<string, number>;
 };
 
+const masterworkMaterialIcons: Record<string, string> = {
+  glimmer: glimmerIcon,
+  "lumia leaves": lumiaLeavesIcon,
+  "enhancement core": enhancementCoreIcon,
+  "enhancement prism": enhancementPrismIcon,
+  "ascendant shard": ascendantShardIcon,
+  "ascendant alloy": ascendantAlloyIcon,
+};
+
+function getMasterworkMaterialIcon(material: string): string | undefined {
+  return masterworkMaterialIcons[material.trim().toLowerCase()];
+}
+
 const MAX_MASTERWORK = 77;
+
+type MasterworkCostPreview = { cost: Record<string, number>; ranks: number; affordable: boolean };
+
+// Mirrors getVaultMasterworkCost in the Worker. Keep both formulas in sync.
+function costForMasterworkRank(weapon: VisibleWeapon, level: number): Record<string, number> {
+  const special = /\s*\((Adept|Timelost|Harrowed)\)\s*$/i.test(weapon.name);
+  const exotic = special || (weapon.rarity ?? "Legendary").trim().toLowerCase() === "exotic";
+  const cost: Record<string, number> = { Glimmer: 2500 * (level + 1) };
+  if (exotic) {
+    cost["Enhancement Core"] = (level * 2 + 4) * 2;
+    cost["Enhancement Prism"] = (level * 2 + 3) * 2;
+  } else {
+    cost["Enhancement Core"] = (level * 2 + 3) * 3;
+    cost["Enhancement Prism"] = (level + 1) * 3;
+  }
+  cost["Ascendant Shard"] = (level + 1) * 2;
+  if (level >= 3) cost["Ascendant Alloy"] = level - 2;
+  return cost;
+}
+
+function getMasterworkPreview(
+  weapon: VisibleWeapon,
+  amount: 1 | 10 | "max",
+  currencies: Record<string, number>,
+  upgradeMaterials: Record<string, number>,
+): MasterworkCostPreview {
+  const available = { ...currencies, ...upgradeMaterials };
+  const cost: Record<string, number> = {};
+  const current = Math.min(MAX_MASTERWORK, Math.max(0, weapon.masterwork));
+  const target = amount === "max" ? MAX_MASTERWORK : Math.min(MAX_MASTERWORK, current + amount);
+  let ranks = 0;
+  for (let level = current; level < target; level++) {
+    const next = { ...cost };
+    for (const [material, count] of Object.entries(costForMasterworkRank(weapon, level))) {
+      next[material] = (next[material] ?? 0) + count;
+    }
+    const canAfford = Object.entries(next).every(([material, count]) =>
+      (available[material] ?? 0) >= count,
+    );
+    if (amount === "max" && !canAfford) break;
+    Object.assign(cost, next);
+    ranks++;
+  }
+  const affordable = ranks > 0 && Object.entries(cost).every(([material, count]) =>
+    (available[material] ?? 0) >= count,
+  );
+  return { cost, ranks, affordable };
+}
+
 
 /*
  * Weapon icons.
@@ -293,6 +362,15 @@ function WeaponVault({
   const [hoverCosts, setHoverCosts] = useState<Record<string, Record<string, number>>>({});
   const [masterworkCost, setMasterworkCost] =
     useState<Record<string, number>>({});
+
+  const masterworkPreviews = useMemo(() => {
+    if (!selectedWeapon || !profile) return null;
+    return {
+      one: getMasterworkPreview(selectedWeapon, 1, profile.currencies ?? {}, profile.upgradeMaterials ?? {}),
+      ten: getMasterworkPreview(selectedWeapon, 10, profile.currencies ?? {}, profile.upgradeMaterials ?? {}),
+      max: getMasterworkPreview(selectedWeapon, "max", profile.currencies ?? {}, profile.upgradeMaterials ?? {}),
+    };
+  }, [selectedWeapon, profile]);
 
   useEffect(() => {
     if (!weaponSource) {
@@ -871,7 +949,13 @@ function WeaponVault({
                               {maxed ? <strong>MAXIMUM MASTERWORK</strong> : (
                                 hoverCosts[weapon.name] ?
                                   Object.entries(hoverCosts[weapon.name]).map(([material, amount]) => (
-                                    <span key={material}>{material}: <b>{amount.toLocaleString()}</b></span>
+                                    <span key={material} className="vault-hover-material">
+                                      {getMasterworkMaterialIcon(material) && (
+                                        <img src={getMasterworkMaterialIcon(material)} alt="" className="vault-masterwork-material-icon" />
+                                      )}
+                                      <span className="vault-hover-material-name">{material}</span>
+                                      <b>{amount.toLocaleString()}</b>
+                                    </span>
                                   )) : <span>Checking cost...</span>
                               )}
                               {!maxed && <button type="button" onClick={() => void selectWeaponForMasterwork(weapon)}>UPGRADE WEAPON</button>}
@@ -966,57 +1050,53 @@ function WeaponVault({
                       </div>
                     ) : (
                       <>
-                        <div className="weapon-masterwork-cost">
-                          <span>NEXT RANK COST</span>
-                          {Object.entries(masterworkCost).map(([name, amount]) => (
-                            <div key={name}>
-                              <strong>{name}</strong>
-                              <b>{amount.toLocaleString()}</b>
-                            </div>
-                          ))}
+                        <div className="weapon-masterwork-costs">
+                          {([
+                            { key: "one", title: "+1 RANK", action: "+1" },
+                            { key: "ten", title: "+10 RANKS", action: "+10" },
+                            { key: "max", title: "MAX AFFORDABLE", action: "MAX" },
+                          ] as const).map(({ key, title, action }) => {
+                            const preview = masterworkPreviews?.[key];
+                            const insufficient = !preview?.affordable;
+                            return (
+                              <div className="weapon-masterwork-cost" key={key}>
+                                <div className="weapon-masterwork-cost-heading">
+                                  <span>{title}</span>
+                                  <strong>{preview ? `${preview.ranks} ${preview.ranks === 1 ? "rank" : "ranks"}` : "Loading..."}</strong>
+                                </div>
+                                {preview && Object.entries(preview.cost).map(([name, amount]) => (
+                                  <div key={name} className="weapon-masterwork-material-row">
+                                    {getMasterworkMaterialIcon(name) && (
+                                      <img src={getMasterworkMaterialIcon(name)} alt="" className="vault-masterwork-material-icon" />
+                                    )}
+                                    <strong>{name}</strong>
+                                    <b className={(profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0) < amount ? "weapon-masterwork-insufficient" : ""}>
+                                      {amount.toLocaleString()}
+                                    </b>
+                                  </div>
+                                ))}
+                                {preview && insufficient && <small className="weapon-masterwork-unaffordable">{key === "max" ? "Not enough materials for another rank" : "Not enough materials"}</small>}
+                                <button
+                                  type="button"
+                                  className={`weapon-masterwork-upgrade ${key === "max" ? "weapon-masterwork-upgrade-max" : ""}`}
+                                  disabled={masterworking || insufficient}
+                                  onClick={() => void masterworkWeapon(key === "one" ? 1 : key === "ten" ? 10 : "max")}
+                                >
+                                  {masterworking ? "UPGRADING..." : action}
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
                         <p>
-                          Choose how far to Masterwork this weapon.
-                          +1 and +10 require the full cumulative cost.
-                          MAX spends only enough to reach the highest rank
-                          your current materials can afford.
+                          +1 and +10 show the full cumulative cost and require enough materials.
+                          MAX shows only the ranks and materials you can currently afford.
                         </p>
                         {masterworkError && (
                           <div className="weapon-masterwork-error">
                             {masterworkError}
                           </div>
                         )}
-                        <div className="weapon-masterwork-actions">
-                          <button
-                            type="button"
-                            className="weapon-masterwork-upgrade"
-                            disabled={masterworking}
-                            onClick={() => void masterworkWeapon(1)}
-                          >
-                            {masterworking ? "..." : "+1"}
-                          </button>
-
-                          <button
-                            type="button"
-                            className="weapon-masterwork-upgrade"
-                            disabled={
-                              masterworking ||
-                              selectedWeapon.masterwork >= MAX_MASTERWORK
-                            }
-                            onClick={() => void masterworkWeapon(10)}
-                          >
-                            {masterworking ? "..." : "+10"}
-                          </button>
-
-                          <button
-                            type="button"
-                            className="weapon-masterwork-upgrade weapon-masterwork-upgrade-max"
-                            disabled={masterworking}
-                            onClick={() => void masterworkWeapon("max")}
-                          >
-                            {masterworking ? "UPGRADING..." : "MAX"}
-                          </button>
-                        </div>
                       </>
                     )}
                   </section>
