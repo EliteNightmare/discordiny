@@ -874,3 +874,10 @@
     font-size: 0.48rem;
   }
 }
+
+
+/* Profile Settings > Homepage SIVA animation */
+.home-siva-animation-off .home-event-scan{display:none}
+.home-siva-animation-off .home-event-live i,
+.home-siva-animation-off .home-event-siva i,
+.home-siva-animation-off .home-event-grid{animation:none!important}
