@@ -206,7 +206,7 @@ export const VAULT_CATEGORIES: VaultCategory[] = [
         weaponSource: "ce",
       },
       {
-        name: "Ultimate Desert Perpetual",
+        name: "Ultimate DP",
         slug: "ultimate-desert-perpetual",
         weaponSource: "udp",
       },
