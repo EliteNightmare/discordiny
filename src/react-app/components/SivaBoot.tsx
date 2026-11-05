@@ -191,6 +191,11 @@ export default function SivaBoot({
       resetMobileSequence,
     ]);
 
+  const animationDisabled = (() => {try {return window.localStorage.getItem("discordiny:siva-animation")==="off";}catch{return false;}})();
+  useEffect(() => {
+    if (animationDisabled) onComplete();
+  }, [animationDisabled, onComplete]);
+
   /*
    * ========================================================
    * 5 SECOND BOOT SEQUENCE
@@ -198,6 +203,7 @@ export default function SivaBoot({
    */
 
   useEffect(() => {
+    if (animationDisabled) return;
     const startTime =
       performance.now();
 
@@ -283,7 +289,7 @@ export default function SivaBoot({
         animationFrame,
       );
     };
-  }, [onComplete]);
+  }, [onComplete, animationDisabled]);
 
   /*
    * ========================================================
@@ -510,6 +516,8 @@ export default function SivaBoot({
       }
     };
   }, []);
+
+  if (animationDisabled) return null;
 
   return (
     <main
