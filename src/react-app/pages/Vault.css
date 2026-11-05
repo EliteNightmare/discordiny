@@ -498,3 +498,9 @@
 /* Keep the weapon archive fully accessible inside the modal. */
 .vault-collection-body .vault-embedded-collection { height:100%; min-height:0; overflow:hidden; }
 @media(max-width:650px) { .vault-collection-activities { grid-template-columns:repeat(2,minmax(0,1fr)); max-height:148px; padding:10px 14px; } .vault-activity-tab { white-space:normal; line-height:1.25; } }
+
+/* Modal content scrolls as one surface; hide the visual scrollbar. */
+.vault-collection-body { overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:none; -ms-overflow-style:none; }
+.vault-collection-body::-webkit-scrollbar { display:none; }
+.vault-collection-swoosh { height:auto; min-height:100%; overflow:visible; }
+.vault-collection-body .vault-embedded-collection { height:auto; min-height:100%; overflow:visible; }
