@@ -1053,3 +1053,17 @@
 }
 .weapon-masterwork-material-row strong { flex: 1; min-width: 0; }
 .weapon-masterwork-material-row b { margin-left: auto; }
+
+/* Three material-aware upgrade choices in the weapon popup. */
+.weapon-masterwork-costs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-bottom: 12px; }
+.weapon-masterwork-costs .weapon-masterwork-cost { min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.weapon-masterwork-cost-heading { display: flex; flex-direction: column; gap: 3px; margin-bottom: 7px; }
+.weapon-masterwork-cost-heading span { font-size: 10px; font-weight: 850; letter-spacing: .1em; }
+.weapon-masterwork-cost-heading strong { font-size: 10px; color: #ffe18a; }
+.weapon-masterwork-costs .weapon-masterwork-material-row { gap: 5px; font-size: 9px; }
+.weapon-masterwork-costs .vault-masterwork-material-icon { width: 17px; height: 17px; flex-basis: 17px; }
+.weapon-masterwork-costs .weapon-masterwork-material-row strong { overflow-wrap: anywhere; }
+.weapon-masterwork-costs .weapon-masterwork-upgrade { margin-top: auto; width: 100%; }
+.weapon-masterwork-insufficient, .weapon-masterwork-unaffordable { color: #ff9292 !important; }
+.weapon-masterwork-unaffordable { display: block; font-size: 9px; margin: 6px 0; }
+@media (max-width: 560px) { .weapon-masterwork-costs { grid-template-columns: 1fr; } }
