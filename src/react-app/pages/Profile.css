@@ -1518,3 +1518,53 @@
 .travel-destination-tile:disabled{cursor:default;opacity:.75}
 @media(max-width:1100px){.profile-redesign .profile-main-and-feed{grid-template-columns:1fr}.profile-redesign .profile-live-feed{position:static;border-left:0;border-top:1px solid rgba(255,255,255,.12)}.profile-redesign .profile-live-feed .global-activity-feed-inner{max-height:none;padding:24px 0 0}.profile-redesign .profile-live-feed .global-activity-feed-events{max-height:480px}}
 @media(max-width:720px){.profile-redesign .profile-main-stack>.profile-duo{grid-template-columns:1fr}.profile-redesign .guardian-hero{padding:18px}.profile-redesign .profile-title{font-size:17px!important}}
+
+/* Global Activity Feed: natural document flow, clipped at the bottom of the profile stack. */
+@media (min-width: 1101px) {
+  .profile-redesign .profile-main-and-feed { align-items: stretch; }
+  .profile-redesign .profile-live-feed {
+    position: relative;
+    top: auto;
+    align-self: stretch;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .profile-redesign .profile-live-feed .global-activity-feed-inner {
+    position: absolute;
+    inset: 0;
+    top: 0;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .profile-redesign .profile-live-feed .global-activity-feed-events {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 0;
+    overflow: hidden;
+    scrollbar-width: none;
+  }
+  .profile-redesign .profile-live-feed .global-activity-feed-events::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 1100px) {
+  .profile-redesign .profile-live-feed {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .profile-redesign .profile-live-feed .global-activity-feed-inner {
+    position: static;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .profile-redesign .profile-live-feed .global-activity-feed-events {
+    max-height: none;
+    overflow: visible;
+  }
+}
