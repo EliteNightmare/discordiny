@@ -3930,25 +3930,67 @@ app.post("/api/game/explore/claim", async (c) => {
     }
   }
 
+  // Each completed 12-hour interval guarantees one weapon; the remainder
+  // is a linear chance for one more. Maximum: two weapons at 24 hours.
+  const weaponIntervalSeconds = 12 * 60 * 60;
+  const guaranteedWeapons = Math.floor(elapsedSeconds / weaponIntervalSeconds);
+  const fractionalChance = (elapsedSeconds % weaponIntervalSeconds) / weaponIntervalSeconds;
+  const requestedWeaponCount = Math.min(2, guaranteedWeapons + (Math.random() < fractionalChance ? 1 : 0));
+  const adeptChance = 0.10; // Same successful-drop Adept chance as Showdown.
+
+  // Destination sources in D1 are lowercase. Explicitly normalize the lookup.
+  const destinationSource = profile.zone.trim().toLowerCase();
   const weaponCatalog = await c.env.DB.prepare(
-    `SELECT name, rarity FROM weapons WHERE lower(source) = lower(?) ORDER BY name`,
-  ).bind(profile.zone).all<{ name: string; rarity: string | null }>();
+    `SELECT name, rarity FROM weapons WHERE lower(trim(source)) = ? ORDER BY name`,
+  ).bind(destinationSource).all<{ name: string; rarity: string | null }>();
 
   const ownedWeapons = await c.env.DB.prepare(
     `SELECT weapon_name FROM player_weapons WHERE user_id = ?`,
   ).bind(session.user_id).all<{ weapon_name: string }>();
 
-  const ownedWeaponNames = new Set((ownedWeapons.results ?? []).map(w => w.weapon_name));
-  const availableWeapons = (weaponCatalog.results ?? []).filter(w => !ownedWeaponNames.has(w.name));
-  const exoticWeapons = availableWeapons.filter(w => w.rarity === "Exotic");
-  const legendaryWeapons = availableWeapons.filter(w => w.rarity === "Legendary");
-  const weaponRoll = Math.random();
-  let droppedWeapon: { name: string; rarity: string | null } | null = null;
+  const ownedNames = new Set((ownedWeapons.results ?? []).map(w => w.weapon_name.trim().toLowerCase()));
+  const baseName = (name: string) => name.replace(/\s*\(Adept\)\s*$/i, "").trim();
+  const catalog = new Map<string, { name: string; rarity: string | null }>();
+  for (const weapon of weaponCatalog.results ?? []) {
+    const name = baseName(weapon.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (!catalog.has(key)) catalog.set(key, { name, rarity: weapon.rarity });
+  }
 
-  if (exoticWeapons.length > 0 && weaponRoll < exoticChance) {
-    droppedWeapon = exoticWeapons[Math.floor(Math.random() * exoticWeapons.length)];
-  } else if (legendaryWeapons.length > 0 && weaponRoll < exoticChance + legendaryChance) {
-    droppedWeapon = legendaryWeapons[Math.floor(Math.random() * legendaryWeapons.length)];
+  type ExplorationWeapon = { name: string; rarity: string | null; adept: boolean };
+  const droppedWeapons: ExplorationWeapon[] = [];
+  const usedBases = new Set<string>();
+  for (let i = 0; i < requestedWeaponCount; i += 1) {
+    const eligible = [...catalog.values()].filter(weapon => {
+      const key = weapon.name.toLowerCase();
+      return !usedBases.has(key) &&
+        (!ownedNames.has(key) || !ownedNames.has(`${key} (adept)`));
+    });
+    if (!eligible.length) break;
+
+    // Keep the existing Exotic/Legendary bonuses as selection weights,
+    // without letting zero stats defeat a guaranteed weapon reward.
+    const exotics = eligible.filter(w => w.rarity?.toLowerCase() === "exotic");
+    const legendaries = eligible.filter(w => w.rarity?.toLowerCase() === "legendary");
+    let pool = eligible;
+    if (exotics.length && legendaries.length && exoticChance + legendaryChance > 0) {
+      pool = Math.random() < exoticChance / (exoticChance + legendaryChance) ? exotics : legendaries;
+    } else if (legendaries.length) {
+      pool = legendaries;
+    } else if (exotics.length) {
+      pool = exotics;
+    }
+
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    const key = chosen.name.toLowerCase();
+    const normalAvailable = !ownedNames.has(key);
+    const adeptAvailable = !ownedNames.has(`${key} (adept)`);
+    const adept = adeptAvailable && (Math.random() < adeptChance || !normalAvailable);
+    const name = adept ? `${chosen.name} (Adept)` : chosen.name;
+    droppedWeapons.push({ name, rarity: chosen.rarity, adept });
+    ownedNames.add(name.toLowerCase());
+    usedBases.add(key);
   }
 
   const writes: D1PreparedStatement[] = [];
@@ -3986,11 +4028,11 @@ app.post("/api/game/explore/claim", async (c) => {
     ).bind(xp, session.user_id));
   }
 
-  if (droppedWeapon) {
+  for (const weapon of droppedWeapons) {
     writes.push(c.env.DB.prepare(
       `INSERT INTO player_weapons (user_id, weapon_name, masterwork) VALUES (?, ?, 0)
        ON CONFLICT(user_id, weapon_name) DO NOTHING`,
-    ).bind(session.user_id, droppedWeapon.name));
+    ).bind(session.user_id, weapon.name));
   }
 
   if (writes.length > 0) await c.env.DB.batch(writes);
@@ -4008,10 +4050,12 @@ app.post("/api/game/explore/claim", async (c) => {
     },
     xp,
     rewards,
+    weapons: droppedWeapons,
     weapon: {
-      dropped: Boolean(droppedWeapon),
-      name: droppedWeapon?.name ?? null,
-      rarity: droppedWeapon?.rarity ?? null,
+      dropped: droppedWeapons.length > 0,
+      name: droppedWeapons[0]?.name ?? null,
+      rarity: droppedWeapons[0]?.rarity ?? null,
+      adept: droppedWeapons[0]?.adept ?? false,
     },
   });
 });
