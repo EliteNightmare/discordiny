@@ -971,3 +971,18 @@
   }
 }
 
+
+/* Embedded collection inside the single-page Vault modal */
+.vault-embedded-collection { min-width:0; height:100%; }
+.vault-embedded-collection .weapon-vault-block { height:100%; min-height:0; display:flex; flex-direction:column; box-sizing:border-box; border:0; border-radius:0; box-shadow:none; padding:18px 24px 24px; background-color:transparent; }
+.vault-embedded-collection .weapon-vault-back { display:none; }
+.vault-embedded-collection .weapon-vault-grid { flex:1; min-height:0; overflow-y:auto; align-content:start; padding:2px 6px 20px 2px; margin-top:18px; scrollbar-width:thin; }
+.vault-embedded-collection .weapon-vault-item { position:relative; overflow:hidden; }
+.vault-hover-upgrade { position:absolute; z-index:5; inset:0; padding:12px; display:flex; flex-direction:column; justify-content:center; gap:5px; background:rgba(5,8,14,.96); opacity:0; visibility:hidden; transition:opacity .17s ease,visibility .17s; font-size:10px; overflow-y:auto; }
+.vault-hover-upgrade > span:first-child { color:#c8d6eb; font-size:9px; font-weight:800; letter-spacing:.12em; }
+.vault-hover-upgrade button { padding:9px 6px; border:1px solid rgba(145,199,255,.55); border-radius:4px; background:rgba(76,130,191,.25); color:white; cursor:pointer; font-weight:800; font-size:10px; }
+@media (hover:hover) and (pointer:fine) { .weapon-vault-item-owned:hover .vault-hover-upgrade, .weapon-vault-item-owned:focus-within .vault-hover-upgrade { opacity:1; visibility:visible; } }
+@media (hover:none), (pointer:coarse) { .vault-hover-upgrade { display:none; } }
+@media(max-width:650px) { .vault-embedded-collection .weapon-vault-block { padding:14px; } .vault-embedded-collection .weapon-vault-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.weapon-masterwork-backdrop { z-index:2200; }
