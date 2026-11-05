@@ -947,6 +947,7 @@ export default function Activities() {
       name: string | null;
       rarity?: string | null;
     };
+    weapons: Array<{ name: string; rarity: string | null; adept: boolean }>;
   } | null>(null);
 
   const [
@@ -1540,6 +1541,7 @@ export default function Activities() {
             dropped: boolean;
             name: string | null;
           };
+          weapons?: Array<{ name: string; rarity: string | null; adept: boolean }>;
         };
 
       if (
@@ -1565,6 +1567,9 @@ export default function Activities() {
           dropped: false,
           name: null,
         },
+        weapons: result.weapons ?? (result.weapon?.dropped && result.weapon.name
+          ? [{ name: result.weapon.name, rarity: null, adept: /\(Adept\)$/i.test(result.weapon.name) }]
+          : []),
       });
 
       await loadActivities();
@@ -2358,29 +2363,22 @@ export default function Activities() {
                           })}
                       </div>
 
-                      <div className="exploration-summary-weapon">
-                        {explorationSummary.weapon.dropped &&
-                          explorationSummary.weapon.name &&
-                          getWeaponImage(
-                            explorationSummary.weapon.name,
-                          ) && (
-                            <img
-                              src={getWeaponImage(
-                                explorationSummary.weapon.name,
-                              )}
-                              alt=""
-                              aria-hidden="true"
-                            />
-                          )}
-                        <div>
-                          <span>DESTINATION WEAPON</span>
-                          <strong>
-                            {explorationSummary.weapon.dropped &&
-                            explorationSummary.weapon.name
-                              ? explorationSummary.weapon.name
-                              : "No weapon found"}
-                          </strong>
-                        </div>
+                      <div className="exploration-summary-weapons">
+                        {explorationSummary.weapons.length === 0 ? (
+                          <div className="exploration-summary-weapon">
+                            <div><span>DESTINATION WEAPON</span><strong>No weapon found</strong></div>
+                          </div>
+                        ) : explorationSummary.weapons.map((weapon, index) => (
+                          <div className="exploration-summary-weapon" key={`${weapon.name}-${index}`}>
+                            {getWeaponImage(weapon.name) && (
+                              <img src={getWeaponImage(weapon.name)} alt="" aria-hidden="true" />
+                            )}
+                            <div>
+                              <span>DESTINATION WEAPON {explorationSummary.weapons.length > 1 ? index + 1 : ""}</span>
+                              <strong>{weapon.name}{weapon.adept && !/\(Adept\)$/i.test(weapon.name) ? " (Adept)" : ""}</strong>
+                            </div>
+                          </div>
+                        ))}
                       </div>
 
                       <button
