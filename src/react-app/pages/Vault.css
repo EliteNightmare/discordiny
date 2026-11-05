@@ -481,15 +481,20 @@
 .vault-collection-header p { margin:6px 0 0; color:rgba(255,255,255,.56); font-size:12px; }
 .vault-collection-close { width:36px; height:36px; flex:none; background:rgba(255,255,255,.05); color:white; border:1px solid rgba(255,255,255,.17); border-radius:7px; font-size:25px; cursor:pointer; }
 .vault-collection-close:hover { background:rgba(255,255,255,.14); }
-.vault-collection-activities { display:flex; flex:none; gap:8px; overflow-x:auto; padding:14px 26px; scrollbar-width:thin; border-bottom:1px solid rgba(255,255,255,.09); }
-.vault-activity-tab { flex:none; padding:11px 14px; border-radius:6px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.045); color:rgba(255,255,255,.72); font:inherit; font-size:11px; font-weight:750; cursor:pointer; white-space:nowrap; transition:background .16s,border-color .16s,color .16s; }
+.vault-collection-activities { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); flex:none; gap:8px; overflow-x:hidden; overflow-y:auto; max-height:124px; padding:12px 26px; border-bottom:1px solid rgba(255,255,255,.09); scrollbar-width:none; }
+.vault-collection-activities::-webkit-scrollbar { display:none; }
+.vault-activity-tab { min-width:0; padding:11px 14px; border-radius:6px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.045); color:rgba(255,255,255,.72); font:inherit; font-size:11px; font-weight:750; cursor:pointer; white-space:nowrap; transition:background .16s,border-color .16s,color .16s; }
 .vault-activity-tab:hover { color:white; background:rgba(255,255,255,.1); }
 .vault-activity-tab.active { color:white; border-color:rgba(145,198,255,.65); background:rgba(89,145,207,.25); box-shadow:inset 0 -2px rgba(145,198,255,.7); }
 .vault-collection-body { flex:1; min-height:0; position:relative; overflow:hidden; }
-.vault-collection-swoosh { height:100%; animation:vaultCollectionSwoosh .32s cubic-bezier(.2,.85,.25,1) both; }
+.vault-collection-swoosh { height:100%; min-height:0; overflow:hidden; animation:vaultCollectionSwoosh .32s cubic-bezier(.2,.85,.25,1) both; }
 .vault-collection-empty { padding:40px; color:rgba(255,255,255,.6); font-size:13px; }
 @keyframes vaultBackdropIn { from{opacity:0} to{opacity:1} }
 @keyframes vaultModalEnter { from{opacity:0;transform:translateY(24px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
 @keyframes vaultCollectionSwoosh { from{opacity:.25;transform:translateX(90px);filter:blur(5px)} to{opacity:1;transform:translateX(0);filter:blur(0)} }
 @media(max-width:650px) { .vault-collection-backdrop { padding:0; } .vault-collection-dialog { width:100%; height:100dvh; border-radius:0; border:0; } .vault-collection-header { padding:18px 16px 13px; } .vault-collection-activities { padding:10px 14px; } .vault-activity-tab { padding:10px 12px; } }
 @media(prefers-reduced-motion:reduce) { .vault-collection-backdrop,.vault-collection-dialog,.vault-collection-swoosh { animation:none!important; } }
+
+/* Keep the weapon archive fully accessible inside the modal. */
+.vault-collection-body .vault-embedded-collection { height:100%; min-height:0; overflow:hidden; }
+@media(max-width:650px) { .vault-collection-activities { grid-template-columns:repeat(2,minmax(0,1fr)); max-height:148px; padding:10px 14px; } .vault-activity-tab { white-space:normal; line-height:1.25; } }
