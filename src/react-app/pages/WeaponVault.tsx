@@ -450,6 +450,27 @@ function WeaponVault({
   const collectionTotal =
     visibleWeapons.length;
 
+  async function readMasterworkResponse(response: Response): Promise<MasterworkResponse> {
+    const body = await response.text();
+    let parsed: MasterworkResponse | null = null;
+    try {
+      parsed = JSON.parse(body) as MasterworkResponse;
+    } catch {
+      // Cloudflare or the Worker may return plain text/HTML on a server error.
+    }
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error(
+        response.ok
+          ? "Masterwork API returned an invalid response."
+          : `Masterwork API error (${response.status}). Check the Cloudflare Worker logs.`,
+      );
+    }
+    if (!response.ok) {
+      throw new Error(parsed.error ?? `Masterwork API error (${response.status}).`);
+    }
+    return parsed;
+  }
+
   async function masterworkWeapon(amount: 1 | 10 | "max") {
     if (
       !selectedWeapon ||
@@ -479,7 +500,7 @@ function WeaponVault({
       );
 
       const result =
-        (await response.json()) as MasterworkResponse;
+        (await readMasterworkResponse(response)) as MasterworkResponse;
 
       if (!response.ok || !result.success) {
         throw new Error(
@@ -525,7 +546,7 @@ function WeaponVault({
           { credentials: "include" },
         );
         const previewResult =
-          (await previewResponse.json()) as MasterworkResponse;
+          (await readMasterworkResponse(previewResponse)) as MasterworkResponse;
         setMasterworkCost(previewResult.cost ?? {});
       } else {
         setMasterworkCost({});
@@ -549,7 +570,7 @@ function WeaponVault({
         { credentials: "include" },
       );
       if (!response.ok) return;
-      const result = (await response.json()) as MasterworkResponse;
+      const result = (await readMasterworkResponse(response)) as MasterworkResponse;
       setHoverCosts((previous) => ({ ...previous, [weapon.name]: result.cost ?? {} }));
     } catch { /* The main Masterwork dialog handles API errors. */ }
   }
@@ -569,7 +590,7 @@ function WeaponVault({
         { credentials: "include" },
       );
       const result =
-        (await response.json()) as MasterworkResponse;
+        (await readMasterworkResponse(response)) as MasterworkResponse;
       if (!response.ok) {
         throw new Error(result.error ?? "Failed to load Masterwork cost.");
       }
