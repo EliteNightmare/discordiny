@@ -13,7 +13,7 @@ type ProfileResponse = {
   profile: { level:number; exp:number; power:number; zone:string };
   level: { current:number; max:number|null; powerBonusCap?:number; totalXp:number; currentXp:number; nextXp:number; percentage:number };
   power: { total:number; breakdown:{ weapons:number; armor:number; artifacts:number; level:number } };
-  weapons: { owned:number; total:number };
+  weapons: { owned:number; total:number; masterworked?:number };
   currencies: Record<string,number>;
   upgradeMaterials: Record<string,number>;
 };
@@ -51,14 +51,14 @@ const pretty=(s:string)=>s.replace(/[_-]/g," ").replace(/\b\w/g,c=>c.toUpperCase
 const destinationImage=(name:string)=>`/destinations/${DESTINATIONS.find(d=>d[0].toLowerCase()===name.toLowerCase())?.[1]||"cosmodrome"}.png`;
 function Profile(){
   const [data,setData]=useState<ProfileResponse|null>(null);
-  const [fish,setFish]=useState<Record<string,number>>({});
   const [feed,setFeed]=useState<FeedEvent[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [traveling,setTraveling]=useState(false);
-  const [selected,setSelected]=useState("");
   const [travelOpen,setTravelOpen]=useState(false);
-  const [fishSearch,setFishSearch]=useState("");
+  const [titleOpen,setTitleOpen]=useState(false);
+  const [settingsOpen,setSettingsOpen]=useState(false);
+  const [sivaEnabled,setSivaEnabled]=useState(()=>{try{return window.localStorage.getItem("discordiny:siva-animation")!=="off";}catch{return true;}});
   const [feedError,setFeedError]=useState(false);
   const [feedLoading,setFeedLoading]=useState(true);
   const [feedClock,setFeedClock]=useState(Date.now());
@@ -74,21 +74,13 @@ function Profile(){
         if(!response.ok)throw new Error("Please sign in to view your profile.");
         const result=await response.json() as ProfileResponse;
         if(!result.authenticated)throw new Error("Please sign in to view your profile.");
-        if(active){setData(result);setSelected(result.profile.zone);}
+        if(active){setData(result);}
       }catch(e){if(active)setError(e instanceof Error?e.message:"Could not load profile");}
       finally{if(active)setLoading(false);}
     }
     void load();
     return ()=>{active=false;};
   },[]);
-  useEffect(()=>{
-    if(!data)return;
-    let active=true;
-    const loadFish=async()=>{try{const response=await fetch("/api/game/fish",{credentials:"include"});if(response.ok){const result=await response.json() as {fish?:Record<string,number>};if(active)setFish(result.fish||{});}}catch{/* Fish is supplemental. */}};
-    void loadFish();
-    const timer=window.setInterval(()=>{void loadFish();},60000);
-    return ()=>{active=false;window.clearInterval(timer);};
-  },[data?.user.id]);
   const loadGlobalActivityFeed=useCallback(async()=>{
     if(feedRefreshingRef.current)return;
     feedRefreshingRef.current=true;
@@ -122,18 +114,17 @@ function Profile(){
     const observer=new ResizeObserver(sync);observer.observe(main);
     window.addEventListener("resize",sync);
     return ()=>{observer.disconnect();window.removeEventListener("resize",sync);};
-  },[data,fish,travelOpen]);
+  },[data,travelOpen]);
   const currencies=useMemo(()=>Object.entries(data?.currencies||{}).sort(([a],[b])=>a.localeCompare(b)),[data]);
   const materials=useMemo(()=>Object.entries(data?.upgradeMaterials||{}).sort(([a],[b])=>a.localeCompare(b)),[data]);
-  const fishes=useMemo(()=>Object.entries(fish).filter(([name])=>name.toLowerCase().includes(fishSearch.toLowerCase())).sort(([a],[b])=>a.localeCompare(b)),[fish,fishSearch]);
-  async function travel(){
-    if(!data||!selected||selected===data.profile.zone||traveling)return;
+  async function travel(destination:string){
+    if(!data||destination===data.profile.zone||traveling)return;
     setTraveling(true);setError("");
     try{
-      const response=await fetch("/api/game/travel",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination:selected})});
+      const response=await fetch("/api/game/travel",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination})});
       const result=await response.json() as {success?:boolean;zone?:string;error?:string};
       if(!response.ok||!result.success)throw new Error(result.error||"Travel failed");
-      setData(previous=>previous?{...previous,profile:{...previous.profile,zone:result.zone||selected}}:previous);
+      setData(previous=>previous?{...previous,profile:{...previous.profile,zone:result.zone||destination}}:previous);
       setTravelOpen(false);
     }catch(e){setError(e instanceof Error?e.message:"Travel failed");}
     finally{setTraveling(false);}
@@ -143,10 +134,12 @@ function Profile(){
   const name=data.user.global_name||data.user.username;
   const avatar=data.user.avatar?`https://cdn.discordapp.com/avatars/${data.user.discord_id}/${data.user.avatar}.png?size=128`:null;
   const capped=data.level.current>=250;
+  function changeSivaEnabled(enabled:boolean){setSivaEnabled(enabled);try{window.localStorage.setItem("discordiny:siva-animation",enabled?"on":"off");}catch{/* Storage may be unavailable. */}}
   return <div className="profile-screen"><TopBar/><main className="profile-page profile-page-static"><div className="profile-container profile-redesign">
+    <div className="profile-main-and-feed"><div className="profile-main-stack" ref={profileMainRef}>
     <header className="guardian-hero">
       <div className="guardian-identity">{avatar?<img className="profile-avatar" src={avatar} alt=""/>:<div className="profile-avatar profile-avatar-placeholder">{name.slice(0,1)}</div>}
-        <div><div className="profile-eyebrow">GUARDIAN DOSSIER</div><h1>{name}</h1><div className="profile-title">Title: <span>COMING SOON</span></div><div className="guardian-subtitle">LEVEL {fmt(data.level.current)} <span>·</span> {fmt(data.weapons.owned)} / {fmt(data.weapons.total)} WEAPONS</div></div></div>
+        <div><div className="profile-eyebrow">GUARDIAN DOSSIER</div><h1>{name}</h1><div className="profile-title">NO TITLE EQUIPPED</div><div className="guardian-subtitle">LEVEL {fmt(data.level.current)}</div><div className="profile-collection-stats"><span>{fmt(data.weapons.owned)} / {fmt(data.weapons.total)} Unlocked</span><span>{data.weapons.masterworked===undefined?"—":fmt(data.weapons.masterworked)} / {fmt(data.weapons.total)} Masterworked</span></div><div className="profile-hero-actions"><button type="button" onClick={()=>setTitleOpen(true)}>Change Title</button><button type="button" onClick={()=>setSettingsOpen(true)}>⚙ Settings</button></div></div></div>
       <div className="guardian-power"><span>TOTAL POWER</span><strong>{fmt(data.power.total)}</strong></div>
     </header>
     {error&&<div className="travel-error" role="alert">{error}</div>}
@@ -166,21 +159,19 @@ function Profile(){
         <span className="travel-trigger-image" style={{backgroundImage:`linear-gradient(90deg,rgba(5,12,22,.1),rgba(5,12,22,.85)),url("${destinationImage(data.profile.zone)}")`}}/>
         <span className="travel-trigger-copy"><small>CURRENT DESTINATION</small><strong>{data.profile.zone}</strong><em>{travelOpen?"CLOSE DIRECTOR ↑":"SELECT DESTINATION ↓"}</em></span>
       </button>
-      {travelOpen&&<div className="travel-director-menu"><div className="travel-destination-grid">{DESTINATIONS.map(([name,image])=><button key={name} type="button" className={`travel-destination-tile ${name==="Plaguelands"?"travel-destination-tile-siva":""} ${selected===name?"travel-destination-tile-selected":""}`} onClick={()=>setSelected(name)} aria-pressed={selected===name}>
+      {travelOpen&&<div className="travel-director-menu"><div className="travel-destination-grid">{DESTINATIONS.map(([name,image])=><button key={name} type="button" className={`travel-destination-tile ${name==="Plaguelands"?"travel-destination-tile-siva":""} ${data.profile.zone===name?"travel-destination-tile-selected":""}`} onClick={()=>void travel(name)} disabled={traveling||data.profile.zone===name} aria-pressed={data.profile.zone===name}>
         <span className="travel-tile-image" style={{backgroundImage:`linear-gradient(0deg,rgba(4,9,18,.9),rgba(4,9,18,.04)),url("/destinations/${image}.png")`}}/><span className="travel-tile-label">{name}</span>{data.profile.zone===name&&<span className="travel-tile-current">CURRENT</span>}
       </button>)}</div>
-      <div className="travel-director-footer"><span>DESTINATION: <strong>{selected}</strong></span><button type="button" disabled={traveling||selected===data.profile.zone} onClick={()=>void travel()}>{traveling?"TRAVELING…":selected===data.profile.zone?"CURRENT LOCATION":"TRAVEL →"}</button></div></div>}
+      <div className="travel-director-footer"><span>{traveling?"Traveling…":"Select a destination to travel immediately."}</span></div></div>}
     </section>
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">WALLET</div><h2>All Currencies</h2></div><span className="profile-chip">{currencies.length} TYPES</span></div>
       {currencies.length?<div className="currency-grid">{currencies.map(([name,amount])=><div className="currency-card" key={name}><div className="currency-card-label">{CURRENCY_ICONS[name]?<img className="currency-icon" src={CURRENCY_ICONS[name]} alt=""/>:<span className="currency-fallback">◆</span>}<span className="currency-name">{name}</span></div><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No currency balances recorded.</p>}
     </section>
-    <div className="profile-main-and-feed"><div className="profile-main-stack" ref={profileMainRef}><div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
+    <div className="profile-duo"><section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">RESOURCES</div><h2>Upgrade Materials</h2></div><span className="profile-chip">{materials.length} TYPES</span></div>
       {materials.length?<div className="currency-grid">{materials.map(([name,amount])=><div className="currency-card" key={name}><span className="currency-card-label">{getUpgradeMaterialIcon(name) && <img className="currency-icon" src={getUpgradeMaterialIcon(name)} alt="" loading="lazy" />}<span className="currency-name">{pretty(name)}</span></span><strong>{fmt(amount)}</strong></div>)}</div>:<p className="profile-help">No upgrade materials recorded.</p>}
     </section>
-    <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COLLECTIONS</div><h2>Fishing Catalogue</h2></div><span className="profile-chip">{Object.keys(fish).length} DISCOVERED</span></div>
-      <input className="fish-search" value={fishSearch} onChange={e=>setFishSearch(e.target.value)} placeholder="Search your fish collection…" aria-label="Search fish"/>
-      <div className="fish-catalogue">{fishes.length?fishes.map(([name,amount])=><div className="fish-entry" key={name}><span>◇ {pretty(name)}</span><strong>× {fmt(amount)}</strong></div>):<p className="profile-help">{fishSearch?"No matching fish.":"No fish recorded yet."}</p>}</div>
-      <p className="profile-help">Shows collected fish reported by your account. Undiscovered species require a complete fish catalogue.</p>
+    <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COLLECTIONS</div><h2>Fishing Catalogue</h2></div><span className="profile-chip">COMING SOON</span></div>
+      <div className="profile-coming-soon"><strong>Coming Soon</strong><p>Fishing Catalogue is not available yet.</p></div>
     </section></div></div>
     <aside ref={globalFeedRef} className="global-activity-feed profile-live-feed" aria-label="Global activity feed">
       <div className="global-activity-feed-inner">
@@ -207,6 +198,8 @@ function Profile(){
         ):<div className="global-activity-feed-empty"><span className="global-activity-feed-pulse" aria-hidden="true"/><strong>{feedLoading?"CONNECTING TO FEED":"WAITING FOR ACTIVITY"}</strong><p>Clears, wipes and weapon drops from all players will appear here.</p></div>}
       </div>
     </aside></div>
+    {titleOpen&&<div className="profile-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setTitleOpen(false);}}><section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-title-dialog"><div className="profile-modal-heading"><h2 id="profile-title-dialog">Change Title</h2><button type="button" aria-label="Close" onClick={()=>setTitleOpen(false)}>×</button></div><p>No titles are available yet.</p><div className="profile-coming-soon"><strong>Coming Soon</strong><p>Titles will appear here once they are added to Discordiny.</p></div></section></div>}
+    {settingsOpen&&<div className="profile-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setSettingsOpen(false);}}><section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-settings-dialog"><div className="profile-modal-heading"><h2 id="profile-settings-dialog">Settings</h2><button type="button" aria-label="Close" onClick={()=>setSettingsOpen(false)}>×</button></div><label className="profile-setting-row"><span><strong>Homepage SIVA animation</strong><small>Show the animated SIVA effects on the homepage.</small></span><input type="checkbox" checked={sivaEnabled} onChange={e=>changeSivaEnabled(e.target.checked)}/></label><p className="profile-help">Your preference is saved on this device.</p></section></div>}
   </div></main></div>;
 }
 export default Profile;
