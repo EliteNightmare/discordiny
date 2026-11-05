@@ -3,6 +3,7 @@ import background from "../assets/background.jpg";
 import TopBar from "../components/TopBar";
 
 export default function Home() {
+  const sivaAnimationDisabled = (() => {try{return window.localStorage.getItem("discordiny:siva-animation")==="off";}catch{return false;}})();
   function startDiscordLogin() {
     window.location.href = "/profile";
   }
@@ -13,7 +14,7 @@ export default function Home() {
 
   return (
     <main
-      className="home-page"
+      className={`home-page ${sivaAnimationDisabled?"home-siva-animation-off":""}`}
       style={{
         backgroundImage: `url(${background})`,
       }}
