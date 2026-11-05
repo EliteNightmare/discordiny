@@ -6,6 +6,7 @@ import lumiaLeavesIcon from "../assets/icons/currencies/lumia-leaves.png";
 import armorPlatingIcon from "../assets/icons/currencies/armor-plating.png";
 import synthweaveIcon from "../assets/icons/currencies/synthweave.png";
 import spoilsIcon from "../assets/icons/currencies/spoils-of-conquest.png";
+import pinnacleCipherIcon from "../assets/icons/currencies/pinnacle-cipher.png";
 
 type ProfileResponse = {
   authenticated: boolean;
@@ -23,7 +24,7 @@ const DESTINATIONS = [
   ["Moon","moon"],["Europa","europa"],["Throne World","throne_world"],["Neomuna","neomuna"],
   ["Pale Heart","pale_heart"],["Plaguelands","plaguelands"]
 ] as const;
-const CURRENCY_ICONS: Record<string,string> = {"Glimmer":glimmerIcon,"Lumia Leaves":lumiaLeavesIcon,"Armor Plating":armorPlatingIcon,"Synthweave":synthweaveIcon,"Spoils of Conquest":spoilsIcon};
+const CURRENCY_ICONS: Record<string,string> = {"Glimmer":glimmerIcon,"Lumia Leaves":lumiaLeavesIcon,"Armor Plating":armorPlatingIcon,"Synthweave":synthweaveIcon,"Spoils of Conquest":spoilsIcon,"Pinnacle Cipher":pinnacleCipherIcon};
 // Discover existing upgrade-material icons at build time; no extra assets required.
 const upgradeMaterialIconFiles = import.meta.glob("../assets/icons/upgrade-materials/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
 const normalizeMaterialName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
