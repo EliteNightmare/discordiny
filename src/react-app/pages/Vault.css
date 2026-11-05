@@ -504,3 +504,26 @@
 .vault-collection-body::-webkit-scrollbar { display:none; }
 .vault-collection-swoosh { height:auto; min-height:100%; overflow:visible; }
 .vault-collection-body .vault-embedded-collection { height:auto; min-height:100%; overflow:visible; }
+
+/* Keep the Normal/Adept selector alongside the collection title. */
+.vault-collection-header { align-items: center; }
+.vault-collection-title { flex: 1 1 auto; min-width: 0; }
+.vault-collection-header .weapon-tier-switch { flex: 0 0 210px; width: 210px; max-width: 100%; }
+@media (max-width: 650px) {
+  .vault-collection-header { gap: 8px; padding: 10px 12px 8px; }
+  .vault-collection-header .vault-eyebrow, .vault-collection-header .vault-collection-title p { display: none; }
+  .vault-collection-header h2 { font-size: clamp(17px, 4.5vw, 23px); }
+  .vault-collection-header .weapon-tier-switch { flex: 0 1 170px; width: 170px; min-width: 135px; height: 34px; }
+  .vault-collection-header .weapon-tier-option { font-size: 9px; }
+  .vault-collection-close { width: 32px; height: 32px; }
+}
+/* Landscape phones: one compact, horizontally scrollable activity strip instead of a tall two-row header. */
+@media (max-height: 520px) and (orientation: landscape) and (pointer: coarse) {
+  .vault-collection-dialog { height: 100dvh; max-height: 100dvh; }
+  .vault-collection-header { padding: 5px 12px; min-height: 36px; }
+  .vault-collection-header .vault-eyebrow, .vault-collection-header p { display: none; }
+  .vault-collection-header h2 { font-size: 18px; }
+  .vault-collection-activities { display: flex; flex-wrap: nowrap; gap: 6px; flex: 0 0 auto; max-height: none; min-height: 0; padding: 5px 10px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .vault-activity-tab { flex: 0 0 auto; white-space: nowrap; font-size: 10px; line-height: 1; padding: 7px 10px; }
+  .vault-collection-body { flex: 1 1 auto; min-height: 0; }
+}
