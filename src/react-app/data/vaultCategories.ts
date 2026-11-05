@@ -41,7 +41,7 @@ export const VAULT_CATEGORIES: VaultCategory[] = [
       {
         name: "Dreaming City",
         slug: "dreaming-city",
-        weaponSource: "dreamingcity",
+        weaponSource: "dreaming city",
       },
       {
         name: "Moon",
@@ -56,7 +56,7 @@ export const VAULT_CATEGORIES: VaultCategory[] = [
       {
         name: "Throne World",
         slug: "throne-world",
-        weaponSource: "throneworld",
+        weaponSource: "throne world",
       },
       {
         name: "Neomuna",
@@ -66,7 +66,12 @@ export const VAULT_CATEGORIES: VaultCategory[] = [
       {
         name: "The Pale Heart",
         slug: "the-pale-heart",
-        weaponSource: "paleheart",
+        weaponSource: "pale heart",
+      },
+      {
+        name: "Plaguelands",
+        slug: "plaguelands",
+        weaponSource: "plaguelands",
       },
     ],
   },
