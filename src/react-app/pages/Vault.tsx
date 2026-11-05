@@ -1,256 +1,155 @@
-import { useEffect, useState } from "react";
-
+import { useEffect, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
 import VaultMaterials from "../components/arsenal/VaultMaterials";
-
+import WeaponVault from "./WeaponVault";
+import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
 
 type VaultProfileResponse = {
   authenticated: boolean;
-
   currencies: Record<string, number>;
-
   upgradeMaterials: Record<string, number>;
 };
 
-const VAULT_CATEGORIES = [
-  {
-    name: "Destinations",
-    path: "/vault/destinations",
-    description: "Destination weapon collections",
-  },
-  {
-    name: "Dungeons",
-    path: "/vault/dungeons",
-    description: "Dungeon weapon collections",
-  },
-  {
-    name: "Raids",
-    path: "/vault/raids",
-    description: "Raid weapon collections",
-  },
-  {
-    name: "Strikes",
-    path: "/vault/strikes",
-    description: "Strike weapon collection",
-  },
-  {
-    name: "Nightfalls",
-    path: "/vault/nightfalls",
-    description: "Nightfall weapon collection",
-  },
-  {
-    name: "Grandmasters",
-    path: "/vault/grandmasters",
-    description: "Grandmaster weapon collection",
-  },
-  {
-    name: "Infiltrations",
-    path: "/vault/infiltrations",
-    description: "Infiltration weapon collections",
-  },
-  {
-    name: "Showdowns",
-    path: "/vault/showdowns",
-    description: "Showdown weapon collections",
-  },
-  {
-    name: "Crawls",
-    path: "/vault/crawls",
-    description: "Crawl weapon collections",
-  },
-  {
-    name: "Fishing",
-    path: "/vault/fishing",
-    description: "Fishing weapon collections",
-  },
-  {
-    name: "Events",
-    path: "/vault/events",
-    description: "Event weapon collections",
-  },
-];
-
 function Vault() {
-  const [profile, setProfile] =
-    useState<VaultProfileResponse | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [profile, setProfile] = useState<VaultProfileResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [category, setCategory] = useState<VaultCategory | null>(null);
+  const [activitySlug, setActivitySlug] = useState<string | undefined>();
+  const [animationKey, setAnimationKey] = useState(0);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    async function loadVault() {
+    let active = true;
+    (async () => {
       try {
-        const response = await fetch(
-          "/api/game/profile",
-          {
-            credentials: "include",
-          },
-        );
-
-        const result =
-          (await response.json()) as VaultProfileResponse;
-
-        if (
-          !response.ok ||
-          !result.authenticated
-        ) {
-          throw new Error(
-            "You must be logged in to view your Vault.",
-          );
-        }
-
-        setProfile(result);
+        const response = await fetch("/api/game/profile", { credentials: "include" });
+        const result = (await response.json()) as VaultProfileResponse;
+        if (!response.ok || !result.authenticated) throw new Error("You must be logged in to view your Vault.");
+        if (active) setProfile(result);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load Vault.",
-        );
+        if (active) setError(err instanceof Error ? err.message : "Failed to load Vault.");
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    }
-
-    void loadVault();
+    })();
+    return () => { active = false; };
   }, []);
 
-  function navigate(path: string) {
-    window.location.href = path;
+  useEffect(() => {
+    if (!category) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        // Weapon Masterwork dialog, when open, owns Escape handling.
+        if (document.querySelector(".weapon-masterwork-backdrop")) return;
+        setCategory(null);
+      }
+      if (event.key === "Tab") {
+        const modal = document.querySelector<HTMLElement>(".vault-collection-dialog");
+        const focusables = modal?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
+        if (!focusables?.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      triggerRef.current?.focus();
+    };
+  }, [category]);
+
+  function openCategory(next: VaultCategory, trigger: HTMLButtonElement) {
+    triggerRef.current = trigger;
+    setCategory(next);
+    setActivitySlug(next.activities?.[0]?.slug);
+    setAnimationKey((value) => value + 1);
   }
 
-  if (loading) {
-    return (
-      <div className="vault-screen">
-        <TopBar />
-
-        <div className="vault-page">
-          <div className="vault-status">
-            Loading Vault...
-          </div>
-        </div>
-      </div>
-    );
+  function selectActivity(slug: string) {
+    if (slug === activitySlug) return;
+    setActivitySlug(slug);
+    setAnimationKey((value) => value + 1);
   }
 
-  if (error || !profile) {
-    return (
-      <div className="vault-screen">
-        <TopBar />
-
-        <div className="vault-page">
-          <div className="vault-status vault-status-error">
-            {error || "Failed to load Vault."}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const selectedActivity = category?.activities?.find((item) => item.slug === activitySlug);
+  const hasCollection = Boolean(category?.directSource || selectedActivity);
 
   return (
     <div className="vault-screen">
       <TopBar />
-
       <div className="vault-page">
-        <ArsenalLayout
-          left={
-            <VaultMaterials
-              currencies={profile.currencies}
-              upgradeMaterials={
-                profile.upgradeMaterials
-              }
-            />
-          }
-        >
-          <div className="vault-content">
-            {/* LEGENDARY VAULT */}
-
-            <section className="vault-block vault-legendary">
-              <div className="vault-block-header">
-                <div>
-                  <span className="vault-eyebrow">
-                    ARSENAL
-                  </span>
-
-                  <h1>
-                    Legendary Vault
-                  </h1>
-
-                  <p>
-                    Browse your Legendary weapon
-                    collections by source.
-                  </p>
-                </div>
-              </div>
-
-              <div className="vault-category-grid">
-                {VAULT_CATEGORIES.map(
-                  (category) => (
-                    <button
-                      key={category.path}
-                      type="button"
-                      className="vault-category"
-                      onClick={() => {
-                        navigate(
-                          category.path,
-                        );
-                      }}
-                    >
-                      <span className="vault-category-name">
-                        {category.name}
-                      </span>
-
-                      <span className="vault-category-description">
-                        {
-                          category.description
-                        }
-                      </span>
-
-                      <span className="vault-category-arrow">
-                        ›
-                      </span>
+        {loading ? <div className="vault-status">Loading Vault...</div> : error || !profile ? (
+          <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
+        ) : (
+          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}>
+            <div className="vault-content">
+              <section className="vault-block vault-legendary">
+                <div className="vault-block-header"><div>
+                  <span className="vault-eyebrow">ARSENAL</span>
+                  <h1>Legendary Vault</h1>
+                  <p>Select a collection to open its weapon archives.</p>
+                </div></div>
+                <div className="vault-category-grid">
+                  {VAULT_CATEGORIES.map((item) => (
+                    <button key={item.slug} type="button" className="vault-category"
+                      onClick={(event) => openCategory(item, event.currentTarget)}>
+                      <span className="vault-category-name">{item.name}</span>
+                      <span className="vault-category-description">{item.description}</span>
+                      <span className="vault-category-arrow">›</span>
                     </button>
-                  ),
-                )}
-              </div>
-            </section>
-
-            {/* EXOTIC VAULT */}
-
-            <section className="vault-block vault-exotic">
-              <div className="vault-block-header">
-                <div>
-                  <span className="vault-eyebrow">
-                    ARSENAL
-                  </span>
-
-                  <h2>
-                    Exotic Vault
-                  </h2>
-
-                  <p>
-                    Exotic weapon collection.
-                  </p>
+                  ))}
                 </div>
-              </div>
-
-              <div className="vault-coming-soon">
-                <span>
-                  EXOTIC VAULT
-                </span>
-
-                <strong>
-                  COMING SOON
-                </strong>
-              </div>
-            </section>
-          </div>
-        </ArsenalLayout>
+              </section>
+              <section className="vault-block vault-exotic">
+                <div className="vault-block-header"><div>
+                  <span className="vault-eyebrow">ARSENAL</span>
+                  <h2>Exotic Vault</h2>
+                  <p>Exotic weapon collection.</p>
+                </div></div>
+                <div className="vault-coming-soon"><span>EXOTIC VAULT</span><strong>COMING SOON</strong></div>
+              </section>
+            </div>
+          </ArsenalLayout>
+        )}
       </div>
+      {category && (
+        <div className="vault-collection-backdrop" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setCategory(null);
+        }}>
+          <section className="vault-collection-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-dialog-title">
+            <header className="vault-collection-header">
+              <div><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2><p>{category.description}</p></div>
+              <button ref={closeRef} type="button" className="vault-collection-close" aria-label="Close collection" onClick={() => setCategory(null)}>×</button>
+            </header>
+            {Boolean(category.activities?.length) && (
+              <nav className="vault-collection-activities" aria-label={`${category.name} loot pools`}>
+                {category.activities?.map((activity) => (
+                  <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
+                    className={activity.slug === activitySlug ? "vault-activity-tab active" : "vault-activity-tab"}
+                    onClick={() => selectActivity(activity.slug)}>{activity.name}</button>
+                ))}
+              </nav>
+            )}
+            <div className="vault-collection-body">
+              {hasCollection ? (
+                <div className="vault-collection-swoosh" key={`${category.slug}-${animationKey}`}>
+                  <WeaponVault embedded categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
+                </div>
+              ) : <div className="vault-collection-empty">This collection does not have any configured loot pools yet.</div>}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
