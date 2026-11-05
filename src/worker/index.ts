@@ -3678,6 +3678,7 @@ app.get("/api/game/profile", async (c) => {
 
     weapons: {
       owned: weaponRows.length,
+      masterworked: weaponRows.filter((weapon) => Number(weapon.masterwork) >= VAULT_MAX_MASTERWORK).length,
       total: Number(
         totalWeapons?.count ?? 0
       ),
