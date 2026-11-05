@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+
 import {
   useEffect,
   useMemo,
@@ -23,6 +25,7 @@ type WeaponTier =
 type WeaponVaultProps = {
   categorySlug: string;
   activitySlug?: string;
+  embedded?: boolean;
 };
 
 type WeaponOwnership = {
@@ -222,6 +225,7 @@ function findActivityBanner(
 function WeaponVault({
   categorySlug,
   activitySlug,
+  embedded = false,
 }: WeaponVaultProps) {
   const category =
     getVaultCategory(
@@ -286,6 +290,7 @@ function WeaponVault({
   const [masterworkError, setMasterworkError] =
     useState("");
 
+  const [hoverCosts, setHoverCosts] = useState<Record<string, Record<string, number>>>({});
   const [masterworkCost, setMasterworkCost] =
     useState<Record<string, number>>({});
 
@@ -384,6 +389,8 @@ function WeaponVault({
 
     void loadWeaponVault();
   }, [weaponSource]);
+
+  useEffect(() => { setHoverCosts({}); setSelectedWeapon(null); }, [tier, weaponSource]);
 
   const visibleWeapons =
     useMemo<VisibleWeapon[]>(
@@ -499,6 +506,7 @@ function WeaponVault({
         (await profileResponse.json()) as ProfileResponse;
 
       setWeapons(weaponResult.weapons ?? []);
+      setHoverCosts({});
       setProfile(profileResult);
 
       setSelectedWeapon((current) =>
@@ -531,6 +539,19 @@ function WeaponVault({
     } finally {
       setMasterworking(false);
     }
+  }
+
+  async function previewHoverCost(weapon: VisibleWeapon) {
+    if (!weapon.owned || weapon.masterwork >= MAX_MASTERWORK || hoverCosts[weapon.name]) return;
+    try {
+      const response = await fetch(
+        `/api/game/weapons/masterwork?weaponName=${encodeURIComponent(weapon.name)}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) return;
+      const result = (await response.json()) as MasterworkResponse;
+      setHoverCosts((previous) => ({ ...previous, [weapon.name]: result.cost ?? {} }));
+    } catch { /* The main Masterwork dialog handles API errors. */ }
   }
 
   async function selectWeaponForMasterwork(weapon: VisibleWeapon) {
@@ -590,6 +611,7 @@ function WeaponVault({
     !category ||
     !weaponSource
   ) {
+    if (embedded) return <div className="weapon-vault-status">Weapon collection not found.</div>;
     return (
       <div className="weapon-vault-screen">
         <TopBar />
@@ -605,6 +627,7 @@ function WeaponVault({
   }
 
   if (loading) {
+    if (embedded) return <div className="weapon-vault-status">Loading weapon collection...</div>;
     return (
       <div className="weapon-vault-screen">
         <TopBar />
@@ -623,6 +646,7 @@ function WeaponVault({
     error ||
     !profile
   ) {
+    if (embedded) return <div className="weapon-vault-status weapon-vault-status-error">{error || "Failed to load weapon vault."}</div>;
     return (
       <div className="weapon-vault-screen">
         <TopBar />
@@ -637,24 +661,7 @@ function WeaponVault({
     );
   }
 
-  return (
-    <div className="weapon-vault-screen">
-      <TopBar />
-
-      <div className="weapon-vault-page">
-        <ArsenalLayout
-          left={
-            <VaultMaterials
-              currencies={
-                profile.currencies
-              }
-              upgradeMaterials={
-                profile.upgradeMaterials
-              }
-            />
-          }
-        >
-          <VaultTransition>
+  const collection = (
             <section
               className={
                 activityBanner
@@ -794,6 +801,7 @@ function WeaponVault({
                           className={
                             itemClass
                           }
+                          onMouseEnter={() => { void previewHoverCost(weapon); }}
                           role={weapon.owned ? "button" : undefined}
                           tabIndex={weapon.owned ? 0 : -1}
                           onClick={() => {
@@ -836,6 +844,18 @@ function WeaponVault({
                             )}
                           </div>
 
+                          {weapon.owned && (
+                            <div className="vault-hover-upgrade" onClick={(event) => event.stopPropagation()}>
+                              <span>NEXT RANK COST</span>
+                              {maxed ? <strong>MAXIMUM MASTERWORK</strong> : (
+                                hoverCosts[weapon.name] ?
+                                  Object.entries(hoverCosts[weapon.name]).map(([material, amount]) => (
+                                    <span key={material}>{material}: <b>{amount.toLocaleString()}</b></span>
+                                  )) : <span>Checking cost...</span>
+                              )}
+                              {!maxed && <button type="button" onClick={() => void selectWeaponForMasterwork(weapon)}>UPGRADE WEAPON</button>}
+                            </div>
+                          )}
                           <div className="weapon-vault-item-info">
                             <strong>
                               {
@@ -868,7 +888,7 @@ function WeaponVault({
                 )}
               </div>
 
-              {selectedWeapon && (
+              {selectedWeapon && createPortal(
                 <div
                   className="weapon-masterwork-backdrop"
                   onMouseDown={(event) => {
@@ -979,10 +999,19 @@ function WeaponVault({
                       </>
                     )}
                   </section>
-                </div>
+                </div>, document.body
               )}
             </section>
-          </VaultTransition>
+  );
+
+  if (embedded) return <div className="vault-embedded-collection">{collection}</div>;
+
+  return (
+    <div className="weapon-vault-screen">
+      <TopBar />
+      <div className="weapon-vault-page">
+        <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}>
+          <VaultTransition>{collection}</VaultTransition>
         </ArsenalLayout>
       </div>
     </div>
