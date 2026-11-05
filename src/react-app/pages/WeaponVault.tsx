@@ -25,7 +25,7 @@ import ascendantAlloyIcon from "../assets/icons/upgrade-materials/ascendant-allo
 
 import "./WeaponVault.css";
 
-type WeaponTier =
+export type WeaponTier =
   | "normal"
   | "adept";
 
@@ -33,6 +33,8 @@ type WeaponVaultProps = {
   categorySlug: string;
   activitySlug?: string;
   embedded?: boolean;
+  selectedTier?: WeaponTier;
+  onTierChange?: (tier: WeaponTier) => void;
 };
 
 type WeaponOwnership = {
@@ -291,10 +293,22 @@ function findActivityBanner(
   return null;
 }
 
+export function WeaponTierControl({ tier, onChange }: { tier: WeaponTier; onChange: (tier: WeaponTier) => void }) {
+  return (
+    <div className={tier === "adept" ? "weapon-tier-switch weapon-tier-switch-adept" : "weapon-tier-switch"} role="group" aria-label="Weapon tier">
+      <div className="weapon-tier-slider" aria-hidden="true" />
+      <button type="button" className={tier === "normal" ? "weapon-tier-option active" : "weapon-tier-option"} aria-pressed={tier === "normal"} onClick={() => onChange("normal")}>NORMAL</button>
+      <button type="button" className={tier === "adept" ? "weapon-tier-option active" : "weapon-tier-option"} aria-pressed={tier === "adept"} onClick={() => onChange("adept")}>ADEPT</button>
+    </div>
+  );
+}
+
 function WeaponVault({
   categorySlug,
   activitySlug,
   embedded = false,
+  selectedTier,
+  onTierChange,
 }: WeaponVaultProps) {
   const category =
     getVaultCategory(
@@ -326,10 +340,8 @@ function WeaponVault({
         )
       : null;
 
-  const [tier, setTier] =
-    useState<WeaponTier>(
-      "normal",
-    );
+  const [localTier, setTier] = useState<WeaponTier>("normal");
+  const tier = selectedTier ?? localTier;
 
   const [weapons, setWeapons] =
     useState<WeaponData[]>(
@@ -696,9 +708,8 @@ function WeaponVault({
       return;
     }
 
-    setTier(
-      nextTier,
-    );
+    if (onTierChange) onTierChange(nextTier);
+    else setTier(nextTier);
 
     setGridKey(
       (current) =>
@@ -812,6 +823,7 @@ function WeaponVault({
                     </p>
                   </div>
 
+                  {!embedded && (
                   <div
                     className={
                       tier ===
@@ -869,6 +881,7 @@ function WeaponVault({
                       ADEPT
                     </button>
                   </div>
+                  )}
                 </div>
               </div>
 
