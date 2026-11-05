@@ -991,3 +991,39 @@
 .vault-embedded-collection .weapon-vault-block { overflow:hidden; }
 .vault-embedded-collection .weapon-vault-grid { overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-gutter:stable; padding-bottom:36px; }
 .vault-embedded-collection .weapon-vault-item { min-width:0; }
+
+/* Full-size weapon cards, with names below icons; parent modal handles scrolling. */
+.vault-embedded-collection .weapon-vault-block { height:auto; min-height:100%; overflow:visible; }
+.vault-embedded-collection .weapon-vault-grid {
+  flex:none;
+  min-height:0;
+  height:auto;
+  overflow:visible;
+  grid-auto-rows:max-content;
+  align-items:stretch;
+  align-content:start;
+  scrollbar-width:none;
+  scrollbar-gutter:auto;
+  padding:2px 2px 32px;
+}
+.vault-embedded-collection .weapon-vault-grid::-webkit-scrollbar { display:none; }
+.vault-embedded-collection .weapon-vault-item {
+  min-height:0;
+  height:auto;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.vault-embedded-collection .weapon-vault-image-frame {
+  flex:none;
+  width:100%;
+  aspect-ratio:1 / 1;
+}
+.vault-embedded-collection .weapon-vault-item-info { flex:none; }
+.vault-embedded-collection .weapon-vault-item-info strong {
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+  overflow-wrap:anywhere;
+  line-height:1.35;
+}
