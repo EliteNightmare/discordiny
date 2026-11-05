@@ -2800,12 +2800,7 @@ app.get("/api/game/weapons/masterwork", async (c) => {
   const baseName = getVaultBaseWeaponName(weaponName);
   const catalogWeapon = await c.env.DB
     .prepare(`SELECT rarity FROM weapons WHERE lower(name) = lower(?) LIMIT 1`)
-    .bind(
-      baseName,
-      `${baseName} (Adept)`,
-      `${baseName} (Timelost)`,
-      `${baseName} (Harrowed)`,
-    )
+    .bind(baseName)
     .first<{ rarity: string | null }>();
   if (!catalogWeapon) return c.json({ error: "Weapon is not in the Vault catalog." }, 404);
 
@@ -2897,7 +2892,12 @@ app.post("/api/game/weapons/masterwork", async (c) => {
           OR lower(name) = lower(?)
        LIMIT 1`,
     )
-    .bind(baseName)
+    .bind(
+      baseName,
+      `${baseName} (Adept)`,
+      `${baseName} (Timelost)`,
+      `${baseName} (Harrowed)`,
+    )
     .first<{ rarity: string | null }>();
 
   if (!catalogWeapon) {
