@@ -22,7 +22,53 @@ export const VAULT_CATEGORIES: VaultCategory[] = [
     name: "Destinations",
     slug: "destinations",
     description: "Destination weapon collections",
-    activities: [],
+    activities: [
+            {
+        name: "Cosmodrome",
+        slug: "cosmodrome",
+        weaponSource: "cosmodrome",
+      },
+      {
+        name: "European Dead Zone",
+        slug: "european-dead-zone",
+        weaponSource: "edz",
+      },
+      {
+        name: "Nessus",
+        slug: "nessus",
+        weaponSource: "nessus",
+      },
+      {
+        name: "Dreaming City",
+        slug: "dreaming-city",
+        weaponSource: "dreamingcity",
+      },
+      {
+        name: "Moon",
+        slug: "moon",
+        weaponSource: "moon",
+      },
+      {
+        name: "Europa",
+        slug: "europa",
+        weaponSource: "europa",
+      },
+      {
+        name: "Throne World",
+        slug: "throne-world",
+        weaponSource: "throneworld",
+      },
+      {
+        name: "Neomuna",
+        slug: "neomuna",
+        weaponSource: "neomuna",
+      },
+      {
+        name: "The Pale Heart",
+        slug: "the-pale-heart",
+        weaponSource: "paleheart",
+      },
+    ],
   },
 
   {
