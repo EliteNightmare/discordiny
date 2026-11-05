@@ -986,3 +986,8 @@
 @media(max-width:650px) { .vault-embedded-collection .weapon-vault-block { padding:14px; } .vault-embedded-collection .weapon-vault-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 
 .weapon-masterwork-backdrop { z-index:2200; }
+
+/* Embedded weapon grid: scroll vertically instead of clipping the bottom rows. */
+.vault-embedded-collection .weapon-vault-block { overflow:hidden; }
+.vault-embedded-collection .weapon-vault-grid { overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-gutter:stable; padding-bottom:36px; }
+.vault-embedded-collection .weapon-vault-item { min-width:0; }
