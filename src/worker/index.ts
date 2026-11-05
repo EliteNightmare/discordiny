@@ -6686,12 +6686,12 @@ function buildCrawlFinalWrites(
     new Set([
       "Glimmer",
       "Lumia Leaves",
+      "Pinnacle Cipher",
+      "Armor Plating",
     ]);
 
   const crawlUpgradeMaterials =
     new Set([
-      "Pinnacle Cipher",
-      "Armor Plating",
       "Ascendant Shard",
       "Ascendant Alloy",
     ]);
@@ -7689,11 +7689,11 @@ app.post("/api/game/activity/run", async (c) => {
       new Set([
         "Glimmer",
         "Lumia Leaves",
+        "Pinnacle Cipher",
       ]);
 
     const infiltrationUpgradeMaterials =
       new Set([
-        "Pinnacle Cipher",
         "Ascendant Alloy",
       ]);
 
@@ -8572,11 +8572,11 @@ app.post("/api/game/activity/run", async (c) => {
       new Set([
         "Glimmer",
         "Lumia Leaves",
+        "Pinnacle Cipher",
       ]);
 
     const showdownUpgradeMaterials =
       new Set([
-        "Pinnacle Cipher",
         "Enhancement Prism",
         "Ascendant Shard",
       ]);
