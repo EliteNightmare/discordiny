@@ -1027,3 +1027,29 @@
   overflow-wrap:anywhere;
   line-height:1.35;
 }
+
+/* Material icons shared by the hover preview and Masterwork dialog. */
+.vault-masterwork-material-icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  object-fit: contain;
+}
+.vault-hover-upgrade .vault-hover-material {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 10px;
+}
+.vault-hover-material-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.vault-hover-material b { flex: 0 0 auto; color: #ffe18a; }
+.weapon-masterwork-cost > .weapon-masterwork-material-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 0;
+}
+.weapon-masterwork-material-row strong { flex: 1; min-width: 0; }
+.weapon-masterwork-material-row b { margin-left: auto; }
