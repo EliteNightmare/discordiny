@@ -119,8 +119,7 @@ const LOGINS: RootLogin[] = [
   {
     name: "CLOVIS",
     username: "The Lord of Logic, King of Code",
-    password:
-      "Tell yourself a story... Let the story twist in unlikely directions",
+    password: "TELL YOURSELF A STORY... LET THE STORY TWIST IN UNLIKELY DIRECTIONS",
     level: 3,
   },
 ];
