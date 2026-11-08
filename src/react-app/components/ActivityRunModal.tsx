@@ -132,7 +132,7 @@ type Props = {
   activity: Activity;
   backgroundImage?: string;
   onClose: () => void;
-  onFinished?: () => void;
+  onFinished?: (loot: { weapons: WeaponResult[]; materials: Record<string, number>; xp: number }) => void;
 };
 
 type Phase =
@@ -150,15 +150,6 @@ const ENCOUNTER_MS = 2400;
 /* -------------------------------------------------------------------------- */
 /*                                ASSET IMPORTS                               */
 /* -------------------------------------------------------------------------- */
-
-const weaponImages = import.meta.glob(
-  "../assets/icons/weapons/**/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
 
 const currencyImages = import.meta.glob(
   "../assets/icons/currencies/*.png",
@@ -257,32 +248,6 @@ function normalizeAssetName(
     .replace(/\s*\(adept\)\s*$/i, "")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-}
-
-function getWeaponImage(
-  weaponName: string | null,
-): string | undefined {
-  if (!weaponName) return undefined;
-
-  // Do not use normalizeAssetName here: it removes "(Adept)" and
-  // would cause Normal and Adept filenames to compare as identical.
-  const normalizeWeaponFilename = (value: string) =>
-    value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-
-  const requested = normalizeWeaponFilename(weaponName.trim());
-  const normal = normalizeWeaponFilename(
-    weaponName.replace(/\s*\(Adept\)\s*$/i, "").trim(),
-  );
-  const entries = Object.entries(weaponImages);
-
-  const findExact = (name: string) =>
-    entries.find(([path]) => {
-      const filename = (path.split("/").pop() ?? "").replace(/\.png$/i, "");
-      return normalizeWeaponFilename(filename) === name;
-    })?.[1];
-
-  // Exact variant first; only fall back for a missing Adept asset.
-  return findExact(requested) ?? (requested !== normal ? findExact(normal) : undefined);
 }
 
 function getMaterialImage(
@@ -493,35 +458,13 @@ export default function ActivityRunModal({
   const timers =
     useRef<number[]>([]);
 
-  const [showMaterialToast, setShowMaterialToast] = useState(false);
 
   const finished =
     useRef(false);
+  const completedResultRef = useRef<RunResult | null>(null);
 
   const result =
     payload?.result;
-
-  // Prefer the server's run-wide totals; otherwise add encounter rewards once.
-  const materialTotals = result
-    ? result.rewards && Object.keys(result.rewards).length > 0
-      ? result.rewards
-      : result.encounters.reduce<Record<string, number>>((totals, encounter) => {
-          for (const [name, amount] of Object.entries(encounter.rewards ?? {})) {
-            totals[name] = (totals[name] ?? 0) + amount;
-          }
-          return totals;
-        }, {})
-    : {};
-
-  useEffect(() => {
-    if (phase !== "complete" || !result) {
-      setShowMaterialToast(false);
-      return;
-    }
-    setShowMaterialToast(true);
-    const timeout = window.setTimeout(() => setShowMaterialToast(false), 4500);
-    return () => window.clearTimeout(timeout);
-  }, [phase, result]);
 
   const isVanguard =
     activity.type === "strike" ||
@@ -583,9 +526,6 @@ export default function ActivityRunModal({
     phase === "secret" ||
     resolvingSecret;
 
-  const infiltrationWeapons =
-    result?.weapons ?? [];
-
   const crawlSource =
     activity.weapon_source
       ?.trim()
@@ -634,7 +574,21 @@ export default function ActivityRunModal({
 
     finished.current = true;
 
-    onFinished?.();
+    const completed = completedResultRef.current;
+    if (completed) {
+      const totals = completed.rewards && Object.keys(completed.rewards).length > 0
+        ? completed.rewards
+        : completed.encounters.reduce<Record<string, number>>((acc, encounter) => {
+            for (const [name, amount] of Object.entries(encounter.rewards ?? {})) acc[name] = (acc[name] ?? 0) + amount;
+            return acc;
+          }, {});
+      onFinished?.({
+        weapons: (completed.weapons?.length ? completed.weapons : [completed.weapon]).filter((weapon) => weapon?.dropped && Boolean(weapon.name)),
+        materials: totals,
+        xp: completed.xp ?? 0,
+      });
+    }
+    onClose();
   }
 
   useEffect(() => {
@@ -904,6 +858,7 @@ export default function ActivityRunModal({
     clearTimers();
 
     finished.current = false;
+    completedResultRef.current = null;
 
     setError("");
     setPayload(null);
@@ -955,6 +910,7 @@ export default function ActivityRunModal({
         );
       }
 
+      completedResultRef.current = data.result;
       setPayload(data);
 
       if (
@@ -1059,6 +1015,7 @@ export default function ActivityRunModal({
       }
 
       clearTimers();
+      completedResultRef.current = data.result;
       setPayload(data);
       setCrawlRunId(null);
       setCrawlExpiresAt(null);
@@ -1134,18 +1091,6 @@ export default function ActivityRunModal({
         }
       }}
     >
-      {phase === "complete" && showMaterialToast && Object.entries(materialTotals).some(([, amount]) => amount > 0) && (
-        <div className="activity-run-material-toast" role="status" aria-live="polite">
-          {Object.entries(materialTotals)
-            .filter(([, amount]) => Number.isFinite(amount) && amount > 0)
-            .map(([name, amount], index) => (
-              <div className="activity-run-material-toast-row" key={name} style={{ animationDelay: `${index * 100}ms` }}>
-                {getMaterialImage(name) && <img src={getMaterialImage(name)} alt="" aria-hidden="true" />}
-                <div><strong>{name}</strong><span>+{amount.toLocaleString()} earned</span></div>
-              </div>
-            ))}
-        </div>
-      )}
       <section
         className={`activity-run-modal phase-${phase}`}
         role="dialog"
@@ -2126,74 +2071,6 @@ export default function ActivityRunModal({
               {/* COMPLETE                                                 */}
               {/* -------------------------------------------------------- */}
 
-              {phase ===
-                "complete" && (
-                  <div
-                    className={`activity-run-summary ${
-                      result.fullClear
-                        ? "clear"
-                        : "wipe"
-                    }`}
-                  >
-                    <span>
-                      {result.fullClear
-                        ? "ACTIVITY COMPLETE"
-                        : "ACTIVITY ENDED"}
-                    </span>
-
-                    <h3>
-                      {result.fullClear
-                        ? isInfiltration
-                          ? "INFILTRATION COMPLETE"
-                          : "FULL CLEAR"
-                        : "FIRETEAM WIPE"}
-                    </h3>
-
-                    {!result.fullClear &&
-                      result.wipedAt && (
-                        <p>
-                          Wiped at{" "}
-
-                          <strong>
-                            {
-                              result.wipedAt
-                            }
-                          </strong>
-                        </p>
-                      )}
-
-                    {result.fullClear && (
-                      <div className="activity-run-final">
-
-                        {/* XP */}
-
-                        <article>
-                          <span>
-                            COMPLETION XP
-                          </span>
-
-                          <strong>
-                            +
-                            {number(
-                              result.xp,
-                            )}
-                          </strong>
-                        </article>
-
-                      </div>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={
-                        onClose
-                      }
-                    >
-                      RETURN TO DIRECTOR
-                    </button>
-                  </div>
-                )}
-
               {/* -------------------------------------------------------- */}
               {/* ENCOUNTER / OPERATION HISTORY                           */}
               {/* -------------------------------------------------------- */}
@@ -2243,46 +2120,6 @@ export default function ActivityRunModal({
                 </div>
               )}
 
-              {phase === "complete" && (
-                <aside className="activity-run-loot-panel" aria-label="Activity loot summary">
-                  <div className="activity-run-loot-heading">
-                    <span>ACTIVITY REWARDS</span>
-                    <strong>LOOT ACQUIRED</strong>
-                    <small>{result.fullClear ? "Activity complete" : "Activity ended"}</small>
-                  </div>
-                  {(
-                    isInfiltration
-                      ? infiltrationWeapons.filter((weapon) => weapon.dropped && weapon.name)
-                      : result.weapon?.dropped && result.weapon.name
-                        ? [result.weapon]
-                        : []
-                  ).length > 0 ? (
-                    <div className="activity-run-loot-list">
-                      {(isInfiltration
-                        ? infiltrationWeapons.filter((weapon) => weapon.dropped && weapon.name)
-                        : result.weapon?.dropped && result.weapon.name
-                          ? [result.weapon]
-                          : []
-                      ).map((weapon, index) => (
-                        <div className="activity-run-loot-item" key={`${weapon.name}-${index}`}>
-                          {getWeaponImage(weapon.name) ? (
-                            <img src={getWeaponImage(weapon.name)} alt="" aria-hidden="true" />
-                          ) : (
-                            <div className="activity-run-loot-icon-fallback" aria-hidden="true">✦</div>
-                          )}
-                          <div className="activity-run-loot-info">
-                            <span>{weapon.adept ? "ADEPT WEAPON" : "LEGENDARY WEAPON"}</span>
-                            <strong>{weapon.name}</strong>
-                            <small>{weapon.source ?? result.weaponSource}</small>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="activity-run-loot-empty">No weapon dropped this run.</p>
-                  )}
-                </aside>
-              )}
             </div>
           )}
       </section>
