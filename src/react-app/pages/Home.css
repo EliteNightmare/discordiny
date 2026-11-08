@@ -325,3 +325,35 @@
 
 /* Override older placeholder fishing styles */
 .dh-quick-grid button.dh-fishing{position:relative;display:block;min-height:190px;padding:18px;opacity:1;cursor:default;background-color:#101722;background-size:cover;background-position:center;border-radius:12px;overflow:hidden;isolation:isolate}.dh-quick-grid .dh-fishing .fishing-activity-card-content{position:relative;z-index:2;display:flex;flex-direction:column;gap:7px;align-items:flex-start}.dh-quick-grid .dh-fishing .fishing-activity-card-content strong{font-size:1.5rem;color:#fff}.dh-quick-grid .dh-fishing .fishing-activity-card-content small{color:rgba(255,255,255,.8)}.dh-quick-grid .dh-fishing .fishing-activity-status{position:absolute;right:16px;bottom:16px;z-index:2}.dh-quick-grid .dh-fishing .fishing-bubbles{display:block}.dh-quick-grid .dh-fishing .fishing-bubbles i{display:block}
+
+
+/* Travel destination dropdown scrollbar — integrated with the menu palette */
+.activity-travel-menu {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 143, 162, 0.48) rgba(255, 255, 255, 0.035);
+  scrollbar-gutter: stable;
+}
+
+.activity-travel-menu::-webkit-scrollbar {
+  width: 7px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 999px;
+  margin-block: 9px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-thumb {
+  background: rgba(126, 143, 162, 0.48);
+  border: 1px solid rgba(12, 14, 20, 0.99);
+  border-radius: 999px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(170, 185, 202, 0.72);
+}
+
+.activity-travel-menu::-webkit-scrollbar-corner {
+  background: transparent;
+}
