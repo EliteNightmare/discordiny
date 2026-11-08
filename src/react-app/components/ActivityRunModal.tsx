@@ -587,7 +587,7 @@ export default function ActivityRunModal({
           }, {});
       onFinished?.({
         weapons: (completed.weapons?.length ? completed.weapons : [completed.weapon]).filter((weapon) => weapon?.dropped && Boolean(weapon.name)),
-        materials: completed.encounters.length ? {} : totals,
+        materials: totals,
         xp: completed.xp ?? 0,
       });
     }
