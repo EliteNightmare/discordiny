@@ -69,3 +69,42 @@
 /* Render rewards above the activity modal's backdrop (z-index: 5000).
    The HUD is a sibling of the modal, so it must have a higher stacking level. */
 .activity-loot-hud { z-index: 6000; }
+
+/* Persistent shared loot rail: new batches enter at the top and push old ones down.
+   Root lives directly under body, outside modal/backdrop stacking contexts. */
+#discordiny-loot-hud-root { position: relative; z-index: 2147483000; }
+#discordiny-loot-hud-root .activity-loot-hud { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; }
+#discordiny-loot-hud-root .activity-loot-batch-rail {
+  position: fixed;
+  top: clamp(65px, 9vh, 110px);
+  right: clamp(12px, 3vw, 48px);
+  width: min(345px, calc(100vw - 24px));
+  height: calc(100dvh - 160px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+  pointer-events: none;
+}
+#discordiny-loot-hud-root .activity-loot-batch {
+  display: grid;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-width: 0;
+  animation: loot-batch-enter .3s ease-out both;
+}
+#discordiny-loot-hud-root .activity-loot-weapon,
+#discordiny-loot-hud-root .activity-loot-material {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  animation-duration: 2.1s;
+  animation-fill-mode: both;
+}
+#discordiny-loot-hud-root .activity-loot-weapon { animation-name: loot-weapon-static; }
+#discordiny-loot-hud-root .activity-loot-material { animation-name: loot-material-static; }
+@keyframes loot-batch-enter { from { opacity: 0; transform: translateX(45px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes loot-weapon-static { from { filter: brightness(1.7); } to { filter: brightness(1); } }
+@keyframes loot-material-static { from { filter: brightness(1.4); } to { filter: brightness(1); } }
+@media(max-width:650px) { #discordiny-loot-hud-root .activity-loot-batch-rail { top: 60px; height: calc(100dvh - 140px); width: min(300px, calc(100vw - 24px)); } }
+@media(prefers-reduced-motion:reduce) { #discordiny-loot-hud-root .activity-loot-batch { animation: none; } }
