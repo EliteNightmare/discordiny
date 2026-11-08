@@ -6,6 +6,7 @@ import WeaponVault, { WeaponTierControl, type WeaponTier } from "./WeaponVault";
 import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
 
+const isAdeptFavorite = (name: string) => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name);
 type VaultRecentWeapon = { name: string; source: string; masterwork: number; acquiredAt: string };
 type VaultOverview = {
   recent: VaultRecentWeapon[];
@@ -157,7 +158,7 @@ function Vault() {
         ) : (
           <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}
             right={<aside className="vault-recent-panel">
-              <span className="vault-eyebrow">WEAPON HISTORY</span>
+              <div className="vault-recent-column"><span className="vault-eyebrow">WEAPON HISTORY</span>
               <h2>Recent Drops</h2>
               <p>Last 10 newly acquired weapons</p>
               {overviewError && <p className="vault-overview-error">{overviewError}</p>}
@@ -168,9 +169,14 @@ function Vault() {
                 <span><strong>{weapon.name}</strong><small>{sourceLocation(weapon.source)?.category.name ?? weapon.source}</small></span>
                 <span aria-hidden="true">›</span>
               </button>)}
-              <div className="vault-favorites-header"><h3>Favorites</h3><span>{overview?.favorites.length ?? 0}/3</span></div>
-              {overview?.favorites.length === 0 && <p>Star up to three owned weapons below.</p>}
-              {overview?.favorites.map(name => {
+              </div>
+              <div className="vault-favorites-column">
+              <span className="vault-eyebrow">PINNED WEAPONS</span>
+              <h2>Favorites</h2>
+              <p>4 Normal · 4 Adept</p>
+              <div className="vault-favorites-header"><h3>Normal</h3><span>{overview?.favorites.filter(name => !isAdeptFavorite(name)).length ?? 0}/4</span></div>
+              {overview?.favorites.filter(name => !isAdeptFavorite(name)).length === 0 && <p>No Normal favorites yet.</p>}
+              {overview?.favorites.filter(name => !isAdeptFavorite(name)).map(name => {
                 const weapon = overview.favoriteWeapons.find(item => item.name === name);
                 const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
                 return <div className="vault-favorite-item" key={name}>
@@ -182,6 +188,21 @@ function Vault() {
                   <button type="button" className="vault-favorite-remove" aria-label={`Unfavorite ${name}`} title="Remove from favorites" disabled={favoritesBusy} onClick={() => void toggleFavorite(name)}>★</button>
                 </div>;
               })}
+              <div className="vault-favorites-header"><h3>Adept</h3><span>{overview?.favorites.filter(isAdeptFavorite).length ?? 0}/4</span></div>
+              {overview?.favorites.filter(isAdeptFavorite).length === 0 && <p>No Adept favorites yet.</p>}
+              {overview?.favorites.filter(isAdeptFavorite).map(name => {
+                const weapon = overview.favoriteWeapons.find(item => item.name === name);
+                const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
+                return <div className="vault-favorite-item" key={name}>
+                  <button type="button" className="vault-recent-item vault-favorite-link" disabled={!weapon} onClick={() => weapon && jumpToWeapon(weapon)}>
+                    {icon ? <img src={icon} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
+                    <span><strong>{name}</strong><small>{weapon ? (sourceLocation(weapon.source)?.category.name ?? weapon.source) : 'Weapon unavailable'}</small></span>
+                    <span aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" className="vault-favorite-remove" aria-label={`Unfavorite ${name}`} title="Remove from favorites" disabled={favoritesBusy} onClick={() => void toggleFavorite(name)}>★</button>
+                </div>;
+              })}
+              </div>
             </aside>}>
             <div className="vault-content">
               <section className="vault-block vault-legendary">
