@@ -205,7 +205,7 @@ const activityBanners = import.meta.glob(
 ) as Record<string, string>;
 
 const weaponImages = import.meta.glob(
-  "../assets/weapons/**/*.png",
+  "../assets/icons/weapons/**/*.png",
   {
     eager: true,
     import: "default",
@@ -533,12 +533,10 @@ function getWeaponImage(
       )
       .trim();
 
-  const normalizedWeapon =
-    normalizeAssetName(
-      baseName,
-    );
+  const normalizedWeapon = normalizeAssetName(weaponName.trim());
+  const normalizedBaseWeapon = normalizeAssetName(baseName);
 
-  return Object.entries(
+  const findImage = (name: string) => Object.entries(
     weaponImages,
   ).find(([path]) => {
     const filename =
@@ -554,9 +552,11 @@ function getWeaponImage(
     return (
       normalizeAssetName(
         filenameWithoutExtension,
-      ) === normalizedWeapon
+      ) === name
     );
   })?.[1];
+
+  return findImage(normalizedWeapon) ?? findImage(normalizedBaseWeapon);
 }
 
 function formatCooldownTime(
