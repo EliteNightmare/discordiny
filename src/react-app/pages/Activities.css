@@ -2005,3 +2005,35 @@
   background: rgba(255,255,255,0.45);
   flex: 0 0 1px;
 }
+
+
+/* Travel destination dropdown scrollbar — integrated with the menu palette */
+.activity-travel-menu {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(126, 143, 162, 0.48) rgba(255, 255, 255, 0.035);
+  scrollbar-gutter: stable;
+}
+
+.activity-travel-menu::-webkit-scrollbar {
+  width: 7px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 999px;
+  margin-block: 9px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-thumb {
+  background: rgba(126, 143, 162, 0.48);
+  border: 1px solid rgba(12, 14, 20, 0.99);
+  border-radius: 999px;
+}
+
+.activity-travel-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(170, 185, 202, 0.72);
+}
+
+.activity-travel-menu::-webkit-scrollbar-corner {
+  background: transparent;
+}
