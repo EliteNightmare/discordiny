@@ -133,6 +133,7 @@ type Props = {
   backgroundImage?: string;
   onClose: () => void;
   onFinished?: (loot: { weapons: WeaponResult[]; materials: Record<string, number>; xp: number }) => void;
+  onEncounterLoot?: (materials: Record<string, number>) => void;
 };
 
 type Phase =
@@ -416,6 +417,7 @@ export default function ActivityRunModal({
   backgroundImage,
   onClose,
   onFinished,
+  onEncounterLoot,
 }: Props) {
   const [phase, setPhase] =
     useState<Phase>("ready");
@@ -462,6 +464,7 @@ export default function ActivityRunModal({
   const finished =
     useRef(false);
   const completedResultRef = useRef<RunResult | null>(null);
+  const lastRewardedEncounterRef = useRef(-1);
 
   const result =
     payload?.result;
@@ -584,7 +587,7 @@ export default function ActivityRunModal({
           }, {});
       onFinished?.({
         weapons: (completed.weapons?.length ? completed.weapons : [completed.weapon]).filter((weapon) => weapon?.dropped && Boolean(weapon.name)),
-        materials: totals,
+        materials: completed.encounters.length ? {} : totals,
         xp: completed.xp ?? 0,
       });
     }
@@ -656,6 +659,15 @@ export default function ActivityRunModal({
     phase,
     crawlExpiresAt,
   ]);
+
+  useEffect(() => {
+    if (phase !== "encounters" || visible <= 0 || !result || !onEncounterLoot) return;
+    const index = Math.min(visible - 1, result.encounters.length - 1);
+    if (index <= lastRewardedEncounterRef.current || index < 0) return;
+    lastRewardedEncounterRef.current = index;
+    const materials = result.encounters[index]?.rewards ?? {};
+    if (Object.values(materials).some((amount) => amount > 0)) onEncounterLoot(materials);
+  }, [phase, visible, result, onEncounterLoot]);
 
   /* ------------------------------------------------------------------------ */
   /*                              RESULT REVEAL                               */
@@ -859,6 +871,7 @@ export default function ActivityRunModal({
 
     finished.current = false;
     completedResultRef.current = null;
+    lastRewardedEncounterRef.current = -1;
 
     setError("");
     setPayload(null);
@@ -1922,66 +1935,7 @@ export default function ActivityRunModal({
                         : "WIPE"}
                     </b>
 
-                    <div className="activity-run-rewards">
-                      <span>
-                        {active.partialRewards
-                          ? "PARTIAL REWARDS"
-                          : "REWARDS ACQUIRED"}
-                      </span>
-
-                      <div>
-                        {Object.entries(
-                          active.rewards,
-                        ).map(
-                          ([
-                            name,
-                            amount,
-                          ]) => {
-                            const icon =
-                              getMaterialImage(
-                                name,
-                              );
-
-                            return (
-                              <article
-                                key={
-                                  name
-                                }
-                                className={
-                                  icon
-                                    ? "has-icon"
-                                    : undefined
-                                }
-                              >
-                                {icon && (
-                                  <img
-                                    className="activity-run-reward-icon"
-                                    src={
-                                      icon
-                                    }
-                                    alt=""
-                                    aria-hidden="true"
-                                  />
-                                )}
-
-                                <div className="activity-run-reward-copy">
-                                  <small>
-                                    {name.toUpperCase()}
-                                  </small>
-
-                                  <strong>
-                                    +
-                                    {number(
-                                      amount,
-                                    )}
-                                  </strong>
-                                </div>
-                              </article>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
+                    <p className="activity-run-reward-hint">Rewards acquired — see loot notifications →</p>
                   </div>
                 )}
 
@@ -2006,64 +1960,7 @@ export default function ActivityRunModal({
                       CLEAR
                     </b>
 
-                    <div className="activity-run-rewards">
-                      <span>
-                        REWARDS ACQUIRED
-                      </span>
-
-                      <div>
-                        {Object.entries(
-                          active.rewards,
-                        ).map(
-                          ([
-                            name,
-                            amount,
-                          ]) => {
-                            const icon =
-                              getMaterialImage(
-                                name,
-                              );
-
-                            return (
-                              <article
-                                key={
-                                  name
-                                }
-                                className={
-                                  icon
-                                    ? "has-icon"
-                                    : undefined
-                                }
-                              >
-                                {icon && (
-                                  <img
-                                    className="activity-run-reward-icon"
-                                    src={
-                                      icon
-                                    }
-                                    alt=""
-                                    aria-hidden="true"
-                                  />
-                                )}
-
-                                <div className="activity-run-reward-copy">
-                                  <small>
-                                    {name.toUpperCase()}
-                                  </small>
-
-                                  <strong>
-                                    +
-                                    {number(
-                                      amount,
-                                    )}
-                                  </strong>
-                                </div>
-                              </article>
-                            );
-                          },
-                        )}
-                      </div>
-                    </div>
+                    <p className="activity-run-reward-hint">Rewards acquired — see loot notifications →</p>
                   </div>
                 )}
 
