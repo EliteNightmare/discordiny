@@ -6,6 +6,26 @@ import WeaponVault, { WeaponTierControl, type WeaponTier } from "./WeaponVault";
 import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
 
+type VaultRecentWeapon = { name: string; source: string; masterwork: number; acquiredAt: string };
+type VaultOverview = {
+  recent: VaultRecentWeapon[];
+  favorites: string[];
+  favoriteWeapons: { name: string; source: string }[];
+  sources: Record<string, { normal: { owned: number; total: number; maxed: number }; adept: { owned: number; total: number; maxed: number } }>;
+};
+const weaponIcons = import.meta.glob('../assets/icons/weapons/**/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string, string>;
+function weaponIcon(source: string, name: string): string | undefined {
+  const suffix = `/icons/weapons/${source.toLowerCase()}/${name.toLowerCase()}.png`;
+  return Object.entries(weaponIcons).find(([path]) => path.toLowerCase().replace(/\\/g, '/').endsWith(suffix))?.[1];
+}
+function sourceLocation(source: string): { category: VaultCategory; activity?: string } | null {
+  for (const category of VAULT_CATEGORIES) {
+    if (category.directSource?.toLowerCase() === source.toLowerCase()) return { category };
+    const activity = category.activities?.find(item => item.weaponSource.toLowerCase() === source.toLowerCase());
+    if (activity) return { category, activity: activity.slug };
+  }
+  return null;
+}
 type VaultProfileResponse = {
   authenticated: boolean;
   currencies: Record<string, number>;
@@ -13,6 +33,10 @@ type VaultProfileResponse = {
 };
 
 function Vault() {
+  const [overview, setOverview] = useState<VaultOverview | null>(null);
+  const [overviewError, setOverviewError] = useState('');
+  const [favoritesBusy, setFavoritesBusy] = useState(false);
+  const [focusWeapon, setFocusWeapon] = useState<string | undefined>();
   const [profile, setProfile] = useState<VaultProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,6 +61,15 @@ function Vault() {
         if (active) setLoading(false);
       }
     })();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/game/vault/overview', { credentials: 'include' })
+      .then(async response => { if (!response.ok) throw new Error('Vault overview unavailable'); return response.json() as Promise<VaultOverview>; })
+      .then(data => { if (active) setOverview(data); })
+      .catch(() => { if (active) setOverviewError('Recent drops and favorites are unavailable. Apply the included D1 migration.'); });
     return () => { active = false; };
   }, []);
 
@@ -71,6 +104,7 @@ function Vault() {
 
   function openCategory(next: VaultCategory, trigger: HTMLButtonElement) {
     triggerRef.current = trigger;
+    setFocusWeapon(undefined);
     setCategory(next);
     setActivitySlug(next.activities?.[0]?.slug);
     setTier("normal");
@@ -83,7 +117,35 @@ function Vault() {
     setAnimationKey((value) => value + 1);
   }
 
+  function jumpToWeapon(weapon: VaultRecentWeapon | { name: string; source: string }) {
+    const location = sourceLocation(weapon.source);
+    if (!location) return;
+    setCategory(location.category);
+    setActivitySlug(location.activity);
+    setTier(/\((Adept|Timelost|Harrowed)\)$/i.test(weapon.name) ? 'adept' : 'normal');
+    setFocusWeapon(weapon.name);
+    setAnimationKey(value => value + 1);
+  }
+
+  async function toggleFavorite(name: string) {
+    if (favoritesBusy || !overview) return;
+    setFavoritesBusy(true);
+    try {
+      const response = await fetch('/api/game/vault/favorites', {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weaponName: name, favorite: !overview.favorites.includes(name) }),
+      });
+      const data = await response.json() as { favorites?: string[]; favoriteWeapons?: { name: string; source: string }[]; error?: string };
+      if (!response.ok || !data.favorites) throw new Error(data.error || 'Could not update favorites');
+      setOverview(current => current ? { ...current, favorites: data.favorites!, favoriteWeapons: data.favoriteWeapons ?? current.favoriteWeapons } : current);
+      setOverviewError('');
+    } catch (error) { setOverviewError(error instanceof Error ? error.message : 'Could not update favorites'); }
+    finally { setFavoritesBusy(false); }
+  }
+
   const selectedActivity = category?.activities?.find((item) => item.slug === activitySlug);
+  const selectedSource = selectedActivity?.weaponSource ?? category?.directSource;
+  const selectedStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()]?.[tier] : undefined;
   const hasCollection = Boolean(category?.directSource || selectedActivity);
 
   return (
@@ -93,7 +155,29 @@ function Vault() {
         {loading ? <div className="vault-status">Loading Vault...</div> : error || !profile ? (
           <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
         ) : (
-          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}>
+          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}
+            right={<aside className="vault-recent-panel">
+              <span className="vault-eyebrow">WEAPON HISTORY</span>
+              <h2>Recent Drops</h2>
+              <p>Last 10 newly acquired weapons</p>
+              {overviewError && <p className="vault-overview-error">{overviewError}</p>}
+              {!overview && !overviewError && <p>Loading...</p>}
+              {overview?.recent.length === 0 && <p>No recorded drops yet.</p>}
+              {overview?.recent.map((weapon, index) => <button type="button" key={`${weapon.name}-${index}`} className="vault-recent-item" onClick={() => jumpToWeapon(weapon)}>
+                {weaponIcon(weapon.source, weapon.name) ? <img src={weaponIcon(weapon.source, weapon.name)} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
+                <span><strong>{weapon.name}</strong><small>{sourceLocation(weapon.source)?.category.name ?? weapon.source}</small></span>
+                <span aria-hidden="true">›</span>
+              </button>)}
+              <div className="vault-favorites-header"><h3>Favorites</h3><span>{overview?.favorites.length ?? 0}/3</span></div>
+              {overview?.favorites.length === 0 && <p>Star up to three owned weapons below.</p>}
+              {overview?.favorites.map(name => {
+                const weapon = overview.favoriteWeapons.find(item => item.name === name);
+                return <div className="vault-favorite-item" key={name}>
+                  <button type="button" disabled={!weapon} onClick={() => weapon && jumpToWeapon(weapon)}>{name}</button>
+                  <button type="button" aria-label={`Unfavorite ${name}`} disabled={favoritesBusy} onClick={() => void toggleFavorite(name)}>★</button>
+                </div>;
+              })}
+            </aside>}>
             <div className="vault-content">
               <section className="vault-block vault-legendary">
                 <div className="vault-block-header"><div>
@@ -107,6 +191,14 @@ function Vault() {
                       onClick={(event) => openCategory(item, event.currentTarget)}>
                       <span className="vault-category-name">{item.name}</span>
                       <span className="vault-category-description">{item.description}</span>
+                      <span className="vault-category-stats">{(() => {
+                        const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(activity => activity.weaponSource);
+                        const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
+                        const owned = rows.reduce((sum, row) => sum + row.normal.owned + row.adept.owned, 0);
+                        const total = rows.reduce((sum, row) => sum + row.normal.total + row.adept.total, 0);
+                        const maxed = rows.reduce((sum, row) => sum + row.normal.maxed + row.adept.maxed, 0);
+                        return overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION';
+                      })()}</span>
                       <span className="vault-category-arrow">›</span>
                     </button>
                   ))}
@@ -131,6 +223,7 @@ function Vault() {
           <section className="vault-collection-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-dialog-title">
             <header className="vault-collection-header">
               <div className="vault-collection-title"><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2><p>{category.description}</p></div>
+              {selectedStats && <span className="vault-dialog-stats">{selectedStats.owned}/{selectedStats.total} UNLOCKED · {selectedStats.maxed}/{selectedStats.total} MAXED</span>}
               <WeaponTierControl tier={tier} onChange={setTier} />
               <button ref={closeRef} type="button" className="vault-collection-close" aria-label="Close collection" onClick={() => setCategory(null)}>×</button>
             </header>
@@ -139,14 +232,17 @@ function Vault() {
                 {category.activities?.map((activity) => (
                   <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
                     className={activity.slug === activitySlug ? "vault-activity-tab active" : "vault-activity-tab"}
-                    onClick={() => selectActivity(activity.slug)}>{activity.name}</button>
+                    onClick={() => selectActivity(activity.slug)}>{activity.name}{(() => {
+                    const stats = overview?.sources[activity.weaponSource.toLowerCase()]?.[tier];
+                    return stats ? <small className="vault-tab-stats">{stats.owned}/{stats.total} UNLOCKED · {stats.maxed}/{stats.total} MAXED</small> : null;
+                  })()}</button>
                 ))}
               </nav>
             )}
             <div className="vault-collection-body">
               {hasCollection ? (
                 <div className="vault-collection-swoosh" key={`${category.slug}-${animationKey}`}>
-                  <WeaponVault embedded selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
+                  <WeaponVault embedded focusWeapon={focusWeapon} favorites={overview?.favorites ?? []} onToggleFavorite={toggleFavorite} selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
                 </div>
               ) : <div className="vault-collection-empty">This collection does not have any configured loot pools yet.</div>}
             </div>
