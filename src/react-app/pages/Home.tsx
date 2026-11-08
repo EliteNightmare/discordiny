@@ -31,12 +31,6 @@ function NewsPreview() {
 }
 type Session = { status: "loading" | "guest" | "authenticated" | "error"; user?: User };
 
-const destinations = [
-  { name: "Cosmodrome", image: "cosmodrome" },
-  { name: "Europa", image: "europa" },
-  { name: "Dreaming City", image: "dreaming_city" },
-  { name: "Plaguelands", image: "plaguelands" },
-];
 const destinationImages: Record<string, string> = {
   "cosmodrome": "cosmodrome", "edz": "edz", "plaguelands": "plaguelands",
   "nessus": "nessus", "dreaming city": "dreaming_city", "moon": "moon",
