@@ -3109,7 +3109,7 @@ async function vaultUserId(c: any): Promise<number | null> {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return null;
   const row = await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id = ? LIMIT 1")
-    .bind(sessionId).first<{ user_id: number }>();
+    .bind(sessionId).first() as { user_id: number } | null;
   return row?.user_id ?? null;
 }
 
