@@ -843,8 +843,8 @@ export function validateCoilSecret(
   answer: string,
 ): boolean {
   return (
-    answer.trim()
-    === challenge.prompt
+    answer.trim().toLowerCase()
+    === challenge.prompt.trim().toLowerCase()
   );
 }
 
