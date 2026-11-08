@@ -64,3 +64,8 @@
     max-height: min(62vh, calc(100vh - 180px));
   }
 }
+
+
+/* Render rewards above the activity modal's backdrop (z-index: 5000).
+   The HUD is a sibling of the modal, so it must have a higher stacking level. */
+.activity-loot-hud { z-index: 6000; }
