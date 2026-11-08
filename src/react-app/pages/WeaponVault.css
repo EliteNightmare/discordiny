@@ -1090,9 +1090,30 @@
 }
 
 .weapon-vault-item { position:relative; }
-.vault-favorite-star { position:absolute; top:7px; right:7px; z-index:5; width:29px; height:29px; border:1px solid rgba(190,207,227,.4); border-radius:50%; background:#152033; color:#7e8da2; font-size:19px; cursor:pointer; }
-.vault-favorite-star.active { color:#e8c47e; border-color:#e8c47e; }
-.vault-favorite-star:disabled { opacity:.35; cursor:not-allowed; }
+.vault-favorite-star {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 10; /* Above the hover-to-upgrade overlay (z-index: 5). */
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #c4cbd5;
+  font-size: 27px;
+  line-height: 1;
+  cursor: pointer;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, .9);
+}
+.vault-favorite-star:hover:not(:disabled) { color: #ffe083; }
+.vault-favorite-star.active { color: #ffd34f; }
+.vault-favorite-star:focus-visible { outline: 2px solid #ffd34f; outline-offset: 2px; }
+.vault-favorite-star:disabled { opacity: .35; cursor: not-allowed; }
 .weapon-vault-focused { outline:2px solid #b7d0ed!important; outline-offset:3px; animation:vaultFocusPulse 1.3s ease-out; }
 @keyframes vaultFocusPulse { 0% { box-shadow:0 0 0 8px rgba(183,208,237,.25); } 100% { box-shadow:0 0 0 0 transparent; } }
 @media(prefers-reduced-motion:reduce){.weapon-vault-focused{animation:none}}
