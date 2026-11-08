@@ -545,10 +545,11 @@
 .vault-favorites-header { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.1); }
 .vault-favorites-header h3 { font-size:14px; margin:0; }
 .vault-favorites-header span { color:#a8bfd8; font-size:11px; }
-.vault-favorite-item { display:flex; align-items:center; gap:5px; margin-top:7px; }
-.vault-favorite-item button { color:#dce8f5; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#202c3e; padding:8px; cursor:pointer; }
-.vault-favorite-item button:first-child { flex:1; text-align:left; font-size:11px; }
-.vault-favorite-item button:last-child { color:#e7c37d; }
-.vault-favorite-item button:disabled { opacity:.65; cursor:default; }
+.vault-favorite-item { display:flex; align-items:center; gap:5px; margin:4px 0; }
+.vault-favorite-item .vault-favorite-link { flex:1; min-width:0; margin:0; }
+.vault-favorite-item .vault-favorite-link:disabled { opacity:.65; cursor:default; }
+.vault-favorite-remove { flex:none; border:0; background:transparent; padding:6px 2px; color:#ffd34f; font-size:20px; line-height:1; cursor:pointer; }
+.vault-favorite-remove:hover,.vault-favorite-remove:focus-visible { color:#ffe69a; }
+.vault-favorite-remove:disabled { opacity:.5; cursor:default; }
 .vault-overview-error { color:#f1a6a6!important; }
 @media(max-width:900px){.vault-dialog-stats{white-space:normal}.vault-recent-panel{padding:12px}}
