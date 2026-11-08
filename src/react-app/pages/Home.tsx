@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Home.css";
 import background from "../assets/background.jpg";
 import TopBar from "../components/TopBar";
@@ -31,6 +31,9 @@ function NewsPreview() {
 }
 type Session = { status: "loading" | "guest" | "authenticated" | "error"; user?: User };
 
+const DESTINATIONS = ["Cosmodrome", "EDZ", "Nessus", "Dreaming City", "Moon", "Europa", "Throne World", "Neomuna", "Pale Heart", "Plaguelands"] as const;
+const fishingImage = import.meta.glob("../assets/general/fishbg.png", { eager: true, import: "default", query: "?url" }) as Record<string,string>;
+const fishBackground = Object.values(fishingImage)[0];
 const destinationImages: Record<string, string> = {
   "cosmodrome": "cosmodrome", "edz": "edz", "plaguelands": "plaguelands",
   "nessus": "nessus", "dreaming city": "dreaming_city", "moon": "moon",
@@ -75,6 +78,9 @@ function GuardianDashboard({ user }: { user: User }) {
   const [exploration, setExploration] = useState<Exploration | null>(null);
   const [explorationError, setExplorationError] = useState("");
   const [claiming, setClaiming] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
+  const [traveling, setTraveling] = useState(false);
+  const travelRef = useRef<HTMLDivElement>(null);
   const [claimMessage, setClaimMessage] = useState("");
   const [claimSummary,setClaimSummary] = useState<ClaimSummary | null>(null);
   const [terminalUnlocked, setTerminalUnlocked] = useState(false);
@@ -103,6 +109,33 @@ function GuardianDashboard({ user }: { user: User }) {
     loadExploration(controller.signal).catch(() => { if (!controller.signal.aborted) setExplorationError("Exploration status unavailable. Open Activities to check your rewards."); });
     return () => controller.abort();
   }, [retry]);
+  useEffect(() => {
+    function onOutsideClick(event: MouseEvent) {
+      if (travelRef.current && !travelRef.current.contains(event.target as Node)) setTravelOpen(false);
+    }
+    function onEscape(event: KeyboardEvent) { if (event.key === "Escape") setTravelOpen(false); }
+    document.addEventListener("mousedown", onOutsideClick);
+    document.addEventListener("keydown", onEscape);
+    return () => { document.removeEventListener("mousedown", onOutsideClick); document.removeEventListener("keydown", onEscape); };
+  }, []);
+  async function travel(destination: string) {
+    if (!exploration || traveling || destination === exploration.player.destination) { setTravelOpen(false); return; }
+    setTraveling(true); setTravelOpen(false); setExplorationError("");
+    try {
+      const response = await fetch("/api/game/travel", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ destination }),
+      });
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Failed to travel.");
+      await Promise.all([
+        loadExploration(),
+        fetch("/api/game/profile", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(data => { if (data) setProfile(data); }),
+      ]);
+    } catch (error) {
+      setExplorationError(error instanceof Error ? error.message : "Failed to travel.");
+    } finally { setTraveling(false); }
+  }
   async function claimExploration() {
     if (!exploration || claiming || elapsed < 25) return;
     setClaiming(true); setClaimMessage("");
@@ -140,7 +173,13 @@ function GuardianDashboard({ user }: { user: User }) {
     <div className="dh-dashboard-grid"><div className="dh-dashboard-main"><section className="dh-current-destination exploration-rewards" style={{ backgroundImage: `linear-gradient(100deg,rgba(8,11,17,.57),rgba(8,11,17,.14)),url('${imageForDestination(zone)}')` }}>
       <div className="dh-exploration-content">
         <SectionLabel>EXPLORATION REWARDS // CURRENT DESTINATION</SectionLabel>
-        <h2>{profile ? zone : "CONNECTING..."}</h2>
+        <div className="dh-destination-title-row"><h2>{profile ? zone : "CONNECTING..."}</h2>
+          <div className="activity-travel dh-travel" ref={travelRef}>
+            <button type="button" className="activity-travel-button" disabled={!exploration || traveling} aria-expanded={travelOpen} aria-haspopup="true" onClick={() => setTravelOpen(open => !open)}>
+              {traveling ? "TRAVELING..." : "TRAVEL"}{!traveling && <span className={`activity-travel-arrow ${travelOpen ? "open" : ""}`}>▼</span>}
+            </button>
+            {travelOpen && <div className="activity-travel-menu">{DESTINATIONS.map(destination => <button key={destination} type="button" className={["activity-travel-option",destination === zone ? "active" : "",destination === "Plaguelands" ? "plaguelands" : ""].filter(Boolean).join(" ")} onClick={() => void travel(destination)}><span>{destination}</span>{destination === zone && <small>CURRENT</small>}</button>)}</div>}
+          </div></div>
         <p>Rewards accumulate while exploring your current destination, up to 24 hours.</p>
         <div className="dh-exploration-time"><strong>{exploration ? explorationTime : "--:--:--"}</strong><span> / 24h</span></div>
         <div className="exploration-progress"><div className="exploration-progress-fill" style={{ width: `${explorePercentage}%` }}><span /></div></div>
@@ -151,7 +190,7 @@ function GuardianDashboard({ user }: { user: User }) {
         {claimMessage && <p className="dh-exploration-message" role="status">{claimMessage}</p>}
         <button className="dh-offline-activities" type="button" disabled title="Coming soon">CLAIM OFFLINE ACTIVITIES · COMING SOON</button>
       </div>
-    </section><div className="dh-quick-section"><div className="dh-section-heading"><div><SectionLabel>GUARDIAN NETWORK</SectionLabel><h2>QUICK ACCESS</h2></div></div><div className="dh-quick-grid"><a href="/activities"><span>⚔</span><strong>ACTIVITIES</strong><small>ENTER AN OPERATION</small></a><a href="/vault"><span>◇</span><strong>THE VAULT</strong><small>MANAGE YOUR WEAPONS</small></a><a href="/armory"><span>✦</span><strong>ARMORY</strong><small>VIEW THE ARSENAL</small></a><a href="/profile"><span>⌖</span><strong>DESTINATIONS</strong><small>TRAVEL THE SYSTEM</small></a><button type="button" className="dh-fishing" disabled title="Fishing is coming soon"><span>♒</span><strong>FISHING</strong><small>COMING SOON</small></button></div></div></div><aside className="dh-dashboard-side"><FeaturedOperation /><div className="dh-side-panel"><SectionLabel>NETWORK UPDATES</SectionLabel><h3>STAY INFORMED</h3><p>Discover the latest updates, changes and stories from Discordiny.</p><a href="/patchnotes" className="dh-text-link">PATCH NOTES ↗</a><a href="/articles" className="dh-text-link">LATEST ARTICLES ↗</a></div>{terminalUnlocked && <div className="dh-side-panel dh-side-terminal"><SectionLabel>UNKNOWN SIGNAL</SectionLabel><p className="dh-terminal-lines">&gt; CONNECTION AVAILABLE<br />&gt; AWAITING INPUT _</p><a href="https://terminal.discordiny.com" className="dh-text-link">OPEN TERMINAL ↗</a></div>}</aside></div>
+    </section><div className="dh-quick-section"><div className="dh-section-heading"><div><SectionLabel>GUARDIAN NETWORK</SectionLabel><h2>QUICK ACCESS</h2></div></div><div className="dh-quick-grid"><a href="/activities"><span>⚔</span><strong>ACTIVITIES</strong><small>ENTER AN OPERATION</small></a><a href="/vault"><span>◇</span><strong>THE VAULT</strong><small>MANAGE YOUR WEAPONS</small></a><a href="/armory"><span>✦</span><strong>ARMORY</strong><small>VIEW THE ARSENAL</small></a><button type="button" className="dh-fishing fishing-activity-card" style={{backgroundImage: `linear-gradient(180deg,rgba(4,8,14,.18),rgba(4,8,14,.48) 58%,rgba(4,8,14,.9)),url("${fishBackground ?? ""}")`}} aria-label="Fishing — coming soon" title="Fishing is coming soon"><span className="fishing-bubbles" aria-hidden="true">{Array.from({length:14},(_,index)=><i key={index}/>)}</span><span className="fishing-activity-card-content"><span className="fishing-activity-eyebrow">PLAY CATCH</span><strong>FISHING</strong><small>COMING SOON</small></span><span className="fishing-activity-status">SOON</span></button></div></div></div><aside className="dh-dashboard-side"><FeaturedOperation /><div className="dh-side-panel"><SectionLabel>NETWORK UPDATES</SectionLabel><h3>STAY INFORMED</h3><p>Discover the latest updates, changes and stories from Discordiny.</p><a href="/patchnotes" className="dh-text-link">PATCH NOTES ↗</a><a href="/articles" className="dh-text-link">LATEST ARTICLES ↗</a></div>{terminalUnlocked && <div className="dh-side-panel dh-side-terminal"><SectionLabel>UNKNOWN SIGNAL</SectionLabel><p className="dh-terminal-lines">&gt; CONNECTION AVAILABLE<br />&gt; AWAITING INPUT _</p><a href="https://terminal.discordiny.com" className="dh-text-link">OPEN TERMINAL ↗</a></div>}</aside></div>
     {claimSummary && <ClaimRewardsModal summary={claimSummary} onClose={() => setClaimSummary(null)}/>}
     <footer className="dh-footer"><span>DISCORDINY // GUARDIAN ONLINE</span><div><a href="/about">ABOUT</a><a href="/patchnotes">PATCH NOTES</a><a href="/events">EVENTS</a></div></footer>
   </div>;
