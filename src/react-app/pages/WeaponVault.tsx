@@ -950,8 +950,8 @@ function WeaponVault({
                         >
                           {weapon.owned && onToggleFavorite && <button type="button" className={favorites.includes(weapon.name) ? 'vault-favorite-star active' : 'vault-favorite-star'}
                             aria-label={favorites.includes(weapon.name) ? `Remove ${weapon.name} from favorites` : `Favorite ${weapon.name}`}
-                            title={favorites.includes(weapon.name) ? 'Remove favorite' : favorites.length >= 3 ? 'Maximum 3 favorites' : 'Favorite weapon'}
-                            disabled={!favorites.includes(weapon.name) && favorites.length >= 3}
+                            title={favorites.includes(weapon.name) ? 'Remove favorite' : favorites.filter(name => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name) === (tier === 'adept')).length >= 4 ? 'Maximum 4 favorites in this tier' : 'Favorite weapon'}
+                            disabled={!favorites.includes(weapon.name) && favorites.filter(name => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name) === (tier === "adept")).length >= 4}
                             onClick={event => { event.stopPropagation(); void onToggleFavorite(weapon.name); }}>{favorites.includes(weapon.name) ? "★" : "☆"}</button>}
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
