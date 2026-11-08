@@ -145,7 +145,7 @@ type Phase =
   | "error";
 
 const ENCOUNTER_MS = 2400;
-const WEAPON_MS = 2200;
+
 
 /* -------------------------------------------------------------------------- */
 /*                                ASSET IMPORTS                               */
@@ -493,11 +493,35 @@ export default function ActivityRunModal({
   const timers =
     useRef<number[]>([]);
 
+  const [showMaterialToast, setShowMaterialToast] = useState(false);
+
   const finished =
     useRef(false);
 
   const result =
     payload?.result;
+
+  // Prefer the server's run-wide totals; otherwise add encounter rewards once.
+  const materialTotals = result
+    ? result.rewards && Object.keys(result.rewards).length > 0
+      ? result.rewards
+      : result.encounters.reduce<Record<string, number>>((totals, encounter) => {
+          for (const [name, amount] of Object.entries(encounter.rewards ?? {})) {
+            totals[name] = (totals[name] ?? 0) + amount;
+          }
+          return totals;
+        }, {})
+    : {};
+
+  useEffect(() => {
+    if (phase !== "complete" || !result) {
+      setShowMaterialToast(false);
+      return;
+    }
+    setShowMaterialToast(true);
+    const timeout = window.setTimeout(() => setShowMaterialToast(false), 4500);
+    return () => window.clearTimeout(timeout);
+  }, [phase, result]);
 
   const isVanguard =
     activity.type === "strike" ||
@@ -557,15 +581,7 @@ export default function ActivityRunModal({
     phase === "loading" ||
     phase === "encounters" ||
     phase === "secret" ||
-    phase === "weapon" ||
     resolvingSecret;
-
-  const droppedWeaponImage =
-    result?.weapon?.dropped
-      ? getWeaponImage(
-          result.weapon.name,
-        )
-      : undefined;
 
   const infiltrationWeapons =
     result?.weapons ?? [];
@@ -732,17 +748,8 @@ export default function ActivityRunModal({
       timers.current.push(
         window.setTimeout(
           () => {
-            setPhase("weapon");
-
-            timers.current.push(
-              window.setTimeout(
-                () => {
-                  setPhase("complete");
-                  finish();
-                },
-                WEAPON_MS,
-              ),
-            );
+            setPhase("complete");
+            finish();
           },
           duration,
         ),
@@ -791,27 +798,9 @@ export default function ActivityRunModal({
       timers.current.push(
         window.setTimeout(
           () => {
-            /*
-             * Always display weapon resolution.
-             *
-             * Infiltration performed weapon
-             * rolls even if none ultimately
-             * produced a drop.
-             */
-            setPhase("weapon");
-
-            timers.current.push(
-              window.setTimeout(
-                () => {
-                  setPhase(
-                    "complete",
-                  );
-
-                  finish();
-                },
-                WEAPON_MS,
-              ),
-            );
+            // Weapon results are already resolved server-side.
+            setPhase("complete");
+              finish();
           },
           operationDuration,
         ),
@@ -834,20 +823,8 @@ export default function ActivityRunModal({
             if (
               run.weapon?.rolled
             ) {
-              setPhase("weapon");
-
-              timers.current.push(
-                window.setTimeout(
-                  () => {
-                    setPhase(
-                      "complete",
-                    );
-
-                    finish();
-                  },
-                  WEAPON_MS,
-                ),
-              );
+              setPhase("complete");
+              finish();
             } else {
               setPhase(
                 "complete",
@@ -899,20 +876,8 @@ export default function ActivityRunModal({
             run.fullClear &&
             run.weapon?.rolled
           ) {
-            setPhase("weapon");
-
-            timers.current.push(
-              window.setTimeout(
-                () => {
-                  setPhase(
-                    "complete",
-                  );
-
-                  finish();
-                },
-                WEAPON_MS,
-              ),
-            );
+            setPhase("complete");
+              finish();
           } else {
             setPhase(
               "complete",
@@ -1169,6 +1134,18 @@ export default function ActivityRunModal({
         }
       }}
     >
+      {phase === "complete" && showMaterialToast && Object.entries(materialTotals).some(([, amount]) => amount > 0) && (
+        <div className="activity-run-material-toast" role="status" aria-live="polite">
+          {Object.entries(materialTotals)
+            .filter(([, amount]) => Number.isFinite(amount) && amount > 0)
+            .map(([name, amount], index) => (
+              <div className="activity-run-material-toast-row" key={name} style={{ animationDelay: `${index * 100}ms` }}>
+                {getMaterialImage(name) && <img src={getMaterialImage(name)} alt="" aria-hidden="true" />}
+                <div><strong>{name}</strong><span>+{amount.toLocaleString()} earned</span></div>
+              </div>
+            ))}
+        </div>
+      )}
       <section
         className={`activity-run-modal phase-${phase}`}
         role="dialog"
@@ -1857,8 +1834,7 @@ export default function ActivityRunModal({
         {result &&
           (
             phase === "encounters" ||
-            phase === "weapon" ||
-            phase === "complete"
+                    phase === "complete"
           ) && (
             <div className="activity-run-body">
 
@@ -2147,37 +2123,6 @@ export default function ActivityRunModal({
                 )}
 
               {/* -------------------------------------------------------- */}
-              {/* WEAPON ROLL                                              */}
-              {/* -------------------------------------------------------- */}
-
-              {phase ===
-                "weapon" && (
-                  <div className="activity-run-weapon">
-                    <span>
-                      {isInfiltration
-                        ? "INFILTRATION COMPLETE"
-                        : "FULL CLEAR"}
-                    </span>
-
-                    <h3>
-                      {isInfiltration
-                        ? "WEAPON ROLLS"
-                        : "WEAPON ROLL"}
-                    </h3>
-
-                    <i
-                      aria-hidden="true"
-                    />
-
-                    <p>
-                      {isInfiltration
-                        ? "Resolving Battleground, Empire Hunt and Nightmare Hunt weapon pools..."
-                        : `Resolving ${result.weaponSource.toUpperCase()} weapon pool...`}
-                    </p>
-                  </div>
-                )}
-
-              {/* -------------------------------------------------------- */}
               {/* COMPLETE                                                 */}
               {/* -------------------------------------------------------- */}
 
@@ -2235,136 +2180,6 @@ export default function ActivityRunModal({
                           </strong>
                         </article>
 
-                        {/* INFILTRATION WEAPONS */}
-
-                        {isInfiltration ? (
-                          <>
-                            {infiltrationWeapons.length >
-                            0 ? (
-                              infiltrationWeapons.map(
-                                (
-                                  weapon,
-                                  index,
-                                ) => {
-                                  const weaponImage =
-                                    weapon.dropped
-                                      ? getWeaponImage(
-                                          weapon.name,
-                                        )
-                                      : undefined;
-
-                                  return (
-                                    <article
-                                      key={`${weapon.name ?? "weapon"}-${index}`}
-                                      className="weapon-drop"
-                                    >
-                                      {weaponImage && (
-                                        <img
-                                          className="activity-run-final-weapon-icon"
-                                          src={
-                                            weaponImage
-                                          }
-                                          alt=""
-                                          aria-hidden="true"
-                                        />
-                                      )}
-
-                                      <div className="activity-run-final-weapon-copy">
-                                        <span>
-                                          WEAPON DROP{" "}
-                                          {index +
-                                            1}
-                                        </span>
-
-                                        <strong>
-                                          {weapon.name ??
-                                            "UNKNOWN WEAPON"}
-                                        </strong>
-
-                                        <small>
-                                          {weapon.adept
-                                            ? "ADEPT"
-                                            : weapon.rarity ??
-                                              "WEAPON"}
-                                        </small>
-                                      </div>
-                                    </article>
-                                  );
-                                },
-                              )
-                            ) : (
-                              <article>
-                                <div className="activity-run-final-weapon-copy">
-                                  <span>
-                                    WEAPON ROLLS
-                                  </span>
-
-                                  <strong>
-                                    NO WEAPON DROP
-                                  </strong>
-
-                                  <small>
-                                    3 ROLLS COMPLETED
-                                  </small>
-                                </div>
-                              </article>
-                            )}
-                          </>
-                        ) : (
-                          /* EXISTING SINGLE-WEAPON RESULT */
-
-                          <article
-                            className={
-                              result.weapon
-                                ?.dropped
-                                ? "weapon-drop"
-                                : ""
-                            }
-                          >
-                            {result.weapon
-                              ?.dropped &&
-                              droppedWeaponImage && (
-                                <img
-                                  className="activity-run-final-weapon-icon"
-                                  src={
-                                    droppedWeaponImage
-                                  }
-                                  alt=""
-                                  aria-hidden="true"
-                                />
-                              )}
-
-                            <div className="activity-run-final-weapon-copy">
-                              <span>
-                                WEAPON ROLL
-                              </span>
-
-                              <strong>
-                                {result.weapon
-                                  ?.dropped &&
-                                result.weapon
-                                  .name
-                                  ? result
-                                      .weapon
-                                      .name
-                                  : "NO WEAPON DROP"}
-                              </strong>
-
-                              {result.weapon
-                                ?.dropped && (
-                                <small>
-                                  {result.weapon
-                                    .adept
-                                    ? "ADEPT"
-                                    : result
-                                        .weapon
-                                        .rarity ??
-                                      "WEAPON"}
-                                </small>
-                              )}
-                            </div>
-                          </article>
-                        )}
                       </div>
                     )}
 
@@ -2426,6 +2241,47 @@ export default function ActivityRunModal({
                       ),
                     )}
                 </div>
+              )}
+
+              {phase === "complete" && (
+                <aside className="activity-run-loot-panel" aria-label="Activity loot summary">
+                  <div className="activity-run-loot-heading">
+                    <span>ACTIVITY REWARDS</span>
+                    <strong>LOOT ACQUIRED</strong>
+                    <small>{result.fullClear ? "Activity complete" : "Activity ended"}</small>
+                  </div>
+                  {(
+                    isInfiltration
+                      ? infiltrationWeapons.filter((weapon) => weapon.dropped && weapon.name)
+                      : result.weapon?.dropped && result.weapon.name
+                        ? [result.weapon]
+                        : []
+                  ).length > 0 ? (
+                    <div className="activity-run-loot-list">
+                      {(isInfiltration
+                        ? infiltrationWeapons.filter((weapon) => weapon.dropped && weapon.name)
+                        : result.weapon?.dropped && result.weapon.name
+                          ? [result.weapon]
+                          : []
+                      ).map((weapon, index) => (
+                        <div className="activity-run-loot-item" key={`${weapon.name}-${index}`}>
+                          {getWeaponImage(weapon.name) ? (
+                            <img src={getWeaponImage(weapon.name)} alt="" aria-hidden="true" />
+                          ) : (
+                            <div className="activity-run-loot-icon-fallback" aria-hidden="true">✦</div>
+                          )}
+                          <div className="activity-run-loot-info">
+                            <span>{weapon.adept ? "ADEPT WEAPON" : "LEGENDARY WEAPON"}</span>
+                            <strong>{weapon.name}</strong>
+                            <small>{weapon.source ?? result.weaponSource}</small>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="activity-run-loot-empty">No weapon dropped this run.</p>
+                  )}
+                </aside>
               )}
             </div>
           )}
