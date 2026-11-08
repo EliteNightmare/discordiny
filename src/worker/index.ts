@@ -3876,6 +3876,28 @@ app.post("/api/game/travel", async (c) => {
    normal exploration reward, using its base 25-50 roll.
 ========================================================= */
 
+// Private testing convenience: only the account with numeric user ID 1
+// can instantly cap its own exploration timer. Never accepts a user ID.
+app.post("/api/game/explore/set-max-timer", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+  const session = await c.env.DB
+    .prepare("SELECT user_id FROM sessions WHERE id = ? LIMIT 1")
+    .bind(sessionId)
+    .first<{ user_id: number }>();
+  if (!session) return c.json({ authenticated: false }, 401);
+  if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const timestamp = nowSeconds - EXPLORE_MAX_SECONDS;
+  await c.env.DB.prepare(
+    `INSERT INTO player_cooldowns (user_id, activity, timestamp)
+     VALUES (?, 'explore', ?)
+     ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+  ).bind(session.user_id, timestamp).run();
+  return c.json({ success: true, elapsedSeconds: EXPLORE_MAX_SECONDS });
+});
+
 app.post("/api/game/explore/claim", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
@@ -6400,6 +6422,7 @@ app.get("/api/game/activities", async (c) => {
 
   return c.json({
     authenticated: true,
+    canSetExplorationTimer: Number(session.user_id) === 1,
 
     serverTime: nowSeconds,
 
@@ -10302,9 +10325,6 @@ app.get("/api/game/activity/feed", async (c) => {
          INNER JOIN users
            ON users.id =
               global_activity_feed.user_id
-
-         WHERE global_activity_feed.weapon_name IS NOT NULL
-           AND TRIM(global_activity_feed.weapon_name) <> ''
 
          ORDER BY
            global_activity_feed.id DESC
