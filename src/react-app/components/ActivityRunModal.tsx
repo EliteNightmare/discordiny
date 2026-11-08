@@ -262,32 +262,27 @@ function normalizeAssetName(
 function getWeaponImage(
   weaponName: string | null,
 ): string | undefined {
-  if (!weaponName) {
-    return undefined;
-  }
+  if (!weaponName) return undefined;
 
-  const normalizedWeapon = normalizeAssetName(weaponName);
-  const normalizedBaseWeapon = normalizeAssetName(
+  // Do not use normalizeAssetName here: it removes "(Adept)" and
+  // would cause Normal and Adept filenames to compare as identical.
+  const normalizeWeaponFilename = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+
+  const requested = normalizeWeaponFilename(weaponName.trim());
+  const normal = normalizeWeaponFilename(
     weaponName.replace(/\s*\(Adept\)\s*$/i, "").trim(),
   );
+  const entries = Object.entries(weaponImages);
 
-  const findImage = (name: string) => Object.entries(
-    weaponImages,
-  ).find(([path]) => {
-    const filename =
-      path.split("/").pop() ?? "";
+  const findExact = (name: string) =>
+    entries.find(([path]) => {
+      const filename = (path.split("/").pop() ?? "").replace(/\.png$/i, "");
+      return normalizeWeaponFilename(filename) === name;
+    })?.[1];
 
-    const filenameWithoutExtension =
-      filename.replace(/\.png$/i, "");
-
-    return (
-      normalizeAssetName(
-        filenameWithoutExtension,
-      ) === name
-    );
-  })?.[1];
-
-  return findImage(normalizedWeapon) ?? findImage(normalizedBaseWeapon);
+  // Exact variant first; only fall back for a missing Adept asset.
+  return findExact(requested) ?? (requested !== normal ? findExact(normal) : undefined);
 }
 
 function getMaterialImage(
