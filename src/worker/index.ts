@@ -10303,6 +10303,9 @@ app.get("/api/game/activity/feed", async (c) => {
            ON users.id =
               global_activity_feed.user_id
 
+         WHERE global_activity_feed.weapon_name IS NOT NULL
+           AND TRIM(global_activity_feed.weapon_name) <> ''
+
          ORDER BY
            global_activity_feed.id DESC
 
