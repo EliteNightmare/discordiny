@@ -4,7 +4,7 @@ import "./ActivityLootOverlay.css";
 type Weapon = { dropped: boolean; name: string | null; adept: boolean; rarity: string | null };
 export type ActivityLootPayload = { weapons: Weapon[]; materials: Record<string, number>; xp: number };
 export type LevelProgress = { current: number; currentXp: number; nextXp: number; percentage: number };
-type Props = { loot: ActivityLootPayload; before: LevelProgress | null; onDone: () => void };
+type Props = { loot: ActivityLootPayload; before: LevelProgress | null; onDone: () => void; durationMs?: number };
 
 const weaponImages = import.meta.glob("../assets/icons/weapons/**/*.png", { eager: true, import: "default", query: "?url" }) as Record<string,string>;
 const currencyImages = import.meta.glob("../assets/icons/{currencies,upgrade-materials,destination-materials,dungeon-materials,raid-materials}/*.png", { eager: true, import: "default", query: "?url" }) as Record<string,string>;
@@ -17,7 +17,7 @@ function weaponIcon(name: string) {
 }
 const fmt = (value:number) => Math.max(0,Math.round(value)).toLocaleString();
 
-export default function ActivityLootOverlay({loot,before,onDone}:Props) {
+export default function ActivityLootOverlay({loot,before,onDone,durationMs=9500}:Props) {
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   const [after,setAfter] = useState<LevelProgress|null>(null);
@@ -29,9 +29,9 @@ export default function ActivityLootOverlay({loot,before,onDone}:Props) {
       .then(r=>r.ok?r.json():null)
       .then(data=>{if(alive && data?.level) setAfter(data.level as LevelProgress);})
       .catch(()=>{});
-    const timers = [window.setTimeout(()=>setFill(1),150),window.setTimeout(()=>setElapsed(1),3000),window.setTimeout(()=>setElapsed(2),7000),window.setTimeout(()=>doneRef.current(),9500)];
+    const timers = [window.setTimeout(()=>setFill(1),150),window.setTimeout(()=>setElapsed(1),3000),window.setTimeout(()=>setElapsed(2),7000),window.setTimeout(()=>doneRef.current(),durationMs)];
     return ()=>{alive=false;timers.forEach(window.clearTimeout);};
-  },[]);
+  },[durationMs]);
   const earned = Object.entries(loot.materials).filter(([,count])=>Number.isFinite(count)&&count>0);
   const levelsGained = before && after ? Math.max(0,after.current-before.current) : 0;
   const startingPercent = before ? Math.min(100,Math.max(0,before.percentage)) : 0;
