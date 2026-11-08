@@ -31,3 +31,36 @@
 @keyframes loot-levelup {0%{opacity:0;transform:translate(-50%,20px) scale(.85)}18%,76%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-10px)}}
 @media(max-width:650px){.activity-loot-materials{top:65px;width:min(250px,70vw)}.activity-loot-weapons{top:40%;width:min(300px,83vw)}.activity-loot-xp{bottom:20px;padding:12px 14px}.activity-loot-weapon-art{width:66px;height:66px;flex-basis:66px}.activity-loot-weapon-art img{width:59px;height:59px}}
 @media(prefers-reduced-motion:reduce){.activity-loot-weapon,.activity-loot-material,.activity-loot-xp,.activity-loot-levelup{animation:none}.activity-loot-xp-fill{transition:none}}
+
+/* Shared drop rail: weapon rewards stack ABOVE material notifications,
+   with layout spacing instead of overlapping absolute-positioned regions. */
+.activity-loot-drop-stack {
+  position: absolute;
+  top: clamp(70px, 11vh, 135px);
+  right: clamp(14px, 3vw, 48px);
+  width: min(345px, calc(100vw - 28px));
+  max-height: min(68vh, calc(100vh - 210px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  pointer-events: none;
+}
+.activity-loot-drop-stack::-webkit-scrollbar { display: none; }
+.activity-loot-drop-stack .activity-loot-weapons,
+.activity-loot-drop-stack .activity-loot-materials {
+  position: static;
+  inset: auto;
+  transform: none;
+  width: 100%;
+  flex: 0 0 auto;
+}
+@media (max-width: 650px) {
+  .activity-loot-drop-stack {
+    top: 65px;
+    width: min(300px, calc(100vw - 28px));
+    max-height: min(62vh, calc(100vh - 180px));
+  }
+}
