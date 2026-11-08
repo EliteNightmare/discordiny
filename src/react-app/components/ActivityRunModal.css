@@ -1468,3 +1468,10 @@ to {
 .activity-run-contest-grid > button:focus-visible { outline: 2px solid #ffdd82; outline-offset: 2px; }
 .activity-run-contest-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
 .activity-run-contest-actions .activity-run-contest-reset { margin-top:0; }
+
+/* Compact encounter viewer; leave the world visible behind the loot HUD. */
+.activity-run-backdrop { background: rgba(4,8,15,.42); backdrop-filter: blur(3px); }
+.activity-run-modal { width: min(720px, 100%); min-height: 0; max-height: calc(100vh - 72px); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+.activity-run-ready,.activity-run-loading,.activity-run-error { min-height: 340px; }
+.activity-run-reward-hint { color: rgba(230,239,246,.7); font-size: .78rem; letter-spacing: .035em; }
+@media (max-width:720px) { .activity-run-modal { max-height:calc(100vh - 24px); } }
