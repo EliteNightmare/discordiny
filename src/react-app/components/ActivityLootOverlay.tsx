@@ -39,18 +39,20 @@ export default function ActivityLootOverlay({loot,before,onDone}:Props) {
   const currentLevel = elapsed>=1 && after ? after.current : (before?.current ?? after?.current ?? 0);
   const progress = fill ? (levelsGained>0 && elapsed<1 ? 100 : endingPercent) : startingPercent;
   return <div className="activity-loot-hud" aria-live="polite">
+    <div className="activity-loot-drop-stack">
+    {loot.weapons.length>0 && <div className="activity-loot-weapons" aria-label="Weapon drops">
+      {loot.weapons.filter(weapon => weapon.dropped).map((weapon,index)=><div className="activity-loot-weapon" key={`${weapon.name}-${index}`} style={{animationDelay:`${index*230}ms`}}>
+        <div className="activity-loot-weapon-art">{weapon.name && weaponIcon(weapon.name) ? <img src={weaponIcon(weapon.name)} alt=""/> : <span>✦</span>}</div>
+        <div className="activity-loot-weapon-details"><span>{weapon.adept ? "ADEPT WEAPON ACQUIRED" : "WEAPON ACQUIRED"}</span><strong>{weapon.name}</strong><small>{weapon.rarity ?? "LEGENDARY"}</small></div>
+      </div>)}
+    </div>}
     {earned.length>0 && <div className="activity-loot-materials" aria-label="Materials acquired">
       {earned.map(([name,amount],index)=><div className="activity-loot-material" key={name} style={{animationDelay:`${index*110}ms`}}>
         {imageFor(currencyImages,name) && <img src={imageFor(currencyImages,name)} alt=""/>}
         <div><strong>{name}</strong><span>+{fmt(amount)}</span></div>
       </div>)}
     </div>}
-    {loot.weapons.length>0 && <div className="activity-loot-weapons" aria-label="Weapon drops">
-      {loot.weapons.map((weapon,index)=><div className="activity-loot-weapon" key={`${weapon.name}-${index}`} style={{animationDelay:`${index*230}ms`}}>
-        <div className="activity-loot-weapon-art">{weapon.name && weaponIcon(weapon.name) ? <img src={weaponIcon(weapon.name)} alt=""/> : <span>✦</span>}</div>
-        <div className="activity-loot-weapon-details"><span>{weapon.adept ? "ADEPT WEAPON ACQUIRED" : "WEAPON ACQUIRED"}</span><strong>{weapon.name}</strong><small>{weapon.rarity ?? "LEGENDARY"}</small></div>
-      </div>)}
-    </div>}
+    </div>
     {loot.xp>0 && <div className="activity-loot-xp">
       {levelsGained>0 && elapsed>=1 && elapsed<2 && <div className="activity-loot-levelup" role="status"><span>LEVEL UP</span><strong>LEVEL {after?.current}</strong>{levelsGained>1 && <small>+{levelsGained} levels</small>}</div>}
       <div className="activity-loot-xp-head"><strong>LEVEL {currentLevel || "—"}</strong><span>+{fmt(loot.xp)} XP</span></div>
