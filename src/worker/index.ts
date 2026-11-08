@@ -3160,8 +3160,13 @@ app.post("/api/game/vault/favorites", async (c) => {
   if (body.favorite) {
     // The unique index and limit check run inside one statement to avoid concurrent requests exceeding three.
     await c.env.DB.prepare(`INSERT OR IGNORE INTO vault_weapon_favorites (user_id, weapon_name)
-      SELECT ?, ? WHERE (SELECT COUNT(*) FROM vault_weapon_favorites WHERE user_id = ?) < 3`)
-      .bind(userId, owned.weapon_name, userId).run();
+      SELECT ?, ? WHERE (
+        SELECT COUNT(*) FROM vault_weapon_favorites
+        WHERE user_id = ?
+          AND (lower(weapon_name) LIKE '% (adept)' OR lower(weapon_name) LIKE '% (timelost)' OR lower(weapon_name) LIKE '% (harrowed)')
+            = (lower(?) LIKE '% (adept)' OR lower(?) LIKE '% (timelost)' OR lower(?) LIKE '% (harrowed)')
+      ) < 4`)
+      .bind(userId, owned.weapon_name, userId, owned.weapon_name, owned.weapon_name, owned.weapon_name).run();
   } else {
     await c.env.DB.prepare("DELETE FROM vault_weapon_favorites WHERE user_id = ? AND lower(weapon_name) = lower(?)")
       .bind(userId, name).run();
