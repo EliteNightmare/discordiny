@@ -479,8 +479,8 @@ export default function ActivityRunModal({
   const [coilAnswer, setCoilAnswer] =
     useState("");
 
-  const [contestSequence, setContestSequence] =
-    useState<number[]>([]);
+  const [contestDragIndex, setContestDragIndex] =
+    useState<number | null>(null);
 
   const [contestPieces, setContestPieces] =
     useState<CrawlContestPiece[]>([]);
@@ -948,7 +948,7 @@ export default function ActivityRunModal({
     setCrawlExpiresAt(null);
     setCrawlSecondsLeft(0);
     setCoilAnswer("");
-    setContestSequence([]);
+    setContestDragIndex(null);
     setContestPieces([]);
     setClickedEyes([]);
     setResolvingSecret(false);
@@ -1138,7 +1138,7 @@ export default function ActivityRunModal({
 
     if (challenge.type === "contest") {
       void resolveCrawlSecret(
-        contestSequence,
+        contestPieces.map((piece) => piece.id),
       );
       return;
     }
@@ -1675,81 +1675,68 @@ export default function ActivityRunModal({
               {result.secret.challenge.type === "contest" && (
                 <div className="activity-run-contest-secret">
                   <p>
-                    Select all four fragments in the correct order.
+                    Drag the fragments into reading order: 1 2 on top, 3 4 below.
                   </p>
 
                   <div className="activity-run-contest-grid">
-                    {contestPieces.map(
-                      (piece) => {
-                        const selectedIndex =
-                          contestSequence.indexOf(
-                            piece.id,
-                          );
-
-                        return (
-                          <button
-                            key={piece.id}
-                            type="button"
-                            className={
-                              selectedIndex >= 0
-                                ? "selected"
-                                : ""
-                            }
-                            disabled={
-                              resolvingSecret ||
-                              selectedIndex >= 0
-                            }
-                            onClick={() => {
-                              const next = [
-                                ...contestSequence,
-                                piece.id,
-                              ];
-
-                              setContestSequence(
-                                next,
-                              );
-
-                              if (
-                                next.length === 4
-                              ) {
-                                void resolveCrawlSecret(
-                                  next,
-                                );
-                              }
-                            }}
-                          >
-                            {contestImages[piece.id - 1] && (
-                              <img
-                                src={contestImages[piece.id - 1]}
-                                alt=""
-                                aria-hidden="true"
-                              />
-                            )}
-
-                            <span>
-                              {selectedIndex >= 0
-                                ? selectedIndex + 1
-                                : piece.label}
-                            </span>
-                          </button>
-                        );
-                      },
-                    )}
+                    {contestPieces.map((piece, index) => (
+                      <button
+                        key={piece.id}
+                        type="button"
+                        className={contestDragIndex === index ? "dragging" : ""}
+                        draggable={!resolvingSecret}
+                        disabled={resolvingSecret}
+                        aria-label={`Position ${index + 1}: fragment ${piece.label}. Drag to reorder.`}
+                        onDragStart={(event) => {
+                          setContestDragIndex(index);
+                          event.dataTransfer.effectAllowed = "move";
+                          event.dataTransfer.setData("text/plain", String(index));
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = "move";
+                        }}
+                        onDrop={(event) => {
+                          event.preventDefault();
+                          const from = Number(event.dataTransfer.getData("text/plain"));
+                          if (!Number.isInteger(from) || from < 0 || from >= contestPieces.length || from === index) return;
+                          setContestPieces((current) => {
+                            const next = [...current];
+                            const [moved] = next.splice(from, 1);
+                            next.splice(index, 0, moved);
+                            return next;
+                          });
+                          setContestDragIndex(null);
+                        }}
+                        onDragEnd={() => setContestDragIndex(null)}
+                        onKeyDown={(event) => {
+                          if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+                          event.preventDefault();
+                          const offset = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "ArrowUp" ? -2 : 2;
+                          const target = index + offset;
+                          if (target < 0 || target >= contestPieces.length) return;
+                          setContestPieces((current) => {
+                            const next = [...current];
+                            [next[index], next[target]] = [next[target], next[index]];
+                            return next;
+                          });
+                        }}
+                      >
+                        {contestImages[piece.id - 1] && (
+                          <img src={contestImages[piece.id - 1]} alt={`Fragment ${piece.id}`} draggable={false} />
+                        )}
+                        <span>POSITION {index + 1}</span>
+                      </button>
+                    ))}
                   </div>
-
-                  <button
-                    type="button"
-                    className="activity-run-contest-reset"
-                    disabled={
-                      resolvingSecret ||
-                      contestSequence.length === 0
-                    }
-                    onClick={() =>
-                      setContestSequence([])
-                    }
-                  >
-                    RESET SEQUENCE
-                  </button>
+                  <div className="activity-run-contest-actions">
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => shuffleContestPieces(current))}>
+                      SHUFFLE
+                    </button>
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 4} onClick={() => void resolveCrawlSecret(contestPieces.map((piece) => piece.id))}>
+                      CONFIRM ORDER
+                    </button>
+                  </div>
                 </div>
               )}
 
