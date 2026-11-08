@@ -30,6 +30,7 @@ type Rotation = {
 type ActivitiesResponse = {
   authenticated: boolean;
   serverTime: number;
+  canSetExplorationTimer?: boolean;
 
   player: {
     destination: string;
@@ -213,39 +214,6 @@ const weaponImages = import.meta.glob(
     query: "?url",
   },
 ) as Record<string, string>;
-
-const currencyImages = import.meta.glob(
-  "../assets/icons/currencies/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
-
-const upgradeMaterialImages = import.meta.glob(
-  "../assets/icons/upgrade-materials/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
-
-const destinationMaterialImages = import.meta.glob(
-  "../assets/icons/destination-materials/*.png",
-  {
-    eager: true,
-    import: "default",
-    query: "?url",
-  },
-) as Record<string, string>;
-
-const explorationRewardImages = {
-  ...currencyImages,
-  ...upgradeMaterialImages,
-  ...destinationMaterialImages,
-};
 
 const strikeBanners = import.meta.glob(
   "../assets/general/strikes/*.png",
@@ -498,29 +466,6 @@ function getActivityBanner(
         `/activitybanners/${filename}`,
       ),
   )?.[1];
-}
-
-function getExplorationRewardImage(
-  rewardName: string,
-): string | undefined {
-  const normalizedReward =
-    normalizeAssetName(rewardName);
-
-  return Object.entries(
-    explorationRewardImages,
-  ).find(([path]) => {
-    const filename =
-      path.split("/").pop() ?? "";
-
-    const filenameWithoutExtension =
-      filename.replace(/\.png$/i, "");
-
-    return (
-      normalizeAssetName(
-        filenameWithoutExtension,
-      ) === normalizedReward
-    );
-  })?.[1];
 }
 
 function getWeaponImage(
@@ -924,22 +869,8 @@ export default function Activities() {
     setClaimingExploration,
   ] = useState(false);
 
-  const [
-    explorationSummary,
-    setExplorationSummary,
-  ] = useState<{
-    destination: string;
-    elapsedSeconds: number;
-    xp: number;
-    rewards: Record<string, number>;
-    weapon: {
-      dropped: boolean;
-      name: string | null;
-      rarity?: string | null;
-    };
-    weapons: Array<{ name: string; rarity: string | null; adept: boolean }>;
-  } | null>(null);
 
+  const [settingExploreTimer, setSettingExploreTimer] = useState(false);
   const [lootDrop, setLootDrop] = useState<{ id: number; loot: ActivityLootPayload; before: LevelProgress | null } | null>(null);
   const beforeLevelRef = useRef<LevelProgress | null>(null);
   const lootDropCounter = useRef(0);
@@ -1522,7 +1453,14 @@ export default function Activities() {
     }
 
     setClaimingExploration(true);
-    setExplorationSummary(null);
+    let explorationBefore: LevelProgress | null = null;
+    try {
+      const profileResponse = await fetch("/api/game/profile", { credentials: "include" });
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        explorationBefore = profileData?.level ?? null;
+      }
+    } catch { /* XP popup still works without a starting level snapshot. */ }
     setError("");
 
     try {
@@ -1559,22 +1497,22 @@ export default function Activities() {
         );
       }
 
-      setExplorationSummary({
-        destination:
-          result.destination ??
-          data?.player.destination ??
-          "Unknown",
-        elapsedSeconds:
-          result.elapsedSeconds ?? 0,
-        xp: result.xp ?? 0,
-        rewards: result.rewards ?? {},
-        weapon: result.weapon ?? {
-          dropped: false,
-          name: null,
+      const weapons = result.weapons ?? (result.weapon?.dropped && result.weapon.name
+        ? [{ name: result.weapon.name, rarity: null, adept: /\(Adept\)$/i.test(result.weapon.name) }]
+        : []);
+      setLootDrop({
+        id: ++lootDropCounter.current,
+        before: explorationBefore,
+        loot: {
+          weapons: weapons.map((weapon) => ({
+            dropped: true,
+            name: weapon.name,
+            rarity: weapon.rarity,
+            adept: weapon.adept,
+          })),
+          materials: result.rewards ?? {},
+          xp: result.xp ?? 0,
         },
-        weapons: result.weapons ?? (result.weapon?.dropped && result.weapon.name
-          ? [{ name: result.weapon.name, rarity: null, adept: /\(Adept\)$/i.test(result.weapon.name) }]
-          : []),
       });
 
       await loadActivities();
@@ -2302,101 +2240,36 @@ export default function Activities() {
                       ? "CLAIMING..."
                       : "CLAIM"}
                   </button>
+                  {data?.canSetExplorationTimer && (
+                    <button
+                      type="button"
+                      className="exploration-claim-button exploration-timer-admin-button"
+                      disabled={claimingExploration || settingExploreTimer}
+                      onClick={async () => {
+                        setSettingExploreTimer(true);
+                        setError("");
+                        try {
+                          const response = await fetch("/api/game/explore/set-max-timer", {
+                            method: "POST",
+                            credentials: "include",
+                          });
+                          const result = await response.json() as { success?: boolean; error?: string };
+                          if (!response.ok || !result.success) throw new Error(result.error ?? "Unable to set exploration timer.");
+                          setExploreElapsed(86400);
+                          await loadActivities();
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Unable to set exploration timer.");
+                        } finally {
+                          setSettingExploreTimer(false);
+                        }
+                      }}
+                    >
+                      {settingExploreTimer ? "SETTING..." : "SET 24H"}
+                    </button>
+                  )}
                   </div>
                 </div>
 
-                {explorationSummary && (
-                  <div
-                    className="exploration-summary-backdrop"
-                    role="presentation"
-                    onMouseDown={(event) => {
-                      if (event.target === event.currentTarget) {
-                        setExplorationSummary(null);
-                      }
-                    }}
-                  >
-                    <section
-                      className="exploration-summary-modal"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-label="Exploration claim summary"
-                      style={{
-                        backgroundImage: `
-                          linear-gradient(
-                            145deg,
-                            rgba(15, 20, 30, 0.78),
-                            rgba(5, 8, 14, 0.96)
-                          ),
-                          url("${findDestinationImage(
-                            explorationSummary.destination,
-                          )}")
-                        `,
-                      }}
-                    >
-                      <span className="exploration-summary-eyebrow">EXPLORATION COMPLETE</span>
-                      <h2>{explorationSummary.destination}</h2>
-                      <p className="exploration-summary-time">
-                        Explored for {formatExploreTime(explorationSummary.elapsedSeconds)}
-                      </p>
-
-                      <div className="exploration-summary-xp">
-                        <span>XP EARNED</span>
-                        <strong>+{explorationSummary.xp.toLocaleString()}</strong>
-                      </div>
-
-                      <div className="exploration-summary-rewards">
-                        {Object.entries(explorationSummary.rewards)
-                          .filter(([, amount]) => amount > 0)
-                          .map(([name, amount]) => {
-                            const rewardImage =
-                              getExplorationRewardImage(name);
-
-                            return (
-                              <div key={name}>
-                                <div className="exploration-summary-reward-name">
-                                  {rewardImage && (
-                                    <img
-                                      src={rewardImage}
-                                      alt=""
-                                      aria-hidden="true"
-                                    />
-                                  )}
-                                  <span>{name}</span>
-                                </div>
-                                <strong>+{amount.toLocaleString()}</strong>
-                              </div>
-                            );
-                          })}
-                      </div>
-
-                      <div className="exploration-summary-weapons">
-                        {explorationSummary.weapons.length === 0 ? (
-                          <div className="exploration-summary-weapon">
-                            <div><span>DESTINATION WEAPON</span><strong>No weapon found</strong></div>
-                          </div>
-                        ) : explorationSummary.weapons.map((weapon, index) => (
-                          <div className="exploration-summary-weapon" key={`${weapon.name}-${index}`}>
-                            {getWeaponImage(weapon.name) && (
-                              <img src={getWeaponImage(weapon.name)} alt="" aria-hidden="true" />
-                            )}
-                            <div>
-                              <span>DESTINATION WEAPON {explorationSummary.weapons.length > 1 ? index + 1 : ""}</span>
-                              <strong>{weapon.name}{weapon.adept && !/\(Adept\)$/i.test(weapon.name) ? " (Adept)" : ""}</strong>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        className="exploration-summary-close"
-                        onClick={() => setExplorationSummary(null)}
-                      >
-                        CONTINUE
-                      </button>
-                    </section>
-                  </div>
-                )}
                 </section>
 
                 <button
