@@ -152,7 +152,7 @@ const WEAPON_MS = 2200;
 /* -------------------------------------------------------------------------- */
 
 const weaponImages = import.meta.glob(
-  "../assets/weapons/**/*.png",
+  "../assets/icons/weapons/**/*.png",
   {
     eager: true,
     import: "default",
@@ -266,10 +266,12 @@ function getWeaponImage(
     return undefined;
   }
 
-  const normalizedWeapon =
-    normalizeAssetName(weaponName);
+  const normalizedWeapon = normalizeAssetName(weaponName);
+  const normalizedBaseWeapon = normalizeAssetName(
+    weaponName.replace(/\s*\(Adept\)\s*$/i, "").trim(),
+  );
 
-  return Object.entries(
+  const findImage = (name: string) => Object.entries(
     weaponImages,
   ).find(([path]) => {
     const filename =
@@ -281,9 +283,11 @@ function getWeaponImage(
     return (
       normalizeAssetName(
         filenameWithoutExtension,
-      ) === normalizedWeapon
+      ) === name
     );
   })?.[1];
+
+  return findImage(normalizedWeapon) ?? findImage(normalizedBaseWeapon);
 }
 
 function getMaterialImage(
