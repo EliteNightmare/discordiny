@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./Home.css";
 import background from "../assets/background.jpg";
 import TopBar from "../components/TopBar";
+import ActivityLootOverlay, { type ActivityLootPayload, type LevelProgress } from "../components/ActivityLootOverlay";
 
 type User = { id: number; username: string; global_name: string | null; avatar: string | null };
 type Profile = {
@@ -10,12 +11,7 @@ type Profile = {
   weapons: { owned: number; masterworked: number; total: number };
 };
 type Exploration = { player: { destination: string; explore: { elapsedSeconds: number; maxSeconds: number } } };
-type ClaimSummary = { destination: string; elapsedSeconds: number; xp: number; rewards: Record<string, number>; weapons: Array<{ name: string; rarity: string | null; adept: boolean }> };
 type NewsItem = { id: number; slug: string; title: string; subtitle?: string; category: string; status: string; published_at: string | null };
-const rewardImages = import.meta.glob('../assets/icons/{currencies,upgrade-materials,destination-materials}/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string,string>;
-const weaponImages = import.meta.glob('../assets/weapons/**/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string,string>;
-function normalizeAssetName(value: string) { return value.toLowerCase().replace(/\(adept\)/gi, '').replace(/[^a-z0-9]/g, ''); }
-function findAsset(images: Record<string,string>, name: string) { const normalized = normalizeAssetName(name); return Object.entries(images).find(([path]) => normalizeAssetName(path.split('/').pop()?.replace(/\.png$/i,'') ?? '') === normalized)?.[1]; }
 function formatDuration(seconds: number) { const s = Math.max(0,Math.floor(seconds)); return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 function DailyCountdown() {
   const [remaining,setRemaining] = useState(() => 86400 - Math.floor(Date.now()/1000)%86400);
@@ -67,10 +63,7 @@ function GuestLanding() {
     <footer className="dh-footer"><span>DISCORDINY // SYSTEM ONLINE</span><span>YOUR LEGEND AWAITS</span></footer>
   </div>;
 }
-function ClaimRewardsModal({ summary, onClose }: { summary: ClaimSummary; onClose: () => void }) {
-  useEffect(() => { const onKey = (event: KeyboardEvent) => { if(event.key === 'Escape') onClose(); }; window.addEventListener('keydown',onKey); return () => window.removeEventListener('keydown',onKey); },[onClose]);
-  return <div className="dh-rewards-backdrop" onMouseDown={event => { if(event.target === event.currentTarget) onClose(); }}><section className="dh-rewards-modal" role="dialog" aria-modal="true" aria-labelledby="dh-rewards-title" style={{backgroundImage:`linear-gradient(140deg,rgba(12,17,25,.88),rgba(7,10,16,.96)),url('${imageForDestination(summary.destination)}')`}}><button type="button" className="dh-rewards-x" onClick={onClose} aria-label="Close rewards">×</button><SectionLabel>EXPLORATION COMPLETE</SectionLabel><h2 id="dh-rewards-title">{summary.destination}</h2><p>Explored for {formatDuration(summary.elapsedSeconds)}</p><div className="dh-rewards-xp"><span>XP EARNED</span><strong>+{summary.xp.toLocaleString()}</strong></div><h3>MATERIALS</h3><div className="dh-rewards-list">{Object.entries(summary.rewards).filter(([,n])=>n>0).length ? Object.entries(summary.rewards).filter(([,n])=>n>0).map(([name,count]) => <div className="dh-reward-row" key={name}><span>{findAsset(rewardImages,name) && <img src={findAsset(rewardImages,name)} alt=""/>}{name}</span><strong>+{count.toLocaleString()}</strong></div>) : <p>No materials earned this time.</p>}</div><h3>DESTINATION WEAPONS</h3><div className="dh-rewards-list">{summary.weapons.length ? summary.weapons.map((weapon,index) => <div className="dh-reward-row" key={`${weapon.name}-${index}`}><span>{findAsset(weaponImages,weapon.name) && <img src={findAsset(weaponImages,weapon.name)} alt=""/>}{weapon.name}{weapon.adept && !/\(adept\)/i.test(weapon.name) ? ' (Adept)' : ''}</span><strong>ACQUIRED</strong></div>) : <p>No weapon found this time.</p>}</div><button type="button" className="dh-rewards-continue" onClick={onClose}>CONTINUE</button></section></div>;
-}
+
 function GuardianDashboard({ user }: { user: User }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileError, setProfileError] = useState(false);
@@ -82,7 +75,8 @@ function GuardianDashboard({ user }: { user: User }) {
   const [traveling, setTraveling] = useState(false);
   const travelRef = useRef<HTMLDivElement>(null);
   const [claimMessage, setClaimMessage] = useState("");
-  const [claimSummary,setClaimSummary] = useState<ClaimSummary | null>(null);
+  const [lootDrop, setLootDrop] = useState<{ id: number; loot: ActivityLootPayload; before: LevelProgress | null } | null>(null);
+  const lootDropCounter = useRef(0);
   const [terminalUnlocked, setTerminalUnlocked] = useState(false);
   const [elapsedTick, setElapsedTick] = useState(0);
   useEffect(() => {
@@ -139,11 +133,35 @@ function GuardianDashboard({ user }: { user: User }) {
   async function claimExploration() {
     if (!exploration || claiming || elapsed < 25) return;
     setClaiming(true); setClaimMessage("");
+    let before: LevelProgress | null = null;
+    try {
+      const profileResponse = await fetch("/api/game/profile", { credentials: "include" });
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        before = profileData?.level ?? null;
+      }
+    } catch { /* Loot notification still displays if profile lookup fails. */ }
     try {
       const response = await fetch("/api/game/explore/claim", { method: "POST", credentials: "include" });
       const result = await response.json() as { success?: boolean; error?: string; destination?: string; elapsedSeconds?: number; xp?: number; weapon?: { dropped?: boolean; name?: string | null }; weapons?: Array<{name:string;rarity:string|null;adept:boolean}>; rewards?: Record<string, number> };
       if (!response.ok || !result.success) throw new Error(result.error || "Unable to claim exploration rewards");
-      setClaimSummary({ destination: result.destination ?? exploration.player.destination, elapsedSeconds: result.elapsedSeconds ?? elapsed, xp: result.xp ?? 0, rewards: result.rewards ?? {}, weapons: result.weapons ?? (result.weapon?.dropped && result.weapon.name ? [{name:result.weapon.name,rarity:null,adept:/\(Adept\)$/i.test(result.weapon.name)}] : []) });
+      const weapons = result.weapons ?? (result.weapon?.dropped && result.weapon.name
+        ? [{ name: result.weapon.name, rarity: null, adept: /\(Adept\)$/i.test(result.weapon.name) }]
+        : []);
+      setLootDrop({
+        id: ++lootDropCounter.current,
+        before,
+        loot: {
+          weapons: weapons.map((weapon: { name: string; rarity: string | null; adept: boolean }) => ({
+            dropped: true,
+            name: weapon.name,
+            rarity: weapon.rarity,
+            adept: weapon.adept,
+          })),
+          materials: result.rewards ?? {},
+          xp: result.xp ?? 0,
+        },
+      });
       await Promise.all([loadExploration(), fetch("/api/game/profile", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(data => { if (data) setProfile(data); })]);
     } catch (error) { setClaimMessage(error instanceof Error ? error.message : "Claim failed"); }
     finally { setClaiming(false); }
@@ -191,7 +209,14 @@ function GuardianDashboard({ user }: { user: User }) {
         <button className="dh-offline-activities" type="button" disabled title="Coming soon">CLAIM OFFLINE ACTIVITIES · COMING SOON</button>
       </div>
     </section><div className="dh-quick-section"><div className="dh-section-heading"><div><SectionLabel>GUARDIAN NETWORK</SectionLabel><h2>QUICK ACCESS</h2></div></div><div className="dh-quick-grid"><a href="/activities"><span>⚔</span><strong>ACTIVITIES</strong><small>ENTER AN OPERATION</small></a><a href="/vault"><span>◇</span><strong>THE VAULT</strong><small>MANAGE YOUR WEAPONS</small></a><a href="/armory"><span>✦</span><strong>ARMORY</strong><small>VIEW THE ARSENAL</small></a><button type="button" className="dh-fishing fishing-activity-card" style={{backgroundImage: `linear-gradient(180deg,rgba(4,8,14,.18),rgba(4,8,14,.48) 58%,rgba(4,8,14,.9)),url("${fishBackground ?? ""}")`}} aria-label="Fishing — coming soon" title="Fishing is coming soon"><span className="fishing-bubbles" aria-hidden="true">{Array.from({length:14},(_,index)=><i key={index}/>)}</span><span className="fishing-activity-card-content"><span className="fishing-activity-eyebrow">PLAY CATCH</span><strong>FISHING</strong><small>COMING SOON</small></span><span className="fishing-activity-status">SOON</span></button></div></div></div><aside className="dh-dashboard-side"><FeaturedOperation /><div className="dh-side-panel"><SectionLabel>NETWORK UPDATES</SectionLabel><h3>STAY INFORMED</h3><p>Discover the latest updates, changes and stories from Discordiny.</p><a href="/patchnotes" className="dh-text-link">PATCH NOTES ↗</a><a href="/articles" className="dh-text-link">LATEST ARTICLES ↗</a></div>{terminalUnlocked && <div className="dh-side-panel dh-side-terminal"><SectionLabel>UNKNOWN SIGNAL</SectionLabel><p className="dh-terminal-lines">&gt; CONNECTION AVAILABLE<br />&gt; AWAITING INPUT _</p><a href="https://terminal.discordiny.com" className="dh-text-link">OPEN TERMINAL ↗</a></div>}</aside></div>
-    {claimSummary && <ClaimRewardsModal summary={claimSummary} onClose={() => setClaimSummary(null)}/>}
+    {lootDrop && (
+      <ActivityLootOverlay
+        key={lootDrop.id}
+        loot={lootDrop.loot}
+        before={lootDrop.before}
+        onDone={() => setLootDrop(current => current?.id === lootDrop.id ? null : current)}
+      />
+    )}
     <footer className="dh-footer"><span>DISCORDINY // GUARDIAN ONLINE</span><div><a href="/about">ABOUT</a><a href="/patchnotes">PATCH NOTES</a><a href="/events">EVENTS</a></div></footer>
   </div>;
 }
