@@ -33,6 +33,9 @@ type WeaponVaultProps = {
   categorySlug: string;
   activitySlug?: string;
   embedded?: boolean;
+  focusWeapon?: string;
+  favorites?: string[];
+  onToggleFavorite?: (name: string) => Promise<void>;
   selectedTier?: WeaponTier;
   onTierChange?: (tier: WeaponTier) => void;
 };
@@ -307,6 +310,9 @@ function WeaponVault({
   categorySlug,
   activitySlug,
   embedded = false,
+  focusWeapon,
+  favorites = [],
+  onToggleFavorite,
   selectedTier,
   onTierChange,
 }: WeaponVaultProps) {
@@ -532,6 +538,17 @@ function WeaponVault({
       [weapons, weaponSource, tier],
     );
 
+  useEffect(() => {
+    if (!focusWeapon || loading || !visibleWeapons.length) return;
+    const id = window.requestAnimationFrame(() => {
+      const target = Array.from(document.querySelectorAll<HTMLElement>('.weapon-vault-item[data-weapon-name]'))
+        .find(element => element.dataset.weaponName?.toLowerCase() === focusWeapon.toLowerCase());
+      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target?.classList.add('weapon-vault-focused');
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [focusWeapon, loading, visibleWeapons]);
+
   const collectionOwned =
     visibleWeapons.filter(
       (weapon) => weapon.owned,
@@ -539,6 +556,7 @@ function WeaponVault({
 
   const collectionTotal =
     visibleWeapons.length;
+  const collectionMaxed = visibleWeapons.filter(weapon => weapon.owned && weapon.masterwork >= MAX_MASTERWORK).length;
 
   async function readMasterworkResponse(response: Response): Promise<MasterworkResponse> {
     const body = await response.text();
@@ -819,7 +837,7 @@ function WeaponVault({
                     </h1>
 
                     <p>
-                      Weapon Collection · {collectionOwned}/{collectionTotal} OWNED
+                      Weapon Collection · {collectionOwned}/{collectionTotal} UNLOCKED · {collectionMaxed}/{collectionTotal} MAXED
                     </p>
                   </div>
 
@@ -910,9 +928,8 @@ function WeaponVault({
                           key={
                             weapon.name
                           }
-                          className={
-                            itemClass
-                          }
+                          className={itemClass}
+                          data-weapon-name={weapon.name}
                           onMouseEnter={() => { void previewHoverCost(weapon); }}
                           role={weapon.owned ? "button" : undefined}
                           tabIndex={weapon.owned ? 0 : -1}
@@ -931,6 +948,11 @@ function WeaponVault({
                             }
                           }}
                         >
+                          {weapon.owned && onToggleFavorite && <button type="button" className={favorites.includes(weapon.name) ? 'vault-favorite-star active' : 'vault-favorite-star'}
+                            aria-label={favorites.includes(weapon.name) ? `Remove ${weapon.name} from favorites` : `Favorite ${weapon.name}`}
+                            title={favorites.includes(weapon.name) ? 'Remove favorite' : favorites.length >= 3 ? 'Maximum 3 favorites' : 'Favorite weapon'}
+                            disabled={!favorites.includes(weapon.name) && favorites.length >= 3}
+                            onClick={event => { event.stopPropagation(); void onToggleFavorite(weapon.name); }}>★</button>}
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
                               <img
