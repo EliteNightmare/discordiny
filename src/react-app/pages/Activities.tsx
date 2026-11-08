@@ -7,6 +7,7 @@ import {
 
 import TopBar from "../components/TopBar";
 import ActivityRunModal from "../components/ActivityRunModal";
+import ActivityLootOverlay, { type ActivityLootPayload, type LevelProgress } from "../components/ActivityLootOverlay";
 import "./Activities.css";
 
 type Activity = {
@@ -939,12 +940,27 @@ export default function Activities() {
     weapons: Array<{ name: string; rarity: string | null; adept: boolean }>;
   } | null>(null);
 
+  const [lootDrop, setLootDrop] = useState<{ id: number; loot: ActivityLootPayload; before: LevelProgress | null } | null>(null);
+  const beforeLevelRef = useRef<LevelProgress | null>(null);
+  const lootDropCounter = useRef(0);
+
   const [
     selectedEndgameActivity,
     setSelectedEndgameActivity,
   ] = useState<Activity | null>(
     null,
   );
+
+  useEffect(() => {
+    if (!selectedEndgameActivity) return;
+    let cancelled = false;
+    beforeLevelRef.current = null;
+    void fetch("/api/game/profile", { credentials: "include" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (!cancelled && data?.level) beforeLevelRef.current = data.level as LevelProgress; })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedEndgameActivity]);
 
   const [
     globalActivityEvents,
@@ -2971,6 +2987,15 @@ export default function Activities() {
         </div>
       </main>
 
+      {lootDrop && (
+        <ActivityLootOverlay
+          key={lootDrop.id}
+          loot={lootDrop.loot}
+          before={lootDrop.before}
+          onDone={() => setLootDrop(null)}
+        />
+      )}
+
       {selectedEndgameActivity && (
         <ActivityRunModal
           activity={
@@ -3013,7 +3038,8 @@ export default function Activities() {
               null,
             )
           }
-          onFinished={() => {
+          onFinished={(loot) => {
+            setLootDrop({ id: ++lootDropCounter.current, loot, before: beforeLevelRef.current });
             void loadActivities();
             void loadGlobalActivityFeed();
           }}
