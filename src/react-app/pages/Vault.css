@@ -527,3 +527,28 @@
   .vault-activity-tab { flex: 0 0 auto; white-space: nowrap; font-size: 10px; line-height: 1; padding: 7px 10px; }
   .vault-collection-body { flex: 1 1 auto; min-height: 0; }
 }
+
+/* Collection progress and recent-drop rail */
+.vault-category-stats { display:block; margin-top:8px; color:#9eb2ca; font-size:10px; letter-spacing:.025em; }
+.vault-dialog-stats { color:#aebfd5; font-size:11px; white-space:nowrap; }
+.vault-tab-stats { display:block; margin-top:5px; color:#aebfd5; font-size:9px; }
+.vault-recent-panel { border:1px solid rgba(176,199,228,.17); border-radius:15px; padding:18px 13px; background:rgba(15,20,30,.84); color:white; }
+.vault-recent-panel h2 { margin:0; font-size:18px; }
+.vault-recent-panel p { color:#9caec3; font-size:11px; line-height:1.5; }
+.vault-recent-item { width:100%; display:flex; align-items:center; gap:9px; text-align:left; padding:8px; margin:4px 0; border:1px solid transparent; border-radius:10px; background:rgba(255,255,255,.035); color:#e8f0fa; cursor:pointer; }
+.vault-recent-item:hover,.vault-recent-item:focus-visible { background:rgba(145,177,216,.14); border-color:rgba(145,177,216,.35); }
+.vault-recent-item img,.vault-recent-placeholder { width:43px; height:43px; object-fit:contain; flex:none; border-radius:7px; background:#192334; }
+.vault-recent-placeholder { display:grid; place-items:center; }
+.vault-recent-item span:nth-child(2) { min-width:0; flex:1; }
+.vault-recent-item strong { display:block; font-size:11px; overflow-wrap:anywhere; }
+.vault-recent-item small { display:block; color:#91a7bf; margin-top:3px; font-size:10px; }
+.vault-favorites-header { display:flex; justify-content:space-between; align-items:center; margin-top:18px; padding-top:14px; border-top:1px solid rgba(255,255,255,.1); }
+.vault-favorites-header h3 { font-size:14px; margin:0; }
+.vault-favorites-header span { color:#a8bfd8; font-size:11px; }
+.vault-favorite-item { display:flex; align-items:center; gap:5px; margin-top:7px; }
+.vault-favorite-item button { color:#dce8f5; border:1px solid rgba(255,255,255,.1); border-radius:8px; background:#202c3e; padding:8px; cursor:pointer; }
+.vault-favorite-item button:first-child { flex:1; text-align:left; font-size:11px; }
+.vault-favorite-item button:last-child { color:#e7c37d; }
+.vault-favorite-item button:disabled { opacity:.65; cursor:default; }
+.vault-overview-error { color:#f1a6a6!important; }
+@media(max-width:900px){.vault-dialog-stats{white-space:normal}.vault-recent-panel{padding:12px}}
