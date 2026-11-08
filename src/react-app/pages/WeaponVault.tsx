@@ -952,7 +952,7 @@ function WeaponVault({
                             aria-label={favorites.includes(weapon.name) ? `Remove ${weapon.name} from favorites` : `Favorite ${weapon.name}`}
                             title={favorites.includes(weapon.name) ? 'Remove favorite' : favorites.length >= 3 ? 'Maximum 3 favorites' : 'Favorite weapon'}
                             disabled={!favorites.includes(weapon.name) && favorites.length >= 3}
-                            onClick={event => { event.stopPropagation(); void onToggleFavorite(weapon.name); }}>★</button>}
+                            onClick={event => { event.stopPropagation(); void onToggleFavorite(weapon.name); }}>{favorites.includes(weapon.name) ? "★" : "☆"}</button>}
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
                               <img
