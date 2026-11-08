@@ -172,9 +172,14 @@ function Vault() {
               {overview?.favorites.length === 0 && <p>Star up to three owned weapons below.</p>}
               {overview?.favorites.map(name => {
                 const weapon = overview.favoriteWeapons.find(item => item.name === name);
+                const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
                 return <div className="vault-favorite-item" key={name}>
-                  <button type="button" disabled={!weapon} onClick={() => weapon && jumpToWeapon(weapon)}>{name}</button>
-                  <button type="button" aria-label={`Unfavorite ${name}`} disabled={favoritesBusy} onClick={() => void toggleFavorite(name)}>★</button>
+                  <button type="button" className="vault-recent-item vault-favorite-link" disabled={!weapon} onClick={() => weapon && jumpToWeapon(weapon)}>
+                    {icon ? <img src={icon} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
+                    <span><strong>{name}</strong><small>{weapon ? (sourceLocation(weapon.source)?.category.name ?? weapon.source) : 'Weapon unavailable'}</small></span>
+                    <span aria-hidden="true">›</span>
+                  </button>
+                  <button type="button" className="vault-favorite-remove" aria-label={`Unfavorite ${name}`} title="Remove from favorites" disabled={favoritesBusy} onClick={() => void toggleFavorite(name)}>★</button>
                 </div>;
               })}
             </aside>}>
