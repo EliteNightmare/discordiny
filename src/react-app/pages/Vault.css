@@ -553,3 +553,36 @@
 .vault-favorite-remove:disabled { opacity:.5; cursor:default; }
 .vault-overview-error { color:#f1a6a6!important; }
 @media(max-width:900px){.vault-dialog-stats{white-space:normal}.vault-recent-panel{padding:12px}}
+
+
+/* Vault-only: slim dual-column right rail; favorites sit to the right of recent drops. */
+.vault-screen .arsenal-layout {
+  width: min(1680px, calc(100% - 36px));
+  grid-template-columns: minmax(210px, 255px) minmax(0, 1fr) minmax(0, 390px);
+  gap: 12px;
+}
+.vault-recent-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 9px;
+}
+.vault-recent-column,.vault-favorites-column { min-width: 0; }
+.vault-recent-panel h2 { font-size: 15px; }
+.vault-recent-panel .vault-recent-item { gap: 5px; padding: 5px; border-radius: 8px; }
+.vault-recent-panel .vault-recent-item img,
+.vault-recent-panel .vault-recent-placeholder { width: 31px; height: 31px; }
+.vault-recent-panel .vault-recent-item strong { font-size: 10px; }
+.vault-recent-panel .vault-recent-item small { font-size: 9px; }
+.vault-recent-panel .vault-favorite-remove { padding: 3px 0; font-size: 17px; }
+.vault-recent-panel .vault-favorite-item { gap: 2px; }
+.vault-recent-panel .vault-favorites-header { margin-top: 10px; padding-top: 8px; }
+@media (max-width: 1250px) and (min-width: 801px) {
+  .vault-screen .arsenal-layout { grid-template-columns: minmax(175px, 205px) minmax(0, 1fr) minmax(0, 235px); }
+  .vault-recent-panel { grid-template-columns: 1fr; }
+}
+@media (max-width: 800px) {
+  .vault-screen .arsenal-layout { display:flex; flex-direction:column; width:min(100% - 24px,720px); }
+  .vault-recent-panel { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 420px) { .vault-recent-panel { grid-template-columns: 1fr; } }
