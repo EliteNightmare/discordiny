@@ -523,40 +523,29 @@ function getExplorationRewardImage(
 }
 
 function getWeaponImage(
-  weaponName: string,
+  weaponName: string | null,
 ): string | undefined {
-  const baseName =
-    weaponName
-      .replace(
-        /\s*\(Adept\)\s*$/i,
-        "",
-      )
-      .trim();
+  if (!weaponName) return undefined;
 
-  const normalizedWeapon = normalizeAssetName(weaponName.trim());
-  const normalizedBaseWeapon = normalizeAssetName(baseName);
+  // Do not use normalizeAssetName here: it removes "(Adept)" and
+  // would cause Normal and Adept filenames to compare as identical.
+  const normalizeWeaponFilename = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
-  const findImage = (name: string) => Object.entries(
-    weaponImages,
-  ).find(([path]) => {
-    const filename =
-      path.split("/").pop() ??
-      "";
+  const requested = normalizeWeaponFilename(weaponName.trim());
+  const normal = normalizeWeaponFilename(
+    weaponName.replace(/\s*\(Adept\)\s*$/i, "").trim(),
+  );
+  const entries = Object.entries(weaponImages);
 
-    const filenameWithoutExtension =
-      filename.replace(
-        /\.png$/i,
-        "",
-      );
+  const findExact = (name: string) =>
+    entries.find(([path]) => {
+      const filename = (path.split("/").pop() ?? "").replace(/\.png$/i, "");
+      return normalizeWeaponFilename(filename) === name;
+    })?.[1];
 
-    return (
-      normalizeAssetName(
-        filenameWithoutExtension,
-      ) === name
-    );
-  })?.[1];
-
-  return findImage(normalizedWeapon) ?? findImage(normalizedBaseWeapon);
+  // Exact variant first; only fall back for a missing Adept asset.
+  return findExact(requested) ?? (requested !== normal ? findExact(normal) : undefined);
 }
 
 function formatCooldownTime(
@@ -1842,13 +1831,14 @@ export default function Activities() {
         clock,
     );
 
+  const weaponDropEvents = globalActivityEvents.filter(
+    (event) => Boolean(event.weapon?.name?.trim()),
+  );
+
   const visibleGlobalActivityEvents =
     isMobileFeed
-      ? globalActivityEvents.slice(
-          0,
-          5,
-        )
-      : globalActivityEvents;
+      ? weaponDropEvents.slice(0, 5)
+      : weaponDropEvents;
 
   return (
     <div className="activities-screen">
@@ -2831,16 +2821,16 @@ export default function Activities() {
                 globalFeedRef
               }
               className="global-activity-feed"
-              aria-label="Global activity feed"
+              aria-label="Global weapon drops"
             >
               <div className="global-activity-feed-inner">
                 <div className="global-activity-feed-heading">
                   <span>
-                    LIVE FEED
+                    WEAPON DROP FEED
                   </span>
 
                   <h2>
-                    Global Activity
+                    Global Weapon Drops
                   </h2>
                 </div>
 
@@ -2965,12 +2955,11 @@ export default function Activities() {
                     <strong>
                       {globalFeedLoading
                         ? "CONNECTING TO FEED"
-                        : "WAITING FOR ACTIVITY"}
+                        : "WAITING FOR WEAPON DROPS"}
                     </strong>
 
                     <p>
-                      Clears, wipes and
-                      weapon drops from all
+                      Weapon drops from all
                       players will appear
                       here.
                     </p>
