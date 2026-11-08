@@ -1460,3 +1460,11 @@ to {
     height: 50px;
   }
 }
+
+/* Contest of Elders: draggable 2x2 image order */
+.activity-run-contest-grid > button { cursor: grab; }
+.activity-run-contest-grid > button:active { cursor: grabbing; }
+.activity-run-contest-grid > button.dragging { opacity: .45; border-color: rgba(255,221,130,.85); }
+.activity-run-contest-grid > button:focus-visible { outline: 2px solid #ffdd82; outline-offset: 2px; }
+.activity-run-contest-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.activity-run-contest-actions .activity-run-contest-reset { margin-top:0; }
