@@ -1,0 +1,33 @@
+.activity-loot-hud { position:fixed; inset:0; z-index:2500; pointer-events:none; color:#f0eee8; font-family:inherit; }
+.activity-loot-materials { position:absolute; right:clamp(14px,3vw,48px); top:clamp(70px,11vh,135px); display:grid; gap:7px; width:min(285px,40vw); }
+.activity-loot-material { display:flex; align-items:center; gap:12px; min-height:52px; padding:9px 12px; background:linear-gradient(90deg,rgba(28,35,45,.96),rgba(23,27,34,.83)); border-left:3px solid #7ea7b8; box-shadow:0 5px 22px #0007; animation:loot-material 4.7s both; }
+.activity-loot-material img {width:35px;height:35px;object-fit:contain;}
+.activity-loot-material div {display:grid;gap:3px;}
+.activity-loot-material strong {font-size:.79rem;}
+.activity-loot-material span {font-size:.73rem;color:#b6d6e5;}
+.activity-loot-weapons {position:absolute;right:clamp(14px,3vw,48px);top:44%;transform:translateY(-50%);display:grid;gap:9px;width:min(345px,43vw);}
+.activity-loot-weapon {display:flex;align-items:center;min-height:91px;background:linear-gradient(90deg,rgba(71,61,39,.97),rgba(30,32,37,.94));border-left:4px solid #c5a65e;box-shadow:0 12px 35px #0009;animation:loot-weapon 7s both;}
+.activity-loot-weapon-art {display:grid;place-items:center;width:85px;height:85px;flex:0 0 85px;background:rgba(160,137,74,.2);}
+.activity-loot-weapon-art img {width:75px;height:75px;object-fit:contain;}
+.activity-loot-weapon-art span {font-size:2rem;color:#d9c180;}
+.activity-loot-weapon-details {display:grid;gap:5px;min-width:0;padding:12px;}
+.activity-loot-weapon-details span {font-size:.57rem;letter-spacing:.15em;color:#e5c984;font-weight:800;}
+.activity-loot-weapon-details strong {font-size:.92rem;overflow-wrap:anywhere;}
+.activity-loot-weapon-details small {font-size:.62rem;color:#aaaeb6;text-transform:uppercase;}
+.activity-loot-xp {position:absolute;bottom:clamp(22px,6vh,76px);left:50%;transform:translateX(-50%);width:min(660px,calc(100vw - 40px));padding:16px 22px 13px;background:linear-gradient(90deg,rgba(21,29,38,.94),rgba(32,40,49,.96));border:1px solid #6b85934d;border-top:2px solid #7ca5b6;box-shadow:0 15px 50px #0009;animation:loot-xp-enter 9s both;}
+.activity-loot-xp-head,.activity-loot-xp-foot {display:flex;justify-content:space-between;align-items:center;gap:10px;}
+.activity-loot-xp-head strong {font-size:.84rem;letter-spacing:.12em;}
+.activity-loot-xp-head span {color:#b5d8e7;font-size:.84rem;font-weight:700;}
+.activity-loot-xp-track {height:10px;margin:13px 0 8px;background:#131a20;border:1px solid #60727b;overflow:hidden;}
+.activity-loot-xp-fill {height:100%;background:linear-gradient(90deg,#4b859e,#a6d6e7);transition:width 2.8s cubic-bezier(.2,.75,.2,1);box-shadow:0 0 14px #92d5f4aa;}
+.activity-loot-xp-foot {color:#9eabb2;font-size:.59rem;letter-spacing:.1em;}
+.activity-loot-levelup {position:absolute;bottom:calc(100% + 14px);left:50%;transform:translateX(-50%);display:grid;justify-items:center;gap:3px;white-space:nowrap;text-shadow:0 4px 22px #000;animation:loot-levelup 3s both;}
+.activity-loot-levelup span {font-size:.8rem;letter-spacing:.3em;color:#b1deed;}
+.activity-loot-levelup strong {font-size:2rem;letter-spacing:.1em;}
+.activity-loot-levelup small {font-size:.7rem;color:#b1deed;}
+@keyframes loot-material {0%{opacity:0;transform:translateX(75px)}9%,65%{opacity:1;transform:translateX(0)}100%{opacity:0;transform:translateX(24px)}}
+@keyframes loot-weapon {0%{opacity:0;transform:translateX(130px) scale(.92);filter:brightness(2)}9%{opacity:1;transform:translateX(0) scale(1);filter:brightness(1.4)}15%,78%{opacity:1;filter:brightness(1)}100%{opacity:0;transform:translateX(30px)}}
+@keyframes loot-xp-enter {0%{opacity:0;transform:translate(-50%,35px)}7%,82%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,18px)}}
+@keyframes loot-levelup {0%{opacity:0;transform:translate(-50%,20px) scale(.85)}18%,76%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-10px)}}
+@media(max-width:650px){.activity-loot-materials{top:65px;width:min(250px,70vw)}.activity-loot-weapons{top:40%;width:min(300px,83vw)}.activity-loot-xp{bottom:20px;padding:12px 14px}.activity-loot-weapon-art{width:66px;height:66px;flex-basis:66px}.activity-loot-weapon-art img{width:59px;height:59px}}
+@media(prefers-reduced-motion:reduce){.activity-loot-weapon,.activity-loot-material,.activity-loot-xp,.activity-loot-levelup{animation:none}.activity-loot-xp-fill{transition:none}}
