@@ -3104,6 +3104,79 @@ app.post("/api/game/weapons/masterwork", async (c) => {
   });
 });
 
+// Vault collection overview. Requires migrations/2026-11-08-vault-overview.sql.
+async function vaultUserId(c: any): Promise<number | null> {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return null;
+  const row = await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id = ? LIMIT 1")
+    .bind(sessionId).first<{ user_id: number }>();
+  return row?.user_id ?? null;
+}
+
+app.get("/api/game/vault/overview", async (c) => {
+  const userId = await vaultUserId(c);
+  if (userId === null) return c.json({ authenticated: false }, 401);
+  const [catalog, owned, recent, favorites] = await Promise.all([
+    c.env.DB.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{ name: string; source: string }>(),
+    c.env.DB.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{ weapon_name: string; masterwork: number }>(),
+    c.env.DB.prepare(`SELECT weapon_name AS name, source, acquired_at AS acquiredAt
+      FROM vault_weapon_drops WHERE user_id = ? ORDER BY id DESC LIMIT 10`).bind(userId).all<{ name: string; source: string; acquiredAt: string }>(),
+    c.env.DB.prepare("SELECT weapon_name FROM vault_weapon_favorites WHERE user_id = ? ORDER BY created_at ASC")
+      .bind(userId).all<{ weapon_name: string }>(),
+  ]);
+  const ownedMap = new Map(owned.results.map(row => [row.weapon_name.trim().toLowerCase(), row.masterwork]));
+  const sources: Record<string, { normal: { owned: number; total: number; maxed: number }; adept: { owned: number; total: number; maxed: number } }> = {};
+  const seen = new Set<string>();
+  for (const weapon of catalog.results) {
+    const source = weapon.source.trim().toLowerCase();
+    const base = weapon.name.replace(/\s*\((Adept|Timelost|Harrowed)\)\s*$/i, '').trim();
+    const key = `${source}:${base.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const suffix = catalog.results.find(row => row.source?.trim().toLowerCase() === source &&
+      row.name.toLowerCase().startsWith(`${base.toLowerCase()} (`))?.name.match(/\((Adept|Timelost|Harrowed)\)$/i)?.[1] ?? 'Adept';
+    const row = sources[source] ??= { normal: { owned: 0, total: 0, maxed: 0 }, adept: { owned: 0, total: 0, maxed: 0 } };
+    for (const [tier, name] of [['normal', base], ['adept', `${base} (${suffix})`]] as const) {
+      const stats = row[tier];
+      stats.total++;
+      const masterwork = ownedMap.get(name.toLowerCase());
+      if (masterwork !== undefined) { stats.owned++; if (masterwork >= 77) stats.maxed++; }
+    }
+  }
+  const favoriteNames = favorites.results.map(row => row.weapon_name);
+  const favoriteWeapons = favoriteNames.map(name => ({ name, source: catalog.results.find(row => row.name.toLowerCase() === name.toLowerCase())?.source ?? '' }));
+  return c.json({ authenticated: true, sources, recent: recent.results, favorites: favoriteNames, favoriteWeapons });
+});
+
+app.post("/api/game/vault/favorites", async (c) => {
+  const userId = await vaultUserId(c);
+  if (userId === null) return c.json({ authenticated: false }, 401);
+  const body = await c.req.json().catch(() => null) as { weaponName?: unknown; favorite?: unknown } | null;
+  const name = typeof body?.weaponName === 'string' ? body.weaponName.trim() : '';
+  if (!name || name.length > 200 || typeof body?.favorite !== 'boolean') return c.json({ error: 'Invalid favorite request' }, 400);
+  const owned = await c.env.DB.prepare("SELECT weapon_name FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1")
+    .bind(userId, name).first<{ weapon_name: string }>();
+  if (!owned) return c.json({ error: 'Only owned weapons can be favorited' }, 403);
+  if (body.favorite) {
+    // The unique index and limit check run inside one statement to avoid concurrent requests exceeding three.
+    await c.env.DB.prepare(`INSERT OR IGNORE INTO vault_weapon_favorites (user_id, weapon_name)
+      SELECT ?, ? WHERE (SELECT COUNT(*) FROM vault_weapon_favorites WHERE user_id = ?) < 3`)
+      .bind(userId, owned.weapon_name, userId).run();
+  } else {
+    await c.env.DB.prepare("DELETE FROM vault_weapon_favorites WHERE user_id = ? AND lower(weapon_name) = lower(?)")
+      .bind(userId, name).run();
+  }
+  const favorites = await c.env.DB.prepare("SELECT weapon_name FROM vault_weapon_favorites WHERE user_id = ? ORDER BY created_at ASC")
+    .bind(userId).all<{ weapon_name: string }>();
+  const favoriteNames = favorites.results.map(row => row.weapon_name);
+  const favoriteWeapons = await Promise.all(favoriteNames.map(async name => {
+    const row = await c.env.DB.prepare("SELECT source FROM weapons WHERE lower(name) = lower(?) LIMIT 1")
+      .bind(name).first<{ source: string }>();
+    return { name, source: row?.source ?? '' };
+  }));
+  return c.json({ favorites: favoriteNames, favoriteWeapons });
+});
+
 app.get("/api/game/weapons", async (c) => {
   const sessionId = getCookie(
     c,
