@@ -10,6 +10,25 @@ type Profile = {
   weapons: { owned: number; masterworked: number; total: number };
 };
 type Exploration = { player: { destination: string; explore: { elapsedSeconds: number; maxSeconds: number } } };
+type ClaimSummary = { destination: string; elapsedSeconds: number; xp: number; rewards: Record<string, number>; weapons: Array<{ name: string; rarity: string | null; adept: boolean }> };
+type NewsItem = { id: number; slug: string; title: string; subtitle?: string; category: string; status: string; published_at: string | null };
+const rewardImages = import.meta.glob('../assets/icons/{currencies,upgrade-materials,destination-materials}/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string,string>;
+const weaponImages = import.meta.glob('../assets/weapons/**/*.png', { eager: true, import: 'default', query: '?url' }) as Record<string,string>;
+function normalizeAssetName(value: string) { return value.toLowerCase().replace(/\(adept\)/gi, '').replace(/[^a-z0-9]/g, ''); }
+function findAsset(images: Record<string,string>, name: string) { const normalized = normalizeAssetName(name); return Object.entries(images).find(([path]) => normalizeAssetName(path.split('/').pop()?.replace(/\.png$/i,'') ?? '') === normalized)?.[1]; }
+function formatDuration(seconds: number) { const s = Math.max(0,Math.floor(seconds)); return `${String(Math.floor(s/3600)).padStart(2,'0')}:${String(Math.floor(s%3600/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+function DailyCountdown() {
+  const [remaining,setRemaining] = useState(() => 86400 - Math.floor(Date.now()/1000)%86400);
+  useEffect(() => { const update = () => setRemaining(86400 - Math.floor(Date.now()/1000)%86400); update(); const id = window.setInterval(update,1000); return () => window.clearInterval(id); },[]);
+  return <span className="dh-rotation-timer" aria-label="Time until next daily rotation">ROTATES IN {formatDuration(remaining)} UTC</span>;
+}
+function NewsPreview() {
+  const [items,setItems] = useState<NewsItem[]>([]);
+  useEffect(() => { const controller = new AbortController(); fetch('/api/news/articles',{ credentials:'include',signal:controller.signal }).then(r => r.ok ? r.json() : null).then(data => { if(!controller.signal.aborted) setItems((data?.articles ?? []).filter((item: NewsItem) => item.status === 'published')); }).catch(() => {}); return () => controller.abort(); },[]);
+  const latestArticle = items.find(item => item.category !== 'PATCHNOTES');
+  const latestPatch = items.find(item => item.category === 'PATCHNOTES');
+  return <section className="dh-news-preview dh-section" aria-labelledby="dh-news-title"><div className="dh-section-heading"><div><SectionLabel>TRANSMISSIONS</SectionLabel><h2 id="dh-news-title">LATEST NEWS</h2></div></div><div className="dh-news-grid">{[{item:latestArticle, label:'ARTICLES',path:'/articles'},{item:latestPatch,label:'PATCHNOTES',path:'/patchnotes'}].map(({item,label,path}) => <a key={label} className="dh-news-card" href={item ? `${path}/${encodeURIComponent(item.slug)}` : path}><SectionLabel>{label}</SectionLabel><h3>{item?.title ?? (label === 'ARTICLES' ? 'READ ARTICLES' : 'READ PATCHNOTES')}</h3><p>{item?.subtitle ?? 'See the latest published updates from Discordiny.'}</p><span>READ {label} ↗</span></a>)}</div></section>;
+}
 type Session = { status: "loading" | "guest" | "authenticated" | "error"; user?: User };
 
 const destinations = [
@@ -33,37 +52,27 @@ function ActionLink({ href, children, primary = false }: { href: string; childre
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="dh-eyebrow">{children}</span>;
 }
-function FeaturedOperation() {
-  return <a className="dh-operation" href="/events">
+function FeaturedOperation({ interactive = true }: { interactive?: boolean }) {
+  const contents = <>
     <div className="dh-operation-header"><SectionLabel>COMMUNITY OPERATIONS</SectionLabel><span className="dh-red-dot" aria-hidden="true" /></div>
     <div className="dh-operation-copy"><span className="dh-muted">PLAGUELANDS // SIVA</span><h3>Operation: CLEANSE</h3><p>Enter the Plaguelands and discover the ongoing community operation.</p></div>
-    <span className="dh-operation-link">VIEW OPERATIONS <span aria-hidden="true">↗</span></span>
-  </a>;
+    <span className="dh-operation-link">OPERATION: CLEANSE <span aria-hidden="true">✦</span></span>
+  </>;
+  return interactive ? <a className="dh-operation" href="/events">{contents}</a> : <div className="dh-operation" aria-label="Operation CLEANSE preview">{contents}</div>;
 }
 function GuestLanding() {
   return <div className="dh-container dh-guest">
-    <section className="dh-hero" aria-labelledby="dh-hero-title">
-      <div className="dh-hero-copy"><SectionLabel>DISCORDINY // THE FRONTIER AWAITS</SectionLabel>
-        <h1 id="dh-hero-title">BECOME<br /><em>LEGEND.</em></h1>
-        <p>Explore distant destinations. Collect Legendary weapons. Conquer challenging activities. Discover the secrets of Discordiny.</p>
-        <div className="dh-actions"><ActionLink href="/profile" primary>BEGIN YOUR JOURNEY</ActionLink><ActionLink href="#discover">EXPLORE THE UNIVERSE</ActionLink></div>
-      </div>
-      <div className="dh-hero-image" role="img" aria-label="Europa, a frozen destination in the Discordiny universe" />
-      <div className="dh-hero-index">01 / DISCOVER YOUR PATH</div>
-    </section>
-    <section id="discover" className="dh-section" aria-labelledby="dh-discover-title">
-      <div className="dh-section-heading"><div><SectionLabel>YOUR JOURNEY BEGINS HERE</SectionLabel><h2 id="dh-discover-title">A UNIVERSE TO EXPLORE</h2></div><p>Choose your destination. Shape your arsenal. Find your next challenge.</p></div>
-      <div className="dh-destination-grid">{destinations.map((destination, index) => <a href="/profile" className="dh-destination" key={destination.name} style={{ backgroundImage: `linear-gradient(180deg,transparent 28%,rgba(4,8,14,.94)),url('${imageForDestination(destination.name)}')` }}><span className="dh-destination-number">0{index + 1} / DESTINATION</span><strong>{destination.name}</strong><span className="dh-destination-cta">EXPLORE ↗</span></a>)}</div>
-    </section>
-    <section className="dh-section dh-experience" aria-labelledby="dh-experience-title"><div className="dh-section-heading"><div><SectionLabel>YOUR LEGEND, YOUR WAY</SectionLabel><h2 id="dh-experience-title">THE EXPERIENCE</h2></div></div><div className="dh-feature-grid">
-      <a href="/profile" className="dh-feature"><span className="dh-feature-icon">◇</span><span className="dh-muted">01 / PROGRESSION</span><h3>GROW YOUR GUARDIAN</h3><p>Earn experience, build Power and track your journey across the system.</p><span className="dh-feature-arrow">↗</span></a>
-      <a href="/armory" className="dh-feature"><span className="dh-feature-icon">✦</span><span className="dh-muted">02 / ARSENAL</span><h3>COLLECT YOUR LEGACY</h3><p>Discover Legendary weapons, develop your loadout and build your collection.</p><span className="dh-feature-arrow">↗</span></a>
-      <a href="/activities" className="dh-feature"><span className="dh-feature-icon">⌁</span><span className="dh-muted">03 / OPERATIONS</span><h3>FACE THE UNKNOWN</h3><p>Take on activities, dangerous encounters and greater challenges.</p><span className="dh-feature-arrow">↗</span></a>
-    </div></section>
-    <section className="dh-bottom-grid"><FeaturedOperation /><div className="dh-transmission"><SectionLabel>YOUR NEXT OPERATION</SectionLabel><h3>THE FRONTIER AWAITS</h3><p>There is always another destination to discover and another challenge to face.</p><a href="/activities" className="dh-text-link">EXPLORE ACTIVITIES ↗</a></div></section>
-    <section className="dh-final-cta"><SectionLabel>THE NEXT CHAPTER IS YOURS</SectionLabel><h2>YOUR LEGEND STARTS HERE.</h2><ActionLink href="/profile" primary>ENTER DISCORDINY</ActionLink></section>
-    <footer className="dh-footer"><span>DISCORDINY // SYSTEM ONLINE</span><div><a href="/about">ABOUT</a><a href="/patchnotes">PATCH NOTES</a><a href="/events">EVENTS</a></div></footer>
+    <section className="dh-hero" aria-labelledby="dh-hero-title"><div className="dh-hero-copy"><SectionLabel>DISCORDINY // THE FRONTIER AWAITS</SectionLabel><h1 id="dh-hero-title">BECOME<br/><em>LEGEND.</em></h1><p>Explore distant destinations. Collect Legendary weapons. Conquer challenging activities. Discover the secrets of Discordiny.</p><div className="dh-actions"><ActionLink href="/api/auth/login" primary>BEGIN YOUR JOURNEY</ActionLink><ActionLink href="/about">EXPLORE THE UNIVERSE</ActionLink></div></div><div className="dh-hero-image" role="img" aria-label="Europa, a frozen destination"/><div className="dh-hero-index">01 / DISCOVER YOUR PATH</div></section>
+    <section className="dh-section dh-guest-operations" aria-labelledby="dh-guest-operations-title"><div className="dh-section-heading"><div><SectionLabel>YOUR NEXT ADVENTURE</SectionLabel><h2 id="dh-guest-operations-title">ACTIVITIES & OPERATIONS</h2></div><p>A preview of the experiences waiting for your Guardian.</p></div><div className="dh-guest-operations-grid"><div className="dh-guest-activity-card"><SectionLabel>01 / ACTIVITIES</SectionLabel><h3>ACTIVITIES</h3><p>Vanguard operations, challenging encounters, and rewards to earn.</p><span className="dh-guest-card-bottom">GUARDIAN OPERATIONS</span></div><div className="dh-guest-activity-card dh-guest-daily"><SectionLabel>02 / DAILY ROTATION</SectionLabel><h3>DAILY ACTIVITIES</h3><p>Showdowns, Dungeons and Raids rotate daily. Check back for new challenges.</p><DailyCountdown/></div><FeaturedOperation interactive={false}/></div></section>
+    <section className="dh-section dh-experience" aria-labelledby="dh-experience-title"><div className="dh-section-heading"><div><SectionLabel>YOUR LEGEND, YOUR WAY</SectionLabel><h2 id="dh-experience-title">THE EXPERIENCE</h2></div></div><div className="dh-feature-grid"><div className="dh-feature"><span className="dh-feature-icon">◇</span><SectionLabel>01 / PROGRESSION</SectionLabel><h3>GROW YOUR GUARDIAN</h3><p>Earn experience, build Power and track your journey across the system.</p></div><div className="dh-feature"><span className="dh-feature-icon">✦</span><SectionLabel>02 / ARSENAL</SectionLabel><h3>COLLECT YOUR LEGACY</h3><p>Discover Legendary weapons, develop your loadout and build your collection.</p></div><div className="dh-feature"><span className="dh-feature-icon">⌁</span><SectionLabel>03 / EXPLORATION</SectionLabel><h3>EXPLORE THE FRONTIER</h3><p>Travel to destinations and collect offline exploration rewards.</p></div></div></section>
+    <NewsPreview/>
+    <section className="dh-final-cta"><SectionLabel>THE NEXT CHAPTER IS YOURS</SectionLabel><h2>YOUR LEGEND STARTS HERE.</h2><ActionLink href="/api/auth/login" primary>ENTER DISCORDINY</ActionLink></section>
+    <footer className="dh-footer"><span>DISCORDINY // SYSTEM ONLINE</span><span>YOUR LEGEND AWAITS</span></footer>
   </div>;
+}
+function ClaimRewardsModal({ summary, onClose }: { summary: ClaimSummary; onClose: () => void }) {
+  useEffect(() => { const onKey = (event: KeyboardEvent) => { if(event.key === 'Escape') onClose(); }; window.addEventListener('keydown',onKey); return () => window.removeEventListener('keydown',onKey); },[onClose]);
+  return <div className="dh-rewards-backdrop" onMouseDown={event => { if(event.target === event.currentTarget) onClose(); }}><section className="dh-rewards-modal" role="dialog" aria-modal="true" aria-labelledby="dh-rewards-title" style={{backgroundImage:`linear-gradient(140deg,rgba(12,17,25,.88),rgba(7,10,16,.96)),url('${imageForDestination(summary.destination)}')`}}><button type="button" className="dh-rewards-x" onClick={onClose} aria-label="Close rewards">×</button><SectionLabel>EXPLORATION COMPLETE</SectionLabel><h2 id="dh-rewards-title">{summary.destination}</h2><p>Explored for {formatDuration(summary.elapsedSeconds)}</p><div className="dh-rewards-xp"><span>XP EARNED</span><strong>+{summary.xp.toLocaleString()}</strong></div><h3>MATERIALS</h3><div className="dh-rewards-list">{Object.entries(summary.rewards).filter(([,n])=>n>0).length ? Object.entries(summary.rewards).filter(([,n])=>n>0).map(([name,count]) => <div className="dh-reward-row" key={name}><span>{findAsset(rewardImages,name) && <img src={findAsset(rewardImages,name)} alt=""/>}{name}</span><strong>+{count.toLocaleString()}</strong></div>) : <p>No materials earned this time.</p>}</div><h3>DESTINATION WEAPONS</h3><div className="dh-rewards-list">{summary.weapons.length ? summary.weapons.map((weapon,index) => <div className="dh-reward-row" key={`${weapon.name}-${index}`}><span>{findAsset(weaponImages,weapon.name) && <img src={findAsset(weaponImages,weapon.name)} alt=""/>}{weapon.name}{weapon.adept && !/\(adept\)/i.test(weapon.name) ? ' (Adept)' : ''}</span><strong>ACQUIRED</strong></div>) : <p>No weapon found this time.</p>}</div><button type="button" className="dh-rewards-continue" onClick={onClose}>CONTINUE</button></section></div>;
 }
 function GuardianDashboard({ user }: { user: User }) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -73,6 +82,7 @@ function GuardianDashboard({ user }: { user: User }) {
   const [explorationError, setExplorationError] = useState("");
   const [claiming, setClaiming] = useState(false);
   const [claimMessage, setClaimMessage] = useState("");
+  const [claimSummary,setClaimSummary] = useState<ClaimSummary | null>(null);
   const [terminalUnlocked, setTerminalUnlocked] = useState(false);
   const [elapsedTick, setElapsedTick] = useState(0);
   useEffect(() => {
@@ -104,10 +114,9 @@ function GuardianDashboard({ user }: { user: User }) {
     setClaiming(true); setClaimMessage("");
     try {
       const response = await fetch("/api/game/explore/claim", { method: "POST", credentials: "include" });
-      const result = await response.json() as { success?: boolean; error?: string; xp?: number; weapon?: { dropped?: boolean; name?: string | null }; rewards?: Record<string, number> };
+      const result = await response.json() as { success?: boolean; error?: string; destination?: string; elapsedSeconds?: number; xp?: number; weapon?: { dropped?: boolean; name?: string | null }; weapons?: Array<{name:string;rarity:string|null;adept:boolean}>; rewards?: Record<string, number> };
       if (!response.ok || !result.success) throw new Error(result.error || "Unable to claim exploration rewards");
-      const materials = Object.entries(result.rewards ?? {}).filter(([, count]) => count > 0).map(([name, count]) => `${count} ${name}`).join(", ");
-      setClaimMessage(`Rewards claimed! ${result.xp ?? 0} XP${result.weapon?.dropped && result.weapon.name ? ` · ${result.weapon.name}` : ""}${materials ? ` · ${materials}` : ""}`);
+      setClaimSummary({ destination: result.destination ?? exploration.player.destination, elapsedSeconds: result.elapsedSeconds ?? elapsed, xp: result.xp ?? 0, rewards: result.rewards ?? {}, weapons: result.weapons ?? (result.weapon?.dropped && result.weapon.name ? [{name:result.weapon.name,rarity:null,adept:/\(Adept\)$/i.test(result.weapon.name)}] : []) });
       await Promise.all([loadExploration(), fetch("/api/game/profile", { credentials: "include" }).then(r => r.ok ? r.json() : null).then(data => { if (data) setProfile(data); })]);
     } catch (error) { setClaimMessage(error instanceof Error ? error.message : "Claim failed"); }
     finally { setClaiming(false); }
@@ -148,7 +157,8 @@ function GuardianDashboard({ user }: { user: User }) {
         {claimMessage && <p className="dh-exploration-message" role="status">{claimMessage}</p>}
         <button className="dh-offline-activities" type="button" disabled title="Coming soon">CLAIM OFFLINE ACTIVITIES · COMING SOON</button>
       </div>
-    </section><div className="dh-quick-section"><div className="dh-section-heading"><div><SectionLabel>GUARDIAN NETWORK</SectionLabel><h2>QUICK ACCESS</h2></div></div><div className="dh-quick-grid"><a href="/activities"><span>⚔</span><strong>ACTIVITIES</strong><small>ENTER AN OPERATION</small></a><a href="/vault"><span>◇</span><strong>THE VAULT</strong><small>MANAGE YOUR WEAPONS</small></a><a href="/armory"><span>✦</span><strong>ARMORY</strong><small>VIEW THE ARSENAL</small></a><a href="/profile"><span>⌖</span><strong>DESTINATIONS</strong><small>TRAVEL THE SYSTEM</small></a></div></div></div><aside className="dh-dashboard-side"><FeaturedOperation /><div className="dh-side-panel"><SectionLabel>NETWORK UPDATES</SectionLabel><h3>STAY INFORMED</h3><p>Discover the latest updates, changes and stories from Discordiny.</p><a href="/patchnotes" className="dh-text-link">PATCH NOTES ↗</a><a href="/articles" className="dh-text-link">LATEST ARTICLES ↗</a></div>{terminalUnlocked && <div className="dh-side-panel dh-side-terminal"><SectionLabel>UNKNOWN SIGNAL</SectionLabel><p className="dh-terminal-lines">&gt; CONNECTION AVAILABLE<br />&gt; AWAITING INPUT _</p><a href="https://terminal.discordiny.com" className="dh-text-link">OPEN TERMINAL ↗</a></div>}</aside></div>
+    </section><div className="dh-quick-section"><div className="dh-section-heading"><div><SectionLabel>GUARDIAN NETWORK</SectionLabel><h2>QUICK ACCESS</h2></div></div><div className="dh-quick-grid"><a href="/activities"><span>⚔</span><strong>ACTIVITIES</strong><small>ENTER AN OPERATION</small></a><a href="/vault"><span>◇</span><strong>THE VAULT</strong><small>MANAGE YOUR WEAPONS</small></a><a href="/armory"><span>✦</span><strong>ARMORY</strong><small>VIEW THE ARSENAL</small></a><a href="/profile"><span>⌖</span><strong>DESTINATIONS</strong><small>TRAVEL THE SYSTEM</small></a><button type="button" className="dh-fishing" disabled title="Fishing is coming soon"><span>♒</span><strong>FISHING</strong><small>COMING SOON</small></button></div></div></div><aside className="dh-dashboard-side"><FeaturedOperation /><div className="dh-side-panel"><SectionLabel>NETWORK UPDATES</SectionLabel><h3>STAY INFORMED</h3><p>Discover the latest updates, changes and stories from Discordiny.</p><a href="/patchnotes" className="dh-text-link">PATCH NOTES ↗</a><a href="/articles" className="dh-text-link">LATEST ARTICLES ↗</a></div>{terminalUnlocked && <div className="dh-side-panel dh-side-terminal"><SectionLabel>UNKNOWN SIGNAL</SectionLabel><p className="dh-terminal-lines">&gt; CONNECTION AVAILABLE<br />&gt; AWAITING INPUT _</p><a href="https://terminal.discordiny.com" className="dh-text-link">OPEN TERMINAL ↗</a></div>}</aside></div>
+    {claimSummary && <ClaimRewardsModal summary={claimSummary} onClose={() => setClaimSummary(null)}/>}
     <footer className="dh-footer"><span>DISCORDINY // GUARDIAN ONLINE</span><div><a href="/about">ABOUT</a><a href="/patchnotes">PATCH NOTES</a><a href="/events">EVENTS</a></div></footer>
   </div>;
 }
