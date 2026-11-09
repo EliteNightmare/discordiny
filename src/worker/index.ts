@@ -9588,7 +9588,7 @@ app.post("/api/game/activity/run", async (c) => {
 
   // Raid/dungeon timers are checked on the Worker, not just in React.
   // A pending run is tied to the authenticated player and activity.
-  const runDurationSeconds = activity.type === "raid" ? 90 : 180;
+  const runDurationSeconds = activity.type === "raid" ? 180 : 90;
   const pendingRunKey = `__endgame_pending_${activity.id}`;
   if (body.phase === "start") {
     // Preserve a run that is already underway rather than restarting its clock.
