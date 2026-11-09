@@ -212,22 +212,24 @@ function Vault() {
                   <p>Select a collection to open its weapon archives.</p>
                 </div></div>
                 <div className="vault-category-grid">
-                  {VAULT_CATEGORIES.map((item) => (
-                    <button key={item.slug} type="button" className="vault-category"
+                  {VAULT_CATEGORIES.map((item) => {
+                    const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(activity => activity.weaponSource);
+                    const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
+                    const owned = rows.reduce((sum, row) => sum + row.normal.owned + row.adept.owned, 0);
+                    const total = rows.reduce((sum, row) => sum + row.normal.total + row.adept.total, 0);
+                    const maxed = rows.reduce((sum, row) => sum + row.normal.maxed + row.adept.maxed, 0);
+                    const complete = overview && total > 0 && rows.length === sources.length && owned >= total;
+                    const mastered = complete && maxed >= total;
+                    return (
+                    <button key={item.slug} type="button" className={`vault-category${mastered ? " vault-category-mastered" : complete ? " vault-category-complete" : ""}`}
                       onClick={(event) => openCategory(item, event.currentTarget)}>
                       <span className="vault-category-name">{item.name}</span>
                       <span className="vault-category-description">{item.description}</span>
-                      <span className="vault-category-stats">{(() => {
-                        const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(activity => activity.weaponSource);
-                        const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
-                        const owned = rows.reduce((sum, row) => sum + row.normal.owned + row.adept.owned, 0);
-                        const total = rows.reduce((sum, row) => sum + row.normal.total + row.adept.total, 0);
-                        const maxed = rows.reduce((sum, row) => sum + row.normal.maxed + row.adept.maxed, 0);
-                        return overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION';
-                      })()}</span>
+                      <span className="vault-category-stats">{overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION'}</span>
                       <span className="vault-category-arrow">›</span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
               <section className="vault-block vault-exotic">
