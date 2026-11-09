@@ -922,8 +922,9 @@ function EndgameProgressBar({ activity, onFinished, onClose }: {
     return () => { cancelled = true; if (interval !== undefined) window.clearInterval(interval); };
   }, [activity.id]);
   const percentage = Math.max(0, Math.min(100, (1 - remaining / duration) * 100));
+  const activityBanner = getActivityBanner(activity) ?? getGeneralActivityBanner(activity);
   return (
-    <div className="endgame-progress-hud" role="status" aria-live="polite">
+    <div className="endgame-progress-hud" role="status" aria-live="polite" style={activityBanner ? { backgroundImage: `linear-gradient(90deg, rgba(12, 13, 18, .92), rgba(12, 13, 18, .70)), url("${activityBanner}")` } : undefined}>
       <div className="endgame-progress-header">
         <div><span>{activity.type.toUpperCase()} // {status}</span><strong>{activity.name}</strong></div>
         <button type="button" onClick={onClose} aria-label="Dismiss activity progress">×</button>
