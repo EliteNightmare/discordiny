@@ -195,7 +195,7 @@ function Profile(){
               </div>
               <span className="global-activity-event-activity">{event.activity}</span>
               <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.result}</span>
-              {event.weapon&&<div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
+              {event.weapon&&<div className="global-activity-event-weapon">
                 {getWeaponImage(event.weapon.name)&&<img className="global-activity-event-weapon-icon" src={getWeaponImage(event.weapon.name)} alt="" aria-hidden="true"/>}
                 <div><span>WEAPON DROP</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
               </div>}
