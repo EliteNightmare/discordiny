@@ -194,7 +194,17 @@ function App() {
       );
     }, []);
 
-  if (path === "/brayterminal/-=-=-=-=-=-=-=-=-=-/warmind/TEST" || path === "/brayterminal/-=-=-=-=-=-=-=-=-=-/warmind/TEST/") {
+
+  // Standalone Bray terminal route; keep this before maintenance and homepage routing.
+  // Browsers percent-encode '=' in the address bar. Match the decoded
+  // pathname so both literal and %3D-encoded terminal URLs work.
+  let decodedPath = path;
+  try {
+    decodedPath = decodeURIComponent(path);
+  } catch {
+    // Malformed encoding should not break the rest of the application.
+  }
+  if (decodedPath.replace(/\/$/, "") === "/brayterminal/-=-=-=-=-=-=-=-=-=-/warmind/TEST") {
     return <BrayTerminal />;
   }
 
