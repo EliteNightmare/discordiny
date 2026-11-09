@@ -855,11 +855,13 @@ function EndgameProgressBar({ activity, onFinished, onClose }: {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ activityId: activity.id, phase: "start" }),
         });
-        const start = await startResponse.json() as { success?: boolean; error?: string; durationSeconds?: number };
+        const start = await startResponse.json() as { success?: boolean; error?: string; durationSeconds?: number; remainingSeconds?: number };
         if (!startResponse.ok || !start.success) throw new Error(start.error ?? "Unable to start activity");
         if (cancelled) return;
-        const seconds = start.durationSeconds ?? duration;
-        const finishAt = Date.now() + seconds * 1000;
+        const seconds = start.remainingSeconds ?? start.durationSeconds ?? duration;
+        // The server uses integer seconds. Add a small grace period so a
+        // browser clock cannot attempt to finish before the Worker permits it.
+        const finishAt = Date.now() + (seconds + 1.25) * 1000;
         setRemaining(seconds);
         setStatus("ACTIVITY IN PROGRESS");
         await new Promise<void>(resolve => {
@@ -872,17 +874,35 @@ function EndgameProgressBar({ activity, onFinished, onClose }: {
         });
         if (cancelled) return;
         setStatus("RESOLVING REWARDS");
-        const response = await fetch("/api/game/activity/run", {
-          method: "POST", credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ activityId: activity.id, phase: "finish" }),
-        });
-        const data = await response.json() as {
-          success?: boolean; error?: string;
+        let data: {
+          success?: boolean; error?: string; remainingSeconds?: number;
           result?: { fullClear: boolean; rewards?: Record<string, number>; xp: number;
             weapon?: { dropped: boolean; name: string | null; rarity: string | null; adept: boolean } };
-        };
-        if (!response.ok || !data.success || !data.result) throw new Error(data.error ?? "Activity failed");
+        } = {};
+        // A 409 is a timing signal, not a failed run. Wait out the server's
+        // remaining time and retry without restarting the activity.
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const response = await fetch("/api/game/activity/run", {
+            method: "POST", credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ activityId: activity.id, phase: "finish" }),
+          });
+          data = await response.json();
+          if (cancelled) return;
+          if (response.status === 409 && data.remainingSeconds !== undefined) {
+            const waitSeconds = Math.max(1, data.remainingSeconds + 1);
+            setRemaining(Math.ceil(waitSeconds));
+            setStatus("FINALIZING ACTIVITY");
+            await new Promise(resolve => window.setTimeout(resolve, waitSeconds * 1000));
+            if (cancelled) return;
+            continue;
+          }
+          if (!response.ok || !data.success || !data.result) {
+            throw new Error(data.error ?? "Activity failed");
+          }
+          break;
+        }
+        if (!data.success || !data.result) throw new Error("Could not finalize activity. Please retry.");
         if (cancelled) return;
         const result = data.result;
         if (!result.fullClear) {
