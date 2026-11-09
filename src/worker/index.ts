@@ -10354,6 +10354,7 @@ app.get("/api/game/activity/feed", async (c) => {
       .prepare(
         `SELECT
            global_activity_feed.id,
+           global_activity_feed.user_id,
            global_activity_feed.activity_name,
            global_activity_feed.activity_type,
            global_activity_feed.result,
@@ -10383,6 +10384,7 @@ app.get("/api/game/activity/feed", async (c) => {
       )
       .all<{
         id: number;
+        user_id: number;
         activity_name: string;
         activity_type: string;
         result: string;
@@ -10399,7 +10401,19 @@ app.get("/api/game/activity/feed", async (c) => {
     authenticated: true,
 
     events:
-      (events.results ?? []).map(
+      (events.results ?? []).filter((event, index, all) => {
+        // Ignore accidental double writes, not distinct legitimate drops.
+        const eventTime = Date.parse(event.created_at.replace(" ", "T") + (event.created_at.includes("Z") ? "" : "Z"));
+        return !all.slice(0, index).some((previous) => {
+          const previousTime = Date.parse(previous.created_at.replace(" ", "T") + (previous.created_at.includes("Z") ? "" : "Z"));
+          return previous.user_id === event.user_id &&
+            previous.activity_name === event.activity_name &&
+            previous.weapon_name === event.weapon_name &&
+            previous.weapon_adept === event.weapon_adept &&
+            previous.result === event.result &&
+            Math.abs(previousTime - eventTime) <= 2000;
+        });
+      }).map(
         (event) => ({
           id: event.id,
 
