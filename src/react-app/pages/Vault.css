@@ -603,3 +603,24 @@
 .vault-category.vault-category-mastered .vault-category-description,
 .vault-category.vault-category-mastered .vault-category-stats,
 .vault-category.vault-category-mastered .vault-category-arrow { color: #271904; }
+
+/* Subcategory completion badges: same collection rules as the main Vault. */
+.vault-activity-tab.vault-activity-tab-complete {
+  border: 1px solid rgba(226, 178, 75, .88);
+  box-shadow: inset 0 0 0 1px rgba(238, 188, 85, .18), 0 0 12px rgba(202, 148, 44, .12);
+}
+.vault-activity-tab.vault-activity-tab-mastered {
+  border: 1px solid #f6d78d;
+  background: linear-gradient(135deg, #f9df9a, #d8aa49 53%, #b88528);
+  color: #241807;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .42), 0 0 15px rgba(219, 166, 55, .28);
+}
+.vault-activity-tab.vault-activity-tab-mastered small,
+.vault-activity-tab.vault-activity-tab-mastered .vault-tab-stats {
+  color: #35240a;
+}
+.vault-activity-tab.vault-activity-tab-mastered.active,
+.vault-activity-tab.vault-activity-tab-mastered:hover {
+  background: linear-gradient(135deg, #ffe7aa, #e4b858 53%, #c28e2f);
+  color: #241807;
+}
