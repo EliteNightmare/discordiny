@@ -166,6 +166,7 @@ type ActivityCardProps = {
   daily?: boolean;
   disabled?: boolean;
   status?: string;
+  progress?: { remaining: number; percentage: number; checkpoints: number; total: number };
 
   charges?: {
     remaining: number;
@@ -674,6 +675,7 @@ function ActivityCard({
   daily = false,
   disabled = false,
   status,
+  progress,
   charges,
   onClick,
 }: ActivityCardProps) {
@@ -825,6 +827,19 @@ function ActivityCard({
           </div>
         )}
 
+        {progress && (
+          <div className="activity-card-run-progress" aria-label="Timed activity progress">
+            <div className="activity-card-run-track"><div style={{width: `${progress.percentage}%`}} /></div>
+            <div className="activity-card-run-checkpoints">
+              {Array.from({length: progress.total}, (_, i) => (
+                <span key={i} className={i < progress.checkpoints ? "is-reached" : ""}>
+                  {i < progress.checkpoints ? "✓" : "◇"} {activity?.encounters?.[i] ?? `Checkpoint ${i + 1}`}
+                </span>
+              ))}
+            </div>
+            <small>{Math.floor(progress.remaining / 60)}:{String(progress.remaining % 60).padStart(2,"0")} REMAINING</small>
+          </div>
+        )}
         {status && (
           <span className="activity-dashboard-status">
             {status}
@@ -836,10 +851,10 @@ function ActivityCard({
 }
 
 /** Raid/dungeon runs use a lightweight top HUD rather than the encounter modal. */
-function EndgameProgressBar({ activity, onFinished, onClose }: {
+function EndgameProgressBar({ activity, onFinished, onProgress }: {
   activity: Activity;
   onFinished: (loot: ActivityLootPayload | null) => void;
-  onClose: () => void;
+  onProgress: (progress: { remaining: number; percentage: number; checkpoints: number; total: number }) => void;
 }) {
   const duration = activity.type === "raid" ? 180 : 90;
   const [remaining, setRemaining] = useState(duration);
@@ -922,19 +937,14 @@ function EndgameProgressBar({ activity, onFinished, onClose }: {
     return () => { cancelled = true; if (interval !== undefined) window.clearInterval(interval); };
   }, [activity.id]);
   const percentage = Math.max(0, Math.min(100, (1 - remaining / duration) * 100));
-  const activityBanner = getActivityBanner(activity) ?? getGeneralActivityBanner(activity);
-  return (
-    <div className="endgame-progress-hud" role="status" aria-live="polite" style={activityBanner ? { backgroundImage: `linear-gradient(90deg, rgba(12, 13, 18, .92), rgba(12, 13, 18, .70)), url("${activityBanner}")` } : undefined}>
-      <div className="endgame-progress-header">
-        <div><span>{activity.type.toUpperCase()} // {status}</span><strong>{activity.name}</strong></div>
-        <button type="button" onClick={onClose} aria-label="Dismiss activity progress">×</button>
-      </div>
-      {failure ? <p className="endgame-progress-error">{failure}</p> : <>
-        <div className="endgame-progress-track"><div style={{ width: `${percentage}%` }} /></div>
-        <small>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")} REMAINING</small>
-      </>}
-    </div>
-  );
+  // Checkpoints represent elapsed encounter stages, not confirmed clears.
+  const total = Math.max(1, activity.encounters?.length ?? 4);
+  const checkpoints = Math.min(total, Math.floor(percentage * total / 100));
+  useEffect(() => {
+    onProgress({ remaining, percentage, checkpoints, total });
+  }, [remaining, percentage, checkpoints, total, onProgress]);
+  if (failure) return <span className="timed-run-error" role="alert">{failure}</span>;
+  return null;
 }
 
 export default function Activities() {
@@ -987,12 +997,30 @@ export default function Activities() {
   );
 
   const [timedActivities, setTimedActivities] = useState<Activity[]>([]);
-  const [timedDropdownOpen, setTimedDropdownOpen] = useState(true);
+  const [timedProgress, setTimedProgress] = useState<Record<string, { remaining: number; percentage: number; checkpoints: number; total: number }>>({});
+  const timedStorageKey = "discordiny:timed-activities:v2";
+  useEffect(() => {
+    if (!data) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id: string; expires: number}>;
+      const active = saved.filter(entry => entry.expires > Date.now() - 300000);
+      const available = [data.current.raid, data.current.dungeon].filter((a): a is Activity => Boolean(a));
+      setTimedActivities(current => {
+        const additions = available.filter(activity => active.some(entry => entry.id === String(activity.id)) && !current.some(item => item.id === activity.id));
+        return additions.length ? [...current, ...additions] : current;
+      });
+    } catch { /* local storage may be unavailable */ }
+  }, [data?.current.raid?.id, data?.current.dungeon?.id]);
 
   function startTimedActivity(activity: Activity) {
     setTimedActivities(current => current.some(item => item.id === activity.id)
       ? current : [...current, activity]);
-    setTimedDropdownOpen(true);
+    try {
+      const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id:string; expires:number}>;
+      const filtered = saved.filter(entry => entry.id !== String(activity.id) && entry.expires > Date.now() - 300000);
+      filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 180 : 90) * 1000});
+      localStorage.setItem(timedStorageKey, JSON.stringify(filtered));
+    } catch { /* optional browser persistence */ }
     void fetch("/api/game/profile", { credentials: "include" })
       .then(response => response.ok ? response.json() : null)
       .then(profile => { if (profile?.level) beforeLevelRef.current = profile.level as LevelProgress; })
@@ -2741,6 +2769,7 @@ export default function Activities() {
                 <div className="activities-grid activities-grid-two">
                   <ActivityCard
                     label="DUNGEON"
+                    progress={timedProgress[String(data.current.dungeon?.id ?? "")]}
                     activity={
                       data.current
                         .dungeon
@@ -2779,6 +2808,7 @@ export default function Activities() {
 
                   <ActivityCard
                     label="RAID"
+                    progress={timedProgress[String(data.current.raid?.id ?? "")]}
                     activity={
                       data.current
                         .raid
@@ -2851,7 +2881,7 @@ export default function Activities() {
                         event,
                       ) => (
                         <article
-                          className="global-activity-event"
+                          className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`}
                           key={
                             event.id
                           }
@@ -2906,7 +2936,7 @@ export default function Activities() {
                           </span>
 
                           {event.weapon && (
-                            <div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
+                            <div className="global-activity-event-weapon">
                               {getWeaponImage(
                                 event.weapon
                                   .name,
@@ -2998,31 +3028,28 @@ export default function Activities() {
         />
       )}
 
-      {timedActivities.length > 0 && (
-        <section className="timed-activity-dropdown" aria-label="Timed activities in progress">
-          <button type="button" className="timed-activity-dropdown-toggle"
-            aria-expanded={timedDropdownOpen}
-            onClick={() => setTimedDropdownOpen(open => !open)}>
-            <span>TIMED ACTIVITIES <strong>({timedActivities.length})</strong></span>
-            <span aria-hidden="true">{timedDropdownOpen ? "▴" : "▾"}</span>
-          </button>
-          <div className={timedDropdownOpen ? "timed-activity-dropdown-content" : "timed-activity-dropdown-content is-collapsed"}>
-            {timedActivities.map(activity => (
-              <EndgameProgressBar
-                key={activity.id}
-                activity={activity}
-                onClose={() => setTimedActivities(current => current.filter(item => item.id !== activity.id))}
-                onFinished={(loot) => {
-                  setTimedActivities(current => current.filter(item => item.id !== activity.id));
-                  if (loot) setLootDrop({ id: ++lootDropCounter.current, loot, before: beforeLevelRef.current });
-                  void loadActivities();
-                  void loadGlobalActivityFeed();
-                }}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {timedActivities.map(activity => (
+        <EndgameProgressBar
+          key={activity.id}
+          activity={activity}
+          onProgress={progress => setTimedProgress(current => {
+            const previous = current[String(activity.id)];
+            if (previous && previous.remaining === progress.remaining && previous.checkpoints === progress.checkpoints) return current;
+            return {...current, [String(activity.id)]: progress};
+          })}
+          onFinished={loot => {
+            setTimedActivities(current => current.filter(item => item.id !== activity.id));
+            setTimedProgress(current => { const next = {...current}; delete next[String(activity.id)]; return next; });
+            try {
+              const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id:string; expires:number}>;
+              localStorage.setItem(timedStorageKey, JSON.stringify(saved.filter(entry => entry.id !== String(activity.id))));
+            } catch { /* optional persistence */ }
+            if (loot) setLootDrop({id: ++lootDropCounter.current, loot, before: beforeLevelRef.current});
+            void loadActivities();
+            void loadGlobalActivityFeed();
+          }}
+        />
+      ))}
       {selectedEndgameActivity && !["raid", "dungeon"].includes(selectedEndgameActivity.type) && (
         <ActivityRunModal
           activity={
