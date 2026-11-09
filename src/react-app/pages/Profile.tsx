@@ -34,7 +34,6 @@ const upgradeMaterialIcons = Object.fromEntries(
 );
 const getUpgradeMaterialIcon = (name: string) => upgradeMaterialIcons[normalizeMaterialName(name)];
 const weaponImages = import.meta.glob("../assets/icons/weapons/**/*.png", { eager: true, query: "?url", import: "default" }) as Record<string,string>;
-const normalizeAsset = (value:string) => value.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
 const getWeaponImage = (name: string) => {
   const canonical = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
   const exact = canonical(name);
