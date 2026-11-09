@@ -2028,3 +2028,37 @@
 .timed-activity-dropdown-content.is-collapsed { visibility: hidden; max-height: 0; padding: 0; overflow: hidden; border: 0; }
 .timed-activity-dropdown .endgame-progress-hud { position: relative; inset: auto; transform: none; width: 100%; max-width: none; margin: 0; }
 @media(max-width:650px) { .timed-activity-dropdown { top: 58px; width: calc(100vw - 18px); } .timed-activity-dropdown-content { max-height: 55vh; } }
+
+/* Timed endgame list: behind encounter modals (z-index 5000), dark Activities palette. */
+.timed-activity-dropdown {
+  z-index: 4000;
+  filter: none;
+}
+.timed-activity-dropdown-toggle {
+  background: rgba(19, 19, 24, .86);
+  color: #e7e3e0;
+  border-color: rgba(192, 183, 168, .27);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.timed-activity-dropdown-content {
+  background: rgba(13, 13, 18, .76);
+  border-color: rgba(192, 183, 168, .20);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.timed-activity-dropdown .endgame-progress-hud {
+  z-index: auto;
+  background-color: rgba(17, 16, 20, .76);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-color: rgba(192, 183, 168, .28);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .25);
+}
+.timed-activity-dropdown .endgame-progress-header span { color: #c8b9a1; }
+.timed-activity-dropdown .endgame-progress-track { background: rgba(8, 8, 12, .60); }
+.timed-activity-dropdown .endgame-progress-track > div {
+  background: linear-gradient(90deg, #7c7163, #d5b889);
+}
+.timed-activity-dropdown .endgame-progress-hud small { color: #d1c8bb; }
