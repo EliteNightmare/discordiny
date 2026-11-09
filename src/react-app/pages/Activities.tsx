@@ -979,6 +979,7 @@ export default function Activities() {
 
 
   const [settingExploreTimer, setSettingExploreTimer] = useState(false);
+  const [resettingDailyCharges, setResettingDailyCharges] = useState(false);
   const [encounterDrops, setEncounterDrops] = useState<Array<{ id: number; loot: ActivityLootPayload }>>([]);
   const [lootDrop, setLootDrop] = useState<{ id: number; loot: ActivityLootPayload; before: LevelProgress | null } | null>(null);
   const beforeLevelRef = useRef<LevelProgress | null>(null);
@@ -999,13 +1000,13 @@ export default function Activities() {
     try {
       const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id: string; expires: number}>;
       const active = saved.filter(entry => entry.expires > Date.now() - 300000);
-      const available = [data.current.raid, data.current.dungeon].filter((a): a is Activity => Boolean(a));
+      const available = [data.current.raid, data.current.dungeon, data.rotation.dailyRaid.activity, data.rotation.dailyDungeon.activity].filter((a): a is Activity => Boolean(a));
       setTimedActivities(current => {
         const additions = available.filter(activity => active.some(entry => entry.id === String(activity.id)) && !current.some(item => item.id === activity.id));
         return additions.length ? [...current, ...additions] : current;
       });
     } catch { /* local storage may be unavailable */ }
-  }, [data?.current.raid?.id, data?.current.dungeon?.id]);
+  }, [data?.current.raid?.id, data?.current.dungeon?.id, data?.rotation.dailyRaid.activity?.id, data?.rotation.dailyDungeon.activity?.id]);
 
   function startTimedActivity(activity: Activity) {
     setTimedActivities(current => current.some(item => item.id === activity.id)
@@ -1989,6 +1990,35 @@ export default function Activities() {
                   </div>
                 </div>
 
+                {data?.canSetExplorationTimer && (
+                  <button
+                    type="button"
+                    className="exploration-claim-button exploration-timer-admin-button"
+                    disabled={resettingDailyCharges}
+                    onClick={async () => {
+                      setResettingDailyCharges(true);
+                      setError("");
+                      try {
+                        const response = await fetch("/api/game/activities/reset-daily-charges", {
+                          method: "POST",
+                          credentials: "include",
+                        });
+                        const result = await response.json() as { success?: boolean; error?: string };
+                        if (!response.ok || !result.success) {
+                          throw new Error(result.error ?? "Unable to reset daily charges.");
+                        }
+                        await loadActivities();
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Unable to reset daily charges.");
+                      } finally {
+                        setResettingDailyCharges(false);
+                      }
+                    }}
+                  >
+                    {resettingDailyCharges ? "RESETTING..." : "RESET MY DAILY CHARGES"}
+                  </button>
+                )}
+
                 <div className="activities-grid activities-grid-three">
                   <ActivityCard
                     label="DAILY SHOWDOWN"
@@ -2037,6 +2067,7 @@ export default function Activities() {
 
                   <ActivityCard
                     label="DAILY DUNGEON"
+                    progress={timedProgress[String(data.rotation.dailyDungeon.activity?.id ?? "")]}
                     activity={
                       data.rotation
                         .dailyDungeon
@@ -2084,6 +2115,7 @@ export default function Activities() {
 
                   <ActivityCard
                     label="DAILY RAID"
+                    progress={timedProgress[String(data.rotation.dailyRaid.activity?.id ?? "")]}
                     activity={
                       data.rotation
                         .dailyRaid
