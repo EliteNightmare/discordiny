@@ -14,7 +14,7 @@
  *
  * Empire Hunt:
  *   Empire Hunt: The Warrior
- *   Empire Hunt: The Priest
+ *   Empire Hunt: The Priestess
  *   Empire Hunt: The Technocrat
  *   Weapon source: emph
  *
