@@ -4,6 +4,7 @@ import {
 } from "react";
 
 import Home from "./pages/Home";
+import BrayTerminal from "./pages/BrayTerminal";
 import Profile from "./pages/Profile";
 import Account from "./pages/Account";
 import Activities from "./pages/Activities";
@@ -19,7 +20,6 @@ import Articles from "./pages/Articles";
 import AdminPanel from "./pages/AdminPanel";
 import Patchnotes from "./pages/Patchnotes";
 import About from "./pages/About";
-import BrayTerminal from "./pages/BrayTerminal";
 
 import SiteGate, {
   shouldGateSite,
@@ -193,6 +193,10 @@ function App() {
         true,
       );
     }, []);
+
+  if (path === "/brayterminal/-=-=-=-=-=-=-=-=-=-/warmind/TEST" || path === "/brayterminal/-=-=-=-=-=-=-=-=-=-/warmind/TEST/") {
+    return <BrayTerminal />;
+  }
 
   /*
    * TERMINAL SUBDOMAIN
