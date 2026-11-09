@@ -3878,6 +3878,29 @@ app.post("/api/game/travel", async (c) => {
 
 // Private testing convenience: only the account with numeric user ID 1
 // can instantly cap its own exploration timer. Never accepts a user ID.
+// Account ID 1 only: reset this account's daily activity charge counters.
+// The user ID is always derived from the authenticated session.
+app.post("/api/game/activities/reset-daily-charges", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+  const session = await c.env.DB.prepare(
+    "SELECT user_id FROM sessions WHERE id = ? LIMIT 1",
+  ).bind(sessionId).first<{ user_id: number }>();
+  if (!session) return c.json({ authenticated: false }, 401);
+  if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
+
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const keys = [
+    getDailyEndgameChargeKey("raid", nowSeconds),
+    getDailyEndgameChargeKey("dungeon", nowSeconds),
+    getDailyShowdownChargeKey(nowSeconds),
+  ];
+  await c.env.DB.prepare(
+    "DELETE FROM player_cooldowns WHERE user_id = ? AND activity IN (?, ?, ?)",
+  ).bind(session.user_id, ...keys).run();
+  return c.json({ success: true });
+});
+
 app.post("/api/game/explore/set-max-timer", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
