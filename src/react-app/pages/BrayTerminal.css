@@ -1,0 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+.bray-terminal { position:fixed; inset:0; z-index:99999; overflow:auto; background:#000; color:#ff9d0a; font-family:'Share Tech Mono','Courier New',monospace; }
+.bray-terminal-inner { padding:8px 10px 48px; }
+.bray-terminal-title { margin:0 0 5px; font-family:'Share Tech Mono',monospace; font-weight:900; font-size:clamp(32px,6.1vw,110px); line-height:1.03; letter-spacing:.065em; white-space:nowrap; transform-origin:left center; transform:scaleX(.81); width:123%; color:transparent; -webkit-text-stroke:1.5px #ff9d0a; text-shadow:0 0 5px #ff9500,0 0 15px #d97700,0 0 27px #9c4e00; filter:drop-shadow(0 0 5px #a05a00); }
+.bray-terminal-output { font-size:clamp(15px,2.2vw,33px); line-height:1.45; text-shadow:0 0 3px #ff9a00,0 0 9px #b76a00; }
+.bray-terminal-line { min-height:1.45em; white-space:pre-wrap; overflow-wrap:anywhere; }
+.bray-terminal-prompt { margin-right:0; }
+.bray-terminal-caret { animation:bray-blink .85s steps(1) infinite; }
+@keyframes bray-blink { 50% {opacity:0;} }
+@media(max-width:650px) { .bray-terminal-inner {padding:12px 8px;} .bray-terminal-title {font-size:clamp(22px,5.7vw,42px); margin-bottom:12px;} .bray-terminal-output {font-size:clamp(15px,3.8vw,21px);line-height:1.6;} }
+@media(prefers-reduced-motion:reduce) { .bray-terminal-caret {animation:none;} }
