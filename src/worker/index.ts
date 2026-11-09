@@ -4134,6 +4134,13 @@ app.post("/api/game/explore/claim", async (c) => {
     ).bind(session.user_id, weapon.name));
   }
 
+  for (const weapon of droppedWeapons) {
+    writes.push(c.env.DB.prepare(
+      `INSERT INTO global_activity_feed (user_id, activity_name, activity_type, result, weapon_name, weapon_adept)
+       VALUES (?, ?, 'exploration', 'DROP', ?, ?)`,
+    ).bind(session.user_id, `Exploration: ${profile.zone}`, weapon.name, weapon.adept ? 1 : 0));
+  }
+
   if (writes.length > 0) await c.env.DB.batch(writes);
 
   return c.json({
@@ -7440,6 +7447,7 @@ app.post("/api/game/activity/run", async (c) => {
 
   let body: {
     activityId?: string;
+    phase?: "start" | "finish";
   };
 
   try {
@@ -9578,6 +9586,26 @@ app.post("/api/game/activity/run", async (c) => {
     );
   }
 
+  // Raid/dungeon timers are checked on the Worker, not just in React.
+  // A pending run is tied to the authenticated player and activity.
+  const runDurationSeconds = activity.type === "raid" ? 90 : 180;
+  const pendingRunKey = `__endgame_pending_${activity.id}`;
+  if (body.phase === "start") {
+    await c.env.DB.prepare(
+      `INSERT INTO player_cooldowns (user_id, activity, timestamp) VALUES (?, ?, ?)
+       ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+    ).bind(session.user_id, pendingRunKey, nowSeconds).run();
+    return c.json({ success: true, startedAt: nowSeconds, durationSeconds: runDurationSeconds });
+  }
+  const pendingRun = await c.env.DB.prepare(
+    `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
+  ).bind(session.user_id, pendingRunKey).first<{ timestamp: number }>();
+  const startedAt = Number(pendingRun?.timestamp ?? 0);
+  if (!startedAt || nowSeconds - startedAt < runDurationSeconds) {
+    return c.json({ success: false, error: "Activity is still in progress.",
+      remainingSeconds: Math.max(0, runDurationSeconds - (nowSeconds - startedAt)) }, 409);
+  }
+
   /* =======================================================
      ENDGAME LIMIT ENFORCEMENT
 
@@ -9967,6 +9995,9 @@ app.post("/api/game/activity/run", async (c) => {
       endgameStateWrite,
     );
   }
+  writes.push(c.env.DB.prepare(
+    `DELETE FROM player_cooldowns WHERE user_id = ? AND activity = ? AND timestamp = ?`,
+  ).bind(session.user_id, pendingRunKey, startedAt));
 
   const currencyNames =
     new Set([
