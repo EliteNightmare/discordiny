@@ -9598,7 +9598,7 @@ app.post("/api/game/activity/run", async (c) => {
     const existingStartedAt = Number(existing?.timestamp ?? 0);
     const stillActive = existingStartedAt > 0 &&
       nowSeconds - existingStartedAt >= 0 &&
-      nowSeconds - existingStartedAt < runDurationSeconds;
+      nowSeconds - existingStartedAt < runDurationSeconds + 86400;
     if (!stillActive) {
       await c.env.DB.prepare(
         `INSERT INTO player_cooldowns (user_id, activity, timestamp) VALUES (?, ?, ?)
