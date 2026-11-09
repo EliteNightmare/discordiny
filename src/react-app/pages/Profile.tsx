@@ -33,9 +33,16 @@ const upgradeMaterialIcons = Object.fromEntries(
   ]),
 );
 const getUpgradeMaterialIcon = (name: string) => upgradeMaterialIcons[normalizeMaterialName(name)];
-const weaponImages = import.meta.glob("../assets/weapons/**/*.png", { eager: true, query: "?url", import: "default" }) as Record<string,string>;
+const weaponImages = import.meta.glob("../assets/icons/weapons/**/*.png", { eager: true, query: "?url", import: "default" }) as Record<string,string>;
 const normalizeAsset = (value:string) => value.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
-const getWeaponImage = (name:string) => Object.entries(weaponImages).find(([path]) => normalizeAsset(path.split("/").pop()?.replace(/\.png$/i,"") || "") === normalizeAsset(name.replace(/\s*\(Adept\)\s*$/i,"")))?.[1];
+const getWeaponImage = (name: string) => {
+  const canonical = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const exact = canonical(name);
+  const normal = canonical(name.replace(/\s*\(Adept\)\s*$/i, ""));
+  const find = (target: string) => Object.entries(weaponImages).find(([path]) =>
+    canonical(path.split("/").pop()?.replace(/\.png$/i, "") || "") === target)?.[1];
+  return find(exact) ?? (exact !== normal ? find(normal) : undefined);
+};
 function formatFeedTime(createdAt:string, now:number):string {
   const parsed=Date.parse(createdAt.includes("T")?createdAt:`${createdAt.replace(" ","T")}Z`);
   if(!Number.isFinite(parsed))return "";
@@ -173,13 +180,13 @@ function Profile(){
     <section className="profile-block"><div className="profile-block-header"><div><div className="profile-eyebrow">COLLECTIONS</div><h2>Fishing Catalogue</h2></div><span className="profile-chip">COMING SOON</span></div>
       <div className="profile-coming-soon"><strong>Coming Soon</strong><p>Fishing Catalogue is not available yet.</p></div>
     </section></div></div>
-    <aside ref={globalFeedRef} className="global-activity-feed profile-live-feed" aria-label="Global activity feed">
+    <aside ref={globalFeedRef} className="global-activity-feed profile-live-feed" aria-label="Global weapon drops">
       <div className="global-activity-feed-inner">
-        <div className="global-activity-feed-heading"><span>LIVE FEED</span><h2>Global Activity</h2></div>
+        <div className="global-activity-feed-heading"><span>LIVE DROPS</span><h2>Global Weapon Drops</h2></div>
         {feedError&&<p className="profile-help">Feed temporarily unavailable. Retrying automatically.</p>}
         {(isMobileFeed?feed.slice(0,5):feed).length>0?(
           <div className="global-activity-feed-events">
-            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className="global-activity-event" key={event.id}>
+            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`} key={event.id}>
               <div className="global-activity-event-top">
                 <div className="global-activity-event-player-row">
                   {event.avatarUrl&&<img className="global-activity-event-avatar" src={event.avatarUrl} alt="" aria-hidden="true"/>}
@@ -195,7 +202,7 @@ function Profile(){
               </div>}
             </article>)}
           </div>
-        ):<div className="global-activity-feed-empty"><span className="global-activity-feed-pulse" aria-hidden="true"/><strong>{feedLoading?"CONNECTING TO FEED":"WAITING FOR ACTIVITY"}</strong><p>Clears, wipes and weapon drops from all players will appear here.</p></div>}
+        ):<div className="global-activity-feed-empty"><span className="global-activity-feed-pulse" aria-hidden="true"/><strong>{feedLoading?"CONNECTING TO FEED":"WAITING FOR WEAPON DROPS"}</strong><p>Weapon drops earned today by players appear here.</p></div>}
       </div>
     </aside></div>
     {titleOpen&&<div className="profile-modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setTitleOpen(false);}}><section className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-title-dialog"><div className="profile-modal-heading"><h2 id="profile-title-dialog">Change Title</h2><button type="button" aria-label="Close" onClick={()=>setTitleOpen(false)}>×</button></div><p>No titles are available yet.</p><div className="profile-coming-soon"><strong>Coming Soon</strong><p>Titles will appear here once they are added to Discordiny.</p></div></section></div>}
