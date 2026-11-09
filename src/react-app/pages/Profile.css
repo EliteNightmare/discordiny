@@ -1597,3 +1597,33 @@
 /* Only the outer drop entry receives Adept treatment. */
 .profile-redesign .global-activity-event-weapon { border-color:initial; box-shadow:none; }
 .profile-live-feed .global-activity-event.global-activity-event-adept { border-color:rgba(227,187,102,.38); background:linear-gradient(115deg,rgba(165,124,52,.13),rgba(205,169,91,.045) 60%,rgba(128,92,40,.10)); }
+
+/* Adept: wider, softly rounded GOLD OUTER CARD only (never the weapon row). */
+.global-activity-feed .global-activity-event.global-activity-event-adept,
+.profile-live-feed .global-activity-event.global-activity-event-adept {
+  border: 1px solid rgba(228, 190, 113, .48) !important;
+  border-radius: 13px !important;
+  padding: 12px 15px !important;
+  margin-inline: -5px;
+  width: calc(100% + 10px);
+  max-width: none;
+  box-sizing: border-box;
+  background: linear-gradient(112deg, rgba(165, 124, 52, .16), rgba(211, 173, 91, .055) 55%, rgba(129, 95, 43, .13)) !important;
+  box-shadow: inset 0 0 18px rgba(226, 184, 95, .045), 0 0 13px rgba(185, 144, 63, .045) !important;
+  overflow: hidden;
+}
+.global-activity-feed .global-activity-event.global-activity-event-adept .global-activity-event-weapon,
+.profile-live-feed .global-activity-event.global-activity-event-adept .global-activity-event-weapon,
+.profile-redesign .global-activity-event.global-activity-event-adept .global-activity-event-weapon-adept {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+@media (max-width: 650px) {
+  .global-activity-feed .global-activity-event.global-activity-event-adept,
+  .profile-live-feed .global-activity-event.global-activity-event-adept {
+    margin-inline: -3px;
+    width: calc(100% + 6px);
+    padding: 10px 11px !important;
+  }
+}
