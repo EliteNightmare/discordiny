@@ -2062,3 +2062,18 @@
   background: linear-gradient(90deg, #7c7163, #d5b889);
 }
 .timed-activity-dropdown .endgame-progress-hud small { color: #d1c8bb; }
+
+/* Timed Raid/Dungeon progress belongs to the activity card, not a floating dropdown. */
+.activity-card-run-progress { display:grid; gap:5px; width:100%; margin-top:9px; color:#d8c9ae; }
+.activity-card-run-track { height:7px; border-radius:8px; background:rgba(0,0,0,.65); overflow:hidden; }
+.activity-card-run-track>div { height:100%; border-radius:8px; background:linear-gradient(90deg,#76644e,#cfb184); transition:width .2s linear; }
+.activity-card-run-checkpoints { display:flex; flex-wrap:wrap; gap:5px 10px; font-size:.58rem; letter-spacing:.03em; }
+.activity-card-run-checkpoints span { color:#9e978b; }
+.activity-card-run-checkpoints .is-reached { color:#e2c58e; }
+.activity-card-run-progress small { font-size:.62rem; text-align:right; }
+.global-activity-feed .global-activity-event.global-activity-event-adept { position:relative; isolation:isolate; overflow:hidden; border:1px solid rgba(227,187,102,.38); background:linear-gradient(115deg,rgba(165,124,52,.13),rgba(205,169,91,.045) 60%,rgba(128,92,40,.10)); box-shadow:inset 0 0 15px rgba(220,182,101,.035); }
+.global-activity-feed .global-activity-event.global-activity-event-adept::after { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; background:linear-gradient(110deg,transparent 37%,rgba(255,227,162,.08) 50%,transparent 63%); animation:activity-adept-shimmer 7s ease-in-out infinite; }
+@keyframes activity-adept-shimmer { 0%,65% {transform:translateX(-120%)} 95%,100% {transform:translateX(120%)} }
+@media(prefers-reduced-motion:reduce){.global-activity-feed .global-activity-event.global-activity-event-adept::after{animation:none}}
+
+.global-activity-feed .global-activity-event-weapon { box-shadow:none; }
