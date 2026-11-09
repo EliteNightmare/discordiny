@@ -834,6 +834,88 @@ function ActivityCard({
     </button>
   );
 }
+
+/** Raid/dungeon runs use a lightweight top HUD rather than the encounter modal. */
+function EndgameProgressBar({ activity, onFinished, onClose }: {
+  activity: Activity;
+  onFinished: (loot: ActivityLootPayload | null) => void;
+  onClose: () => void;
+}) {
+  const duration = activity.type === "raid" ? 90 : 180;
+  const [remaining, setRemaining] = useState(duration);
+  const [status, setStatus] = useState("PREPARING ACTIVITY");
+  const [failure, setFailure] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    let interval: number | undefined;
+    const run = async () => {
+      try {
+        const startResponse = await fetch("/api/game/activity/run", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activityId: activity.id, phase: "start" }),
+        });
+        const start = await startResponse.json() as { success?: boolean; error?: string; durationSeconds?: number };
+        if (!startResponse.ok || !start.success) throw new Error(start.error ?? "Unable to start activity");
+        if (cancelled) return;
+        const seconds = start.durationSeconds ?? duration;
+        const finishAt = Date.now() + seconds * 1000;
+        setRemaining(seconds);
+        setStatus("ACTIVITY IN PROGRESS");
+        await new Promise<void>(resolve => {
+          interval = window.setInterval(() => {
+            if (cancelled) { window.clearInterval(interval); resolve(); return; }
+            const left = Math.max(0, Math.ceil((finishAt - Date.now()) / 1000));
+            setRemaining(left);
+            if (left === 0) { window.clearInterval(interval); resolve(); }
+          }, 200);
+        });
+        if (cancelled) return;
+        setStatus("RESOLVING REWARDS");
+        const response = await fetch("/api/game/activity/run", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activityId: activity.id, phase: "finish" }),
+        });
+        const data = await response.json() as {
+          success?: boolean; error?: string;
+          result?: { fullClear: boolean; rewards?: Record<string, number>; xp: number;
+            weapon?: { dropped: boolean; name: string | null; rarity: string | null; adept: boolean } };
+        };
+        if (!response.ok || !data.success || !data.result) throw new Error(data.error ?? "Activity failed");
+        if (cancelled) return;
+        const result = data.result;
+        if (!result.fullClear) {
+          setStatus("ACTIVITY FAILED — NO CLEAR REWARDS");
+          await new Promise(resolve => window.setTimeout(resolve, 2200));
+          if (cancelled) return;
+        }
+        onFinished(result.fullClear ? {
+          weapons: result.weapon?.dropped && result.weapon.name ? [result.weapon] : [],
+          materials: result.rewards ?? {}, xp: result.xp ?? 0,
+        } : null);
+      } catch (error) {
+        if (!cancelled) setFailure(error instanceof Error ? error.message : "Activity failed");
+      }
+    };
+    void run();
+    return () => { cancelled = true; if (interval !== undefined) window.clearInterval(interval); };
+  }, [activity.id]);
+  const percentage = Math.max(0, Math.min(100, (1 - remaining / duration) * 100));
+  return (
+    <div className="endgame-progress-hud" role="status" aria-live="polite">
+      <div className="endgame-progress-header">
+        <div><span>{activity.type.toUpperCase()} // {status}</span><strong>{activity.name}</strong></div>
+        <button type="button" onClick={onClose} aria-label="Dismiss activity progress">×</button>
+      </div>
+      {failure ? <p className="endgame-progress-error">{failure}</p> : <>
+        <div className="endgame-progress-track"><div style={{ width: `${percentage}%` }} /></div>
+        <small>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")} REMAINING</small>
+      </>}
+    </div>
+  );
+}
+
 export default function Activities() {
   const [data, setData] =
     useState<ActivitiesResponse | null>(
@@ -2788,7 +2870,7 @@ export default function Activities() {
                           </span>
 
                           {event.weapon && (
-                            <div className="global-activity-event-weapon">
+                            <div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
                               {getWeaponImage(
                                 event.weapon
                                   .name,
@@ -2880,7 +2962,20 @@ export default function Activities() {
         />
       )}
 
-      {selectedEndgameActivity && (
+      {selectedEndgameActivity && ["raid", "dungeon"].includes(selectedEndgameActivity.type) && (
+        <EndgameProgressBar
+          key={selectedEndgameActivity.id}
+          activity={selectedEndgameActivity}
+          onClose={() => setSelectedEndgameActivity(null)}
+          onFinished={(loot) => {
+            setSelectedEndgameActivity(null);
+            if (loot) setLootDrop({ id: ++lootDropCounter.current, loot, before: beforeLevelRef.current });
+            void loadActivities();
+            void loadGlobalActivityFeed();
+          }}
+        />
+      )}
+      {selectedEndgameActivity && !["raid", "dungeon"].includes(selectedEndgameActivity.type) && (
         <ActivityRunModal
           activity={
             selectedEndgameActivity
