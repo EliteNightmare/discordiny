@@ -258,12 +258,25 @@ function Vault() {
             {Boolean(category.activities?.length) && (
               <nav className="vault-collection-activities" aria-label={`${category.name} loot pools`}>
                 {category.activities?.map((activity) => (
-                  <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
-                    className={activity.slug === activitySlug ? "vault-activity-tab active" : "vault-activity-tab"}
-                    onClick={() => selectActivity(activity.slug)}>{activity.name}{(() => {
-                    const stats = overview?.sources[activity.weaponSource.toLowerCase()]?.[tier];
-                    return stats ? <small className="vault-tab-stats">{stats.owned}/{stats.total} UNLOCKED · {stats.maxed}/{stats.total} MAXED</small> : null;
-                  })()}</button>
+                  (() => {
+                    const source = overview?.sources[activity.weaponSource.toLowerCase()];
+                    // Completion always covers BOTH Normal and Adept variants,
+                    // regardless of the currently selected weapon tier.
+                    const total = source ? source.normal.total + source.adept.total : 0;
+                    const owned = source ? source.normal.owned + source.adept.owned : 0;
+                    const maxed = source ? source.normal.maxed + source.adept.maxed : 0;
+                    const complete = total > 0 && owned >= total;
+                    const mastered = complete && maxed >= total;
+                    const stats = source?.[tier];
+                    return (
+                      <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
+                        className={`vault-activity-tab${activity.slug === activitySlug ? " active" : ""}${mastered ? " vault-activity-tab-mastered" : complete ? " vault-activity-tab-complete" : ""}`}
+                        onClick={() => selectActivity(activity.slug)}>
+                        {activity.name}
+                        {stats && <small className="vault-tab-stats">{stats.owned}/{stats.total} UNLOCKED · {stats.maxed}/{stats.total} MAXED</small>}
+                      </button>
+                    );
+                  })()
                 ))}
               </nav>
             )}
