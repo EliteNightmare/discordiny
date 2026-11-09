@@ -166,3 +166,49 @@
   #discordiny-loot-hud-root .activity-loot-batch-rail { width: 165px; }
   #discordiny-loot-hud-root .activity-loot-xp { width: min(260px, 73vw); }
 }
+
+/* Level-up/XP: match the former dark, translucent Activities dropdown.
+   Lift the panel clear of the bottom activity cooldown controls. */
+#discordiny-loot-hud-root .activity-loot-xp {
+  bottom: max(102px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+  background: rgba(15, 15, 20, .76);
+  border: 1px solid rgba(192, 183, 168, .25);
+  border-top: 1px solid rgba(211, 184, 137, .5);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .32);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+#discordiny-loot-hud-root .activity-loot-xp-head span,
+#discordiny-loot-hud-root .activity-loot-levelup span,
+#discordiny-loot-hud-root .activity-loot-levelup small { color: #d2bea0; }
+#discordiny-loot-hud-root .activity-loot-xp-track {
+  background: rgba(8, 8, 12, .6);
+  border-color: rgba(192, 183, 168, .28);
+  border-radius: 5px;
+}
+#discordiny-loot-hud-root .activity-loot-xp-fill {
+  background: linear-gradient(90deg, #7c7163, #d5b889);
+  box-shadow: 0 0 10px rgba(213, 184, 137, .22);
+}
+#discordiny-loot-hud-root .activity-loot-levelup {
+  bottom: calc(100% + 8px);
+  min-width: min(230px, 72vw);
+  padding: 7px 15px;
+  background: rgba(15, 15, 20, .76);
+  border: 1px solid rgba(192, 183, 168, .25);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+@media (max-width: 650px) {
+  #discordiny-loot-hud-root .activity-loot-xp {
+    bottom: max(84px, calc(env(safe-area-inset-bottom, 0px) + 76px));
+  }
+  #discordiny-loot-hud-root .activity-loot-levelup {
+    min-width: min(170px, 66vw);
+    padding: 5px 9px;
+    bottom: calc(100% + 6px);
+  }
+}
