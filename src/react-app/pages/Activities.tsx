@@ -841,7 +841,7 @@ function EndgameProgressBar({ activity, onFinished, onClose }: {
   onFinished: (loot: ActivityLootPayload | null) => void;
   onClose: () => void;
 }) {
-  const duration = activity.type === "raid" ? 90 : 180;
+  const duration = activity.type === "raid" ? 180 : 90;
   const [remaining, setRemaining] = useState(duration);
   const [status, setStatus] = useState("PREPARING ACTIVITY");
   const [failure, setFailure] = useState("");
@@ -984,6 +984,19 @@ export default function Activities() {
   ] = useState<Activity | null>(
     null,
   );
+
+  const [timedActivities, setTimedActivities] = useState<Activity[]>([]);
+  const [timedDropdownOpen, setTimedDropdownOpen] = useState(true);
+
+  function startTimedActivity(activity: Activity) {
+    setTimedActivities(current => current.some(item => item.id === activity.id)
+      ? current : [...current, activity]);
+    setTimedDropdownOpen(true);
+    void fetch("/api/game/profile", { credentials: "include" })
+      .then(response => response.ok ? response.json() : null)
+      .then(profile => { if (profile?.level) beforeLevelRef.current = profile.level as LevelProgress; })
+      .catch(() => {});
+  }
 
   useEffect(() => {
     if (!selectedEndgameActivity) return;
@@ -1651,9 +1664,11 @@ export default function Activities() {
       return;
     }
 
-    setSelectedEndgameActivity(
-      activity,
-    );
+    if (activity.type === "raid" || activity.type === "dungeon") {
+      startTimedActivity(activity);
+      return;
+    }
+    setSelectedEndgameActivity(activity);
   }
 
   function openInfiltrationActivity(
@@ -2982,18 +2997,30 @@ export default function Activities() {
         />
       )}
 
-      {selectedEndgameActivity && ["raid", "dungeon"].includes(selectedEndgameActivity.type) && (
-        <EndgameProgressBar
-          key={selectedEndgameActivity.id}
-          activity={selectedEndgameActivity}
-          onClose={() => setSelectedEndgameActivity(null)}
-          onFinished={(loot) => {
-            setSelectedEndgameActivity(null);
-            if (loot) setLootDrop({ id: ++lootDropCounter.current, loot, before: beforeLevelRef.current });
-            void loadActivities();
-            void loadGlobalActivityFeed();
-          }}
-        />
+      {timedActivities.length > 0 && (
+        <section className="timed-activity-dropdown" aria-label="Timed activities in progress">
+          <button type="button" className="timed-activity-dropdown-toggle"
+            aria-expanded={timedDropdownOpen}
+            onClick={() => setTimedDropdownOpen(open => !open)}>
+            <span>TIMED ACTIVITIES <strong>({timedActivities.length})</strong></span>
+            <span aria-hidden="true">{timedDropdownOpen ? "▴" : "▾"}</span>
+          </button>
+          <div className={timedDropdownOpen ? "timed-activity-dropdown-content" : "timed-activity-dropdown-content is-collapsed"}>
+            {timedActivities.map(activity => (
+              <EndgameProgressBar
+                key={activity.id}
+                activity={activity}
+                onClose={() => setTimedActivities(current => current.filter(item => item.id !== activity.id))}
+                onFinished={(loot) => {
+                  setTimedActivities(current => current.filter(item => item.id !== activity.id));
+                  if (loot) setLootDrop({ id: ++lootDropCounter.current, loot, before: beforeLevelRef.current });
+                  void loadActivities();
+                  void loadGlobalActivityFeed();
+                }}
+              />
+            ))}
+          </div>
+        </section>
       )}
       {selectedEndgameActivity && !["raid", "dungeon"].includes(selectedEndgameActivity.type) && (
         <ActivityRunModal
