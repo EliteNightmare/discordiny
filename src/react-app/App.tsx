@@ -19,6 +19,7 @@ import Articles from "./pages/Articles";
 import AdminPanel from "./pages/AdminPanel";
 import Patchnotes from "./pages/Patchnotes";
 import About from "./pages/About";
+import BrayTerminal from "./pages/BrayTerminal";
 
 import SiteGate, {
   shouldGateSite,
