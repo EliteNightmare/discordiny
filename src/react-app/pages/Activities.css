@@ -2107,3 +2107,14 @@
     padding: 10px 11px !important;
   }
 }
+
+/* Extra scroll room for bottom XP/level-up notifications.
+   This spacer is OUTSIDE .activities-layout, so the Global Weapon Drops
+   feed keeps its existing measured height and does not grow downward. */
+.activities-levelup-scroll-space {
+  height: clamp(180px, 28vh, 300px);
+  pointer-events: none;
+}
+@media (max-width: 650px) {
+  .activities-levelup-scroll-space { height: clamp(160px, 25vh, 250px); }
+}
