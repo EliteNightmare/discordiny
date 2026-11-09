@@ -858,7 +858,6 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
 }) {
   const duration = activity.type === "raid" ? 180 : 90;
   const [remaining, setRemaining] = useState(duration);
-  const [status, setStatus] = useState("PREPARING ACTIVITY");
   const [failure, setFailure] = useState("");
   useEffect(() => {
     let cancelled = false;
@@ -878,7 +877,6 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
         // browser clock cannot attempt to finish before the Worker permits it.
         const finishAt = Date.now() + (seconds + 1.25) * 1000;
         setRemaining(seconds);
-        setStatus("ACTIVITY IN PROGRESS");
         await new Promise<void>(resolve => {
           interval = window.setInterval(() => {
             if (cancelled) { window.clearInterval(interval); resolve(); return; }
@@ -888,7 +886,6 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
           }, 200);
         });
         if (cancelled) return;
-        setStatus("RESOLVING REWARDS");
         let data: {
           success?: boolean; error?: string; remainingSeconds?: number;
           result?: { fullClear: boolean; rewards?: Record<string, number>; xp: number;
@@ -907,8 +904,7 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
           if (response.status === 409 && data.remainingSeconds !== undefined) {
             const waitSeconds = Math.max(1, data.remainingSeconds + 1);
             setRemaining(Math.ceil(waitSeconds));
-            setStatus("FINALIZING ACTIVITY");
-            await new Promise(resolve => window.setTimeout(resolve, waitSeconds * 1000));
+                await new Promise(resolve => window.setTimeout(resolve, waitSeconds * 1000));
             if (cancelled) return;
             continue;
           }
@@ -921,8 +917,7 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
         if (cancelled) return;
         const result = data.result;
         if (!result.fullClear) {
-          setStatus("ACTIVITY FAILED — NO CLEAR REWARDS");
-          await new Promise(resolve => window.setTimeout(resolve, 2200));
+            await new Promise(resolve => window.setTimeout(resolve, 2200));
           if (cancelled) return;
         }
         onFinished(result.fullClear ? {
