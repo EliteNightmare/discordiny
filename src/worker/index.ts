@@ -9591,11 +9591,26 @@ app.post("/api/game/activity/run", async (c) => {
   const runDurationSeconds = activity.type === "raid" ? 90 : 180;
   const pendingRunKey = `__endgame_pending_${activity.id}`;
   if (body.phase === "start") {
-    await c.env.DB.prepare(
-      `INSERT INTO player_cooldowns (user_id, activity, timestamp) VALUES (?, ?, ?)
-       ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
-    ).bind(session.user_id, pendingRunKey, nowSeconds).run();
-    return c.json({ success: true, startedAt: nowSeconds, durationSeconds: runDurationSeconds });
+    // Preserve a run that is already underway rather than restarting its clock.
+    const existing = await c.env.DB.prepare(
+      `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
+    ).bind(session.user_id, pendingRunKey).first<{ timestamp: number }>();
+    const existingStartedAt = Number(existing?.timestamp ?? 0);
+    const stillActive = existingStartedAt > 0 &&
+      nowSeconds - existingStartedAt >= 0 &&
+      nowSeconds - existingStartedAt < runDurationSeconds;
+    if (!stillActive) {
+      await c.env.DB.prepare(
+        `INSERT INTO player_cooldowns (user_id, activity, timestamp) VALUES (?, ?, ?)
+         ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+      ).bind(session.user_id, pendingRunKey, nowSeconds).run();
+    }
+    const startedAt = stillActive ? existingStartedAt : nowSeconds;
+    return c.json({
+      success: true, startedAt,
+      durationSeconds: runDurationSeconds,
+      remainingSeconds: Math.max(0, runDurationSeconds - (nowSeconds - startedAt)),
+    });
   }
   const pendingRun = await c.env.DB.prepare(
     `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
