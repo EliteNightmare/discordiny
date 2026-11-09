@@ -771,11 +771,12 @@ export function runEndgameActivity(
       ),
     );
 
-  const successChance =
-    getEndgameSuccessChance(
-      level,
-      power,
-    );
+  // Separate difficulty curves: raids start at 35%, dungeons at 45%.
+  // Level and Power improve odds up to their independent ceilings.
+  const successChance = Math.min(
+    activity.type === "raid" ? 90 : 85,
+    (activity.type === "raid" ? 35 : 45) + level * 0.3 + power / 5000,
+  );
 
   const rewardMultiplier =
     getEndgamePowerMultiplier(
@@ -822,6 +823,11 @@ export function runEndgameActivity(
         table,
         rewardMultiplier,
       );
+    // Boost materials/currencies only. Weapon drop odds remain unchanged.
+    const lootBoost = activity.type === "raid" ? 3 : 2.5;
+    for (const rewardName of Object.keys(generatedRewards)) {
+      generatedRewards[rewardName] = Math.trunc(generatedRewards[rewardName] * lootBoost);
+    }
 
     /*
      * Direct old raid.py behavior:
@@ -895,7 +901,7 @@ export function runEndgameActivity(
 
         activity.unique_material,
 
-        table.uniqueMaterialAmount,
+        Math.trunc(table.uniqueMaterialAmount * (activity.type === "raid" ? 3 : 2.5)),
       );
     }
 
