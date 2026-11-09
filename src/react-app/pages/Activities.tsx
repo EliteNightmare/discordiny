@@ -978,8 +978,6 @@ export default function Activities() {
   ] = useState(false);
 
 
-  const [settingExploreTimer, setSettingExploreTimer] = useState(false);
-  const [resettingDailyCharges, setResettingDailyCharges] = useState(false);
   const [encounterDrops, setEncounterDrops] = useState<Array<{ id: number; loot: ActivityLootPayload }>>([]);
   const [lootDrop, setLootDrop] = useState<{ id: number; loot: ActivityLootPayload; before: LevelProgress | null } | null>(null);
   const beforeLevelRef = useRef<LevelProgress | null>(null);
@@ -1990,35 +1988,6 @@ export default function Activities() {
                   </div>
                 </div>
 
-                {data?.canSetExplorationTimer && (
-                  <button
-                    type="button"
-                    className="exploration-claim-button exploration-timer-admin-button"
-                    disabled={resettingDailyCharges}
-                    onClick={async () => {
-                      setResettingDailyCharges(true);
-                      setError("");
-                      try {
-                        const response = await fetch("/api/game/activities/reset-daily-charges", {
-                          method: "POST",
-                          credentials: "include",
-                        });
-                        const result = await response.json() as { success?: boolean; error?: string };
-                        if (!response.ok || !result.success) {
-                          throw new Error(result.error ?? "Unable to reset daily charges.");
-                        }
-                        await loadActivities();
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : "Unable to reset daily charges.");
-                      } finally {
-                        setResettingDailyCharges(false);
-                      }
-                    }}
-                  >
-                    {resettingDailyCharges ? "RESETTING..." : "RESET MY DAILY CHARGES"}
-                  </button>
-                )}
-
                 <div className="activities-grid activities-grid-three">
                   <ActivityCard
                     label="DAILY SHOWDOWN"
@@ -2414,33 +2383,7 @@ export default function Activities() {
                       ? "CLAIMING..."
                       : "CLAIM"}
                   </button>
-                  {data?.canSetExplorationTimer && (
-                    <button
-                      type="button"
-                      className="exploration-claim-button exploration-timer-admin-button"
-                      disabled={claimingExploration || settingExploreTimer}
-                      onClick={async () => {
-                        setSettingExploreTimer(true);
-                        setError("");
-                        try {
-                          const response = await fetch("/api/game/explore/set-max-timer", {
-                            method: "POST",
-                            credentials: "include",
-                          });
-                          const result = await response.json() as { success?: boolean; error?: string };
-                          if (!response.ok || !result.success) throw new Error(result.error ?? "Unable to set exploration timer.");
-                          setExploreElapsed(86400);
-                          await loadActivities();
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : "Unable to set exploration timer.");
-                        } finally {
-                          setSettingExploreTimer(false);
-                        }
-                      }}
-                    >
-                      {settingExploreTimer ? "SETTING..." : "SET 24H"}
-                    </button>
-                  )}
+                  
                   </div>
                 </div>
 
@@ -3033,6 +2976,7 @@ export default function Activities() {
               </div>
             </aside>
           </div>
+          <div className="activities-levelup-scroll-space" aria-hidden="true" />
         </div>
       </main>
 
