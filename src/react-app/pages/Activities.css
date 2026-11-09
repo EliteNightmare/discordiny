@@ -2006,14 +2006,17 @@
   flex: 0 0 1px;
 }
 
-/* Account 1 only: exploration testing action alongside Claim */
-.exploration-claim-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.exploration-timer-admin-button {
-  background: rgba(73, 106, 130, .18);
-  border: 1px solid rgba(125, 170, 205, .45);
-  color: #cce8ff;
-  letter-spacing: .08em;
-}
-.exploration-timer-admin-button:hover:not(:disabled) {
-  background: rgba(73, 106, 130, .35);
-}
+/* Endgame progress is anchored to the top of the viewport, not a modal. */
+.endgame-progress-hud { position:fixed;z-index:9000;top:72px;left:50%;transform:translateX(-50%);width:min(520px,calc(100vw - 28px));padding:13px 16px;background:rgba(17,23,33,.96);border:1px solid rgba(135,171,194,.48);box-shadow:0 10px 30px rgba(0,0,0,.38);border-radius:8px; }
+.endgame-progress-header { display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }
+.endgame-progress-header div { display:grid;gap:4px;min-width:0; }
+.endgame-progress-header span { font-size:.62rem;letter-spacing:.13em;color:#91c4df; }
+.endgame-progress-header strong { font-size:.85rem;overflow-wrap:anywhere; }
+.endgame-progress-header button { background:none;border:0;color:#c6d1db;font-size:1.4rem;cursor:pointer; }
+.endgame-progress-track { margin:12px 0 5px;height:7px;background:#2a3747;border-radius:8px;overflow:hidden; }
+.endgame-progress-track>div { height:100%;background:linear-gradient(90deg,#598fae,#c2dbe8);transition:width .2s linear; }
+.endgame-progress-hud small { font-size:.6rem;color:#a9b8c5;letter-spacing:.08em; }
+.endgame-progress-error { color:#ff9b9b;font-size:.78rem; }
+.global-activity-event-weapon-adept { border:1px solid rgba(234,190,99,.72)!important;background:linear-gradient(100deg,rgba(205,145,45,.27),rgba(91,62,26,.12))!important;box-shadow:inset 3px 0 0 #e6bd67,0 0 12px rgba(224,177,80,.16); }
+.global-activity-event-weapon-adept strong { color:#f6d995!important;text-shadow:0 0 9px rgba(235,183,82,.25); }
+@media(max-width:650px){.endgame-progress-hud{top:58px;padding:10px 12px}.endgame-progress-header strong{font-size:.74rem}}
