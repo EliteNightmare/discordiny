@@ -212,7 +212,7 @@ function Vault() {
                   <p>Select a collection to open its weapon archives.</p>
                 </div></div>
                 <div className="vault-category-grid">
-                  {VAULT_CATEGORIES.map((item) => {
+                  {[...VAULT_CATEGORIES.filter((item) => item.slug !== "fishing"), ...VAULT_CATEGORIES.filter((item) => item.slug === "fishing")].map((item) => {
                     const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(activity => activity.weaponSource);
                     const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
                     const owned = rows.reduce((sum, row) => sum + row.normal.owned + row.adept.owned, 0);
@@ -224,7 +224,6 @@ function Vault() {
                     <button key={item.slug} type="button" className={`vault-category${mastered ? " vault-category-mastered" : complete ? " vault-category-complete" : ""}`}
                       onClick={(event) => openCategory(item, event.currentTarget)}>
                       <span className="vault-category-name">{item.name}</span>
-                      <span className="vault-category-description">{item.description}</span>
                       <span className="vault-category-stats">{overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION'}</span>
                       <span className="vault-category-arrow">›</span>
                     </button>
