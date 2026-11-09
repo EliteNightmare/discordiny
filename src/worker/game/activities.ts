@@ -266,7 +266,7 @@ export const ACTIVITIES = {
       "reward_table": "pinnacle",
       "encounters": [
         "Empire Hunt: The Warrior",
-        "Empire Hunt: The Priest",
+        "Empire Hunt: The Priestess",
         "Empire Hunt: The Technocrat"
       ]
     },
