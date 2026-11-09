@@ -1593,3 +1593,7 @@
 }
 @keyframes profile-adept-shine { 0%, 65% { transform: translateX(-120%); } 95%, 100% { transform: translateX(120%); } }
 @media (prefers-reduced-motion: reduce) { .profile-live-feed .global-activity-event.global-activity-event-adept::after { animation: none; } }
+
+/* Only the outer drop entry receives Adept treatment. */
+.profile-redesign .global-activity-event-weapon { border-color:initial; box-shadow:none; }
+.profile-live-feed .global-activity-event.global-activity-event-adept { border-color:rgba(227,187,102,.38); background:linear-gradient(115deg,rgba(165,124,52,.13),rgba(205,169,91,.045) 60%,rgba(128,92,40,.10)); }
