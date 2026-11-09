@@ -1568,3 +1568,6 @@
     overflow: visible;
   }
 }
+
+.profile-redesign .global-activity-event-weapon-adept{border:1px solid rgba(234,190,99,.72)!important;background:linear-gradient(100deg,rgba(205,145,45,.27),rgba(91,62,26,.12))!important;box-shadow:inset 3px 0 0 #e6bd67;}
+.profile-redesign .global-activity-event-weapon-adept strong{color:#f6d995!important;}
