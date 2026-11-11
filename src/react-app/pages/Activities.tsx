@@ -1085,6 +1085,10 @@ export default function Activities() {
   const refreshingRef =
     useRef(false);
 
+  // Rotation countdowns can remain at zero until the server's next rotation.
+  // Retry periodically instead of fetching the entire activity state every second.
+  const rotationRetryAtRef = useRef(0);
+
   const travelRef =
     useRef<HTMLDivElement | null>(
       null,
@@ -1226,6 +1230,19 @@ export default function Activities() {
     void loadActivities(
       true,
     );
+  }, [loadActivities]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      // Avoid an extra read if the user just loaded or refreshed the page.
+      if (Date.now() - loadedAtRef.current > 60_000) {
+        rotationRetryAtRef.current = Date.now() + 30_000;
+        void loadActivities();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [loadActivities]);
 
   useEffect(() => {
@@ -1482,10 +1499,12 @@ export default function Activities() {
           0,
       );
 
-    if (
-      rotationExpired
-    ) {
-      void loadActivities();
+    if (rotationExpired && document.visibilityState === "visible") {
+      const now = Date.now();
+      if (now >= rotationRetryAtRef.current) {
+        rotationRetryAtRef.current = now + 30_000;
+        void loadActivities();
+      }
     }
   }, [
     clock,
