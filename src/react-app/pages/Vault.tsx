@@ -203,9 +203,7 @@ function Vault() {
           const weapon = name ? overview?.favoriteWeapons.find(item => item.name === name) : undefined;
           const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
           const rank = Math.min(77, Math.max(0, weapon?.masterwork ?? 0));
-          const maxed = rank >= 77;
-          return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}${maxed ? " maxed" : ""}`} disabled={!weapon} title={name ? `${name} · ${rank}/77 masterworked` : `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
-            {name && <span className="collections-favorite-fill" style={{ "--masterwork-progress": `${rank / 77 * 100}%` } as React.CSSProperties} aria-hidden="true" />}
+          return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}`} disabled={!weapon} title={name ? `${name} · ${rank}/77 masterworked` : `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
             {icon ? <img src={icon} alt="" /> : <span>{name ? "★" : "+"}</span>}
           </button>;
         })}</div>
