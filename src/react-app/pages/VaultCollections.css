@@ -357,15 +357,15 @@
 @media(max-width:800px){.vault-screen .collections-recent-tile{flex-basis:148px;width:148px;min-width:148px}.vault-screen .collections-total-progress{gap:9px;font-size:9px}.vault-screen .collections-favorite-slots{padding-top:18px}}
 @media(prefers-reduced-motion:reduce){.vault-screen .collections-recent-slots,.vault-screen .collections-favorite-slot.maxed:after{animation:none!important}.vault-screen .collections-recent-viewport{overflow-x:auto;scrollbar-width:none}}
 
-/* Weapon COLLECTION buttons: rank / 77 reveals a fixed, full-width gold-to-teal gradient left-to-right. */
+/* Weapon COLLECTION buttons: muted gold fill proportional to masterwork rank / 77. */
 .vault-screen .collections-weapon-content .weapon-vault-item{
   position:relative!important;isolation:isolate;overflow:hidden!important;
 }
 .vault-screen .collections-weapon-content .weapon-vault-item.weapon-vault-item-owned::before{
   content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
-  background:linear-gradient(90deg,#a8772b 0%,#d5a849 34%,#f0d078 69%,#e7d58c 72%,#26dfc8 87%,#b8fff2 100%);
+  background:linear-gradient(90deg,#75613f 0%,#957a4b 38%,#b59a67 72%,#d1b782 100%);
   clip-path:inset(0 calc(100% - var(--collection-mw-progress, 0%)) 0 0);
-  opacity:.78;transition:clip-path .35s ease;
+  opacity:.66;transition:clip-path .35s ease;
 }
 .vault-screen .collections-weapon-content .weapon-vault-item > *{position:relative;z-index:1}
 .vault-screen .collections-weapon-content .weapon-vault-item.weapon-vault-item-owned .weapon-vault-item-info strong,
@@ -373,7 +373,7 @@
   color:#f8faf8!important;text-shadow:0 1px 3px #10151c,0 0 5px #10151c;
 }
 .vault-screen .collections-weapon-content .weapon-vault-item.weapon-vault-item-maxed{
-  border-color:#75e6d4!important;box-shadow:0 0 8px rgba(36,225,200,.27),0 0 6px rgba(230,185,83,.25);
+  border-color:#c8ab71!important;box-shadow:0 0 8px rgba(200,171,113,.25),0 0 6px rgba(210,181,125,.2);
 }
 .vault-screen .collections-weapon-content .weapon-vault-item.weapon-vault-item-maxed::after{
   content:"";position:absolute;z-index:2;pointer-events:none;top:-60%;bottom:-60%;left:-55%;width:28%;
