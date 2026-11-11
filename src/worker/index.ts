@@ -10372,6 +10372,16 @@ app.get("/api/game/activity/feed", async (c) => {
     );
   }
 
+  // Cache only the public, identical-for-all-players feed AFTER session validation.
+  // Workers Cache API is per data center; it prevents repeated D1 reads within
+  // a colo without sharing private profile/session information.
+  const feedCache = caches.default;
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v1", c.req.url).toString());
+  const cachedFeed = await feedCache.match(feedCacheKey);
+  if (cachedFeed) {
+    return c.json(await cachedFeed.json());
+  }
+
   const events =
     await c.env.DB
       .prepare(
@@ -10422,7 +10432,7 @@ app.get("/api/game/activity/feed", async (c) => {
         avatar: string | null;
       }>();
 
-  return c.json({
+  const feedPayload = {
     authenticated: true,
 
     events:
@@ -10478,7 +10488,15 @@ app.get("/api/game/activity/feed", async (c) => {
             event.created_at,
         }),
       ),
+  };
+
+  // A short TTL keeps drops fresh while coalescing requests from many players.
+  // No Set-Cookie or player-specific data is ever stored in this cache.
+  const cacheResponse = new Response(JSON.stringify(feedPayload), {
+    headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=20" },
   });
+  c.executionCtx.waitUntil(feedCache.put(feedCacheKey, cacheResponse));
+  return c.json(feedPayload);
 });
 
 /* Articles: reuse the existing, expiry-checked Discord session resolver. */
