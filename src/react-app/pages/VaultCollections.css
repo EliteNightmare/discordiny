@@ -359,3 +359,11 @@
 @keyframes vault-recent-marquee{to{transform:translateX(calc(-50% - 3.5px))}}
 @media(max-width:800px){.vault-screen .collections-recent-tile{flex-basis:148px;width:148px;min-width:148px}.vault-screen .collections-total-progress{gap:9px;font-size:9px}.vault-screen .collections-favorite-slots{padding-top:18px}}
 @media(prefers-reduced-motion:reduce){.vault-screen .collections-recent-slots,.vault-screen .collections-favorite-slot.maxed:after{animation:none!important}.vault-screen .collections-recent-viewport{overflow-x:auto;scrollbar-width:none}}
+
+/* Fix: full-slot horizontal progression, visible above artwork, teal only in final 28%. */
+.vault-screen .collections-favorite-slot{padding:0!important;min-width:0;min-height:0;box-sizing:border-box;overflow:hidden;position:relative}
+.vault-screen .collections-favorite-slot img{display:block!important;position:relative;z-index:1;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;object-position:center!important;padding:2px;box-sizing:border-box;min-width:0;min-height:0}
+.vault-screen .collections-favorite-slot .collections-favorite-fill{position:absolute;inset:0;z-index:2;width:100%!important;height:100%;background:linear-gradient(90deg,#a97627 0%,#d9ad4f 36%,#f4d77b 70%,#d6e2ae 73%,#22e4c8 88%,#b6fff2 100%)!important;clip-path:inset(0 calc(100% - var(--masterwork-progress,0%)) 0 0);opacity:.68;mix-blend-mode:screen;pointer-events:none;transition:clip-path .45s ease}
+.vault-screen .collections-favorite-slot.maxed .collections-favorite-fill{opacity:.78}
+.vault-screen .collections-favorite-slot.maxed:after{z-index:3}
+@media(prefers-reduced-motion:reduce){.vault-screen .collections-favorite-slot .collections-favorite-fill{transition:none}}
