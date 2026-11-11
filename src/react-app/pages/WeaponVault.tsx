@@ -757,6 +757,7 @@ function WeaponVault({
                             weapon.name
                           }
                           className={itemClass}
+                          style={{ "--collection-mw-progress": `${weapon.owned ? Math.min(100, Math.max(0, weapon.masterwork / MAX_MASTERWORK * 100)) : 0}%` } as React.CSSProperties}
                           data-weapon-name={weapon.name}
                           role={weapon.owned ? "button" : undefined}
                           tabIndex={weapon.owned ? 0 : -1}
