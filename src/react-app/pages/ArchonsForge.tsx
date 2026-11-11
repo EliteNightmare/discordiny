@@ -11,7 +11,7 @@ type VectorInput = { x: number; y: number };
 type Settings = { cameraDistance: number; cameraHeight: number; speed: number; modelScale: number };
 // Set this in your Cloudflare/Vite build environment to the public R2 object URL.
 // Example: https://assets.discordiny.com/archons-forge/arena.glb
-const MODEL = import.meta.env.VITE_ARCHONS_FORGE_ARENA_URL?.trim() || '';
+const MODEL = 'https://assets.discordiny.com/archons-forge/arena.glb';
 const DEFAULTS: Settings = { cameraDistance: 15, cameraHeight: 19, speed: 6, modelScale: 1 };
 const UP = new THREE.Vector3(0, 1, 0);
 
