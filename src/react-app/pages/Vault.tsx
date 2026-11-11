@@ -224,7 +224,6 @@ function Vault() {
                     <button key={item.slug} type="button" className={`vault-category${mastered ? " vault-category-mastered" : complete ? " vault-category-complete" : ""}`}
                       onClick={(event) => openCategory(item, event.currentTarget)}>
                       <span className="vault-category-name">{item.name}</span>
-                      <span className="vault-category-description">{item.description}</span>
                       <span className="vault-category-stats">{overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION'}</span>
                       <span className="vault-category-arrow">›</span>
                     </button>
@@ -250,8 +249,8 @@ function Vault() {
         }}>
           <section className="vault-collection-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-dialog-title">
             <header className="vault-collection-header">
-              <div className="vault-collection-title"><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2><p>{category.description}</p></div>
-              {selectedStats && <span className="vault-dialog-stats">{selectedStats.owned}/{selectedStats.total} UNLOCKED · {selectedStats.maxed}/{selectedStats.total} MAXED</span>}
+              <div className="vault-collection-title"><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2></div>
+              {selectedStats && <span className="vault-dialog-stats">{selectedStats.total > 0 && selectedStats.owned >= selectedStats.total ? `${selectedStats.maxed}/${selectedStats.total} MAXED` : `${selectedStats.owned}/${selectedStats.total} UNLOCKED`}</span>}
               <WeaponTierControl tier={tier} onChange={setTier} />
               <button ref={closeRef} type="button" className="vault-collection-close" aria-label="Close collection" onClick={() => setCategory(null)}>×</button>
             </header>
@@ -260,20 +259,19 @@ function Vault() {
                 {category.activities?.map((activity) => (
                   (() => {
                     const source = overview?.sources[activity.weaponSource.toLowerCase()];
-                    // Completion always covers BOTH Normal and Adept variants,
-                    // regardless of the currently selected weapon tier.
-                    const total = source ? source.normal.total + source.adept.total : 0;
-                    const owned = source ? source.normal.owned + source.adept.owned : 0;
-                    const maxed = source ? source.normal.maxed + source.adept.maxed : 0;
+                    // Each tier has independent completion and gold masterwork styling.
+                    const stats = source?.[tier];
+                    const total = stats?.total ?? 0;
+                    const owned = stats?.owned ?? 0;
+                    const maxed = stats?.maxed ?? 0;
                     const complete = total > 0 && owned >= total;
                     const mastered = complete && maxed >= total;
-                    const stats = source?.[tier];
                     return (
                       <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
                         className={`vault-activity-tab${activity.slug === activitySlug ? " active" : ""}${mastered ? " vault-activity-tab-mastered" : complete ? " vault-activity-tab-complete" : ""}`}
                         onClick={() => selectActivity(activity.slug)}>
                         {activity.name}
-                        {stats && <small className="vault-tab-stats">{stats.owned}/{stats.total} UNLOCKED · {stats.maxed}/{stats.total} MAXED</small>}
+                        {stats && <small className="vault-tab-stats">{stats.total > 0 && stats.owned >= stats.total ? `${stats.maxed}/${stats.total} MAXED` : `${stats.owned}/${stats.total} UNLOCKED`}</small>}
                       </button>
                     );
                   })()
