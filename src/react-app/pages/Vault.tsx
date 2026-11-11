@@ -86,6 +86,17 @@ function Vault() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const refreshAfterMasterwork = () => {
+      void fetch('/api/game/vault/overview', { credentials: 'include' })
+        .then(response => response.ok ? response.json() as Promise<VaultOverview> : Promise.reject(new Error('Vault refresh failed')))
+        .then(data => setOverview(data))
+        .catch(() => { /* Keep existing collection data if refresh fails. */ });
+    };
+    window.addEventListener('discordiny:weapon-masterworked', refreshAfterMasterwork);
+    return () => window.removeEventListener('discordiny:weapon-masterworked', refreshAfterMasterwork);
+  }, []);
+
   // Preserve viewport when swapping collections with different weapon counts.
   useEffect(() => {
     if (pendingScrollY.current === null) return;
@@ -194,7 +205,7 @@ function Vault() {
           const rank = Math.min(77, Math.max(0, weapon?.masterwork ?? 0));
           const maxed = rank >= 77;
           return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}${maxed ? " maxed" : ""}`} disabled={!weapon} title={name ? `${name} · ${rank}/77 masterworked` : `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
-            {name && <span className="collections-favorite-fill" style={{ width: `${rank / 77 * 100}%` }} aria-hidden="true" />}
+            {name && <span className="collections-favorite-fill" style={{ "--masterwork-progress": `${rank / 77 * 100}%` } as React.CSSProperties} aria-hidden="true" />}
             {icon ? <img src={icon} alt="" /> : <span>{name ? "★" : "+"}</span>}
           </button>;
         })}</div>
