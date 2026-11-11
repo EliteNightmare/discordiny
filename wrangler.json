@@ -1,3 +1,4 @@
+
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "vite-react-template",
@@ -10,6 +11,9 @@
     "enabled": true
   },
   "upload_source_maps": true,
+  "vars": {
+    "VITE_ARCHONS_FORGE_ARENA_URL": "https://assets.discordiny.com/archons-forge/arena.glb"
+  },
   "d1_databases": [
     {
       "binding": "DB",
