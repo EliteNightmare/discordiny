@@ -9,7 +9,6 @@ import Profile from "./pages/Profile";
 import Account from "./pages/Account";
 import Activities from "./pages/Activities";
 import Events from "./pages/Events";
-import OperationCleanse from "./pages/OperationCleanse";
 import NaniteBreak from "./pages/NaniteBreak";
 import Vault from "./pages/Vault";
 import VaultCategory from "./pages/VaultCategory";
@@ -301,10 +300,11 @@ function App() {
   }
 
   if (path === "/events/operation-cleanse") {
-    return <OperationCleanse />;
+    window.location.replace("/events");
+    return null;
   }
 
-  if (path === "/events") {
+  if (path === "/events" || /^\/events\/[a-z0-9-]+\/?$/.test(path)) {
     return <Events />;
   }
 
