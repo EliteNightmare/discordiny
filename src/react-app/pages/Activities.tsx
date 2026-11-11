@@ -1239,9 +1239,11 @@ export default function Activities() {
     const refreshInterval =
       window.setInterval(
         () => {
-          void loadGlobalActivityFeed();
+          if (document.visibilityState === "visible") {
+            void loadGlobalActivityFeed();
+          }
         },
-        15000,
+        60000,
       );
 
     const clockInterval =
@@ -1254,7 +1256,15 @@ export default function Activities() {
         30000,
       );
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void loadGlobalActivityFeed();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(
         refreshInterval,
       );
