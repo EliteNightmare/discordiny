@@ -60,14 +60,6 @@ function Vault() {
   const [tier, setTier] = useState<WeaponTier>("normal");
   const [activeGroup, setActiveGroup] = useState<string | null>(VAULT_CATEGORIES[0].activities?.[0]?.group ?? null);
   const pendingScrollY = useRef<number | null>(null);
-  const [recentIndex, setRecentIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "visible") setRecentIndex(index => index + 1);
-    }, 4200);
-    return () => window.clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -158,20 +150,25 @@ function Vault() {
   const hasCollection = Boolean(category.directSource || selectedActivity);
 
   const recentWeapons = overview?.recent.slice(0, 15) ?? [];
-  const visibleRecent = recentWeapons.length > 0
-    ? Array.from({ length: Math.min(5, recentWeapons.length) }, (_, offset) => recentWeapons[(recentIndex + offset) % recentWeapons.length])
-    : [];
+  const collectionTotals = Object.values(overview?.sources ?? {}).reduce(
+    (total, source) => ({
+      owned: total.owned + source.normal.owned + source.adept.owned,
+      maxed: total.maxed + source.normal.maxed + source.adept.maxed,
+      possible: total.possible + source.normal.total + source.adept.total,
+    }), { owned: 0, maxed: 0, possible: 0 },
+  );
   const renderRecentStrip = () => (
     <section className="collections-recent-strip" aria-label="15 most recent weapon drops">
-      <div className="collections-strip-label"><strong>RECENT DROPS</strong><span>{recentWeapons.length ? `${recentIndex % recentWeapons.length + 1} / ${recentWeapons.length}` : "—"}</span></div>
+      <div className="collections-strip-label"><strong>RECENT DROPS</strong></div>
       {overviewError && <small className="vault-overview-error">{overviewError}</small>}
-      <div className="collections-recent-slots">
-        {visibleRecent.map((weapon, index) => {
+      <div className="collections-recent-viewport">
+      <div className="collections-recent-slots" style={{ "--recent-duration": `${Math.max(18, recentWeapons.length * 4)}s` } as React.CSSProperties}>
+        {(recentWeapons.length > 1 ? [...recentWeapons, ...recentWeapons] : recentWeapons).map((weapon, index) => {
           const adept = isAdeptFavorite(weapon.name);
           const favorite = overview?.favorites.includes(weapon.name) ?? false;
           const full = (adept ? adeptFavorites : normalFavorites).length >= 4;
           const icon = weaponIcon(weapon.source, weapon.name);
-          return <div key={`${weapon.name}-${recentIndex}-${index}`} className={`collections-recent-tile${adept ? " adept" : ""}`}>
+          return <div key={`${weapon.name}-${index}`} className={`collections-recent-tile${adept ? " adept" : ""}`}>
             <button type="button" className="collections-recent-open" title={weapon.name} onClick={() => jumpToWeapon(weapon)}>
               {icon ? <img src={icon} alt="" /> : <span>◆</span>}
               <span className="collections-recent-name">{weapon.name}</span>
@@ -181,19 +178,23 @@ function Vault() {
         })}
         {!recentWeapons.length && <span className="collections-recent-empty">No recent drops yet</span>}
       </div>
+      </div>
     </section>
   );
 
   const renderFavoriteSlots = () => (
     <div className="collections-favorite-slots" aria-label="Favourite weapons">
+      <span className="collections-favorite-heading">★ FAVOURITED WEAPONS</span>
       {([['NORMAL', normalFavorites], ['ADEPT', adeptFavorites]] as const).map(([label, names]) => <div className="collections-favorite-tier" key={label}>
         <span className="collections-favorite-tier-label">{label}</span>
         <div className="collections-favorite-row">{Array.from({ length: 4 }, (_, index) => {
           const name = names[index];
           const weapon = name ? overview?.favoriteWeapons.find(item => item.name === name) : undefined;
           const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
-          const maxed = (weapon?.masterwork ?? 0) >= 77;
-          return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}${maxed ? " maxed" : ""}`} disabled={!weapon} title={name ?? `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
+          const rank = Math.min(77, Math.max(0, weapon?.masterwork ?? 0));
+          const maxed = rank >= 77;
+          return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}${maxed ? " maxed" : ""}`} disabled={!weapon} title={name ? `${name} · ${rank}/77 masterworked` : `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
+            {name && <span className="collections-favorite-fill" style={{ width: `${rank / 77 * 100}%` }} aria-hidden="true" />}
             {icon ? <img src={icon} alt="" /> : <span>{name ? "★" : "+"}</span>}
           </button>;
         })}</div>
@@ -211,7 +212,7 @@ function Vault() {
           <ArsenalLayout left={null}
             right={null}>
             <div className="collections-page">
-              <div className="collections-topline"><div className="collections-title-group"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>{renderFavoriteSlots()}</div>
+              <div className="collections-topline"><div className="collections-title-group"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1><div className="collections-total-progress"><span><strong>{collectionTotals.owned}/{collectionTotals.possible}</strong> OBTAINED</span><span><strong>{collectionTotals.maxed}/{collectionTotals.possible}</strong> MASTERWORKED</span></div></div></div>{renderFavoriteSlots()}</div>
               {renderRecentStrip()}
               <div className="collections-layout">
                 <nav className="collections-main-nav" aria-label="Collection categories">
