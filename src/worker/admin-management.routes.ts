@@ -122,6 +122,71 @@ export function registerAdminManagementRoutes<T extends Bindings>(app: Hono<{ Bi
     await log(c, "delete_event", slug, {});
     return c.json({ success: true });
   });
+  // Event Hub v2: server-derived schedule and a strict two-slot homepage feature limit.
+  const eventColumns = "slug, title, eyebrow, description, cover_url, theme, start_at, end_at, cancelled_at, published, featured_slot, activities_json, created_at";
+  const decorate = (row: any, now: number) => {
+    const start = Date.parse(String(row.start_at));
+    const end = Date.parse(String(row.end_at));
+    const status = row.cancelled_at ? "CANCELLED" : now < start ? "UPCOMING" : now >= end ? "CONCLUDED" : "ACTIVE";
+    let activities: unknown[] = [];
+    try { const parsed = JSON.parse(String(row.activities_json || "[]")); if (Array.isArray(parsed)) activities = parsed; } catch {}
+    return { ...row, status, activities, featured_slot: Number(row.featured_slot) || 0 };
+  };
+  app.get("/api/event-hub", async c => {
+    const result = await c.env.DB.prepare(`SELECT ${eventColumns} FROM event_hub WHERE published = 1 ORDER BY start_at DESC LIMIT 100`).all();
+    const now = Date.now();
+    return c.json({ events: (result.results || []).map(row => decorate(row, now)) });
+  });
+  app.get("/api/admin/event-hub", async c => {
+    if (!(await allowed(c))) return deny(c);
+    const result = await c.env.DB.prepare(`SELECT ${eventColumns} FROM event_hub ORDER BY created_at DESC LIMIT 100`).all();
+    return c.json({ events: (result.results || []).map(row => decorate(row, Date.now())) });
+  });
+  const parseEvent = (body: any) => {
+    const slug = String(body?.slug ?? "").trim();
+    const title = String(body?.title ?? "").trim();
+    const start = String(body?.start_at ?? "");
+    const end = String(body?.end_at ?? "");
+    const startMs = Date.parse(start), endMs = Date.parse(end);
+    const activities = body?.activities;
+    const cover = String(body?.cover_url ?? "").trim();
+    const theme = String(body?.theme ?? "gold");
+    const featured = Number(body?.featured_slot ?? 0);
+    if (!validSlug(slug) || !title || title.length > 160 || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs || !Array.isArray(activities) || activities.length > 3 || !Number.isInteger(featured) || featured < 0 || featured > 2 || !["gold","teal","crimson","violet","blue","emerald"].includes(theme)) return null;
+    if (cover && !(cover.startsWith("/") && !cover.startsWith("//") || /^https:\/\/[^\s]+$/i.test(cover)) || cover.length > 600) return null;
+    const cleaned = activities.map((a: any) => ({ title: String(a?.title ?? "").trim().slice(0,90), path: String(a?.path ?? "").trim() }));
+    if (cleaned.some((a: any) => !a.title || !/^\/(?!\/)[a-zA-Z0-9/_-]*$/.test(a.path) || a.path.startsWith("/api/") || a.path.startsWith("/command/"))) return null;
+    return { slug, title, eyebrow: String(body?.eyebrow ?? "").slice(0,160), description: String(body?.description ?? "").slice(0,2500), cover, theme, start: new Date(startMs).toISOString(), end: new Date(endMs).toISOString(), cancelled: body?.cancelled === true, published: body?.published === true, featured, activities: JSON.stringify(cleaned) };
+  };
+  app.post("/api/admin/event-hub", async c => {
+    if (!(await allowed(c))) return deny(c);
+    const b = parseEvent(await c.req.json().catch(() => null));
+    if (!b) return c.json({ error: "Invalid event, dates, artwork, or activities (maximum three)" }, 400);
+    const statements = [];
+    if (b.featured) statements.push(c.env.DB.prepare("UPDATE event_hub SET featured_slot = 0 WHERE featured_slot = ?").bind(b.featured));
+    statements.push(c.env.DB.prepare("INSERT INTO event_hub (slug,title,eyebrow,description,cover_url,theme,start_at,end_at,cancelled_at,published,featured_slot,activities_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)").bind(b.slug,b.title,b.eyebrow,b.description,b.cover,b.theme,b.start,b.end,b.cancelled ? new Date().toISOString() : null,Number(b.published),b.featured,b.activities));
+    try { await c.env.DB.batch(statements); } catch { return c.json({ error: "Unable to create event; check slug and migration" }, 409); }
+    await log(c,"event_hub_create",b.slug,{title:b.title}); return c.json({ success:true },201);
+  });
+  app.put("/api/admin/event-hub/:slug", async c => {
+    if (!(await allowed(c))) return deny(c);
+    const slug = c.req.param("slug");
+    const b = parseEvent({ ...(await c.req.json().catch(() => null)), slug });
+    if (!b) return c.json({ error: "Invalid event settings" },400);
+    const old = await c.env.DB.prepare("SELECT slug, cancelled_at FROM event_hub WHERE slug = ?").bind(slug).first<{slug:string;cancelled_at:string|null}>();
+    if (!old) return c.json({ error:"Event not found" },404);
+    const statements = [];
+    if (b.featured) statements.push(c.env.DB.prepare("UPDATE event_hub SET featured_slot = 0 WHERE featured_slot = ? AND slug <> ?").bind(b.featured,slug));
+    statements.push(c.env.DB.prepare("UPDATE event_hub SET title=?,eyebrow=?,description=?,cover_url=?,theme=?,start_at=?,end_at=?,cancelled_at=?,published=?,featured_slot=?,activities_json=? WHERE slug=?").bind(b.title,b.eyebrow,b.description,b.cover,b.theme,b.start,b.end,b.cancelled ? (old.cancelled_at || new Date().toISOString()) : null,Number(b.published),b.featured,b.activities,slug));
+    await c.env.DB.batch(statements);
+    await log(c,"event_hub_update",slug,{title:b.title,cancelled:b.cancelled}); return c.json({ success:true });
+  });
+  app.delete("/api/admin/event-hub/:slug", async c => {
+    if (!(await allowed(c))) return deny(c);
+    const slug=c.req.param("slug"); if (!validSlug(slug)) return c.json({error:"Invalid slug"},400);
+    await c.env.DB.prepare("DELETE FROM event_hub WHERE slug=?").bind(slug).run();
+    await log(c,"event_hub_delete",slug,{});return c.json({success:true});
+  });
   app.get("/api/admin/audit", async c => {
     if (!(await allowed(c))) return deny(c);
     const rows = await c.env.DB.prepare("SELECT id, actor_id, action, target, details_json, created_at FROM admin_action_log ORDER BY id DESC LIMIT 100").all();
