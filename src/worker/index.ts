@@ -3120,7 +3120,7 @@ app.get("/api/game/vault/overview", async (c) => {
     c.env.DB.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{ name: string; source: string }>(),
     c.env.DB.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{ weapon_name: string; masterwork: number }>(),
     c.env.DB.prepare(`SELECT weapon_name AS name, source, acquired_at AS acquiredAt
-      FROM vault_weapon_drops WHERE user_id = ? ORDER BY id DESC LIMIT 10`).bind(userId).all<{ name: string; source: string; acquiredAt: string }>(),
+      FROM vault_weapon_drops WHERE user_id = ? ORDER BY id DESC LIMIT 15`).bind(userId).all<{ name: string; source: string; acquiredAt: string }>(),
     c.env.DB.prepare("SELECT weapon_name FROM vault_weapon_favorites WHERE user_id = ? ORDER BY created_at ASC")
       .bind(userId).all<{ weapon_name: string }>(),
   ]);
@@ -3144,8 +3144,8 @@ app.get("/api/game/vault/overview", async (c) => {
     }
   }
   const favoriteNames = favorites.results.map(row => row.weapon_name);
-  const favoriteWeapons = favoriteNames.map(name => ({ name, source: catalog.results.find(row => row.name.toLowerCase() === name.toLowerCase())?.source ?? '' }));
-  return c.json({ authenticated: true, sources, recent: recent.results, favorites: favoriteNames, favoriteWeapons });
+  const favoriteWeapons = favoriteNames.map(name => ({ name, source: catalog.results.find(row => row.name.toLowerCase() === name.toLowerCase())?.source ?? '', masterwork: Number(ownedMap.get(name.toLowerCase()) ?? 0) }));
+  return c.json({ authenticated: true, sources, recent: recent.results.map(row => ({ ...row, masterwork: Number(ownedMap.get(row.name.toLowerCase()) ?? 0) })), favorites: favoriteNames, favoriteWeapons });
 });
 
 app.post("/api/game/vault/favorites", async (c) => {
@@ -3177,7 +3177,7 @@ app.post("/api/game/vault/favorites", async (c) => {
   const favoriteWeapons = await Promise.all(favoriteNames.map(async name => {
     const row = await c.env.DB.prepare("SELECT source FROM weapons WHERE lower(name) = lower(?) LIMIT 1")
       .bind(name).first<{ source: string }>();
-    return { name, source: row?.source ?? '' };
+    return { name, source: row?.source ?? '', masterwork: Number((await c.env.DB.prepare("SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1").bind(userId, name).first<{ masterwork: number }>())?.masterwork ?? 0) };
   }));
   return c.json({ favorites: favoriteNames, favoriteWeapons });
 });
