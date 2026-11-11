@@ -3458,7 +3458,6 @@ app.get("/api/game/profile", async (c) => {
     await import("./game/level");
 
   const {
-    calculateWeaponPower,
     calculateArmorPower,
     calculateArtifactPower,
     calculateLevelPower,
@@ -3551,29 +3550,27 @@ app.get("/api/game/profile", async (c) => {
      WEAPONS
   ======================================================= */
 
-  const weapons =
-    await c.env.DB
-      .prepare(
-        `SELECT
-          player_weapons.weapon_name,
-          player_weapons.masterwork,
-          weapons.rarity
-         FROM player_weapons
-         LEFT JOIN weapons
-           ON weapons.name =
-              player_weapons.weapon_name
-         WHERE player_weapons.user_id = ?`
-      )
-      .bind(session.user_id)
-      .all<WeaponRow>();
+  // Phase 2: aggregate in SQLite instead of transferring every owned weapon
+  // to the Worker. Mirrors calculateWeaponPower (normal 100, adept 200,
+  // +50 per nonnegative masterwork level) and preserves masterwork counts.
+  const weaponSummary = await c.env.DB
+    .prepare(
+      `SELECT
+         COUNT(*) AS owned,
+         COALESCE(SUM(
+           CASE WHEN LOWER(TRIM(COALESCE(weapons.rarity, 'normal'))) = 'adept'
+             THEN 200 ELSE 100 END
+           + MAX(0, COALESCE(player_weapons.masterwork, 0)) * 50
+         ), 0) AS power,
+         COALESCE(SUM(CASE WHEN player_weapons.masterwork >= ? THEN 1 ELSE 0 END), 0) AS masterworked
+       FROM player_weapons
+       LEFT JOIN weapons ON weapons.name = player_weapons.weapon_name
+       WHERE player_weapons.user_id = ?`
+    )
+    .bind(VAULT_MAX_MASTERWORK, session.user_id)
+    .first<{ owned: number; power: number; masterworked: number }>();
 
-  const weaponRows =
-    weapons.results ?? [];
-
-  const weaponPower =
-    calculateWeaponPower(
-      weaponRows
-    );
+  const weaponPower = Number(weaponSummary?.power ?? 0);
 
   const totalWeapons =
     await c.env.DB
@@ -3754,8 +3751,8 @@ app.get("/api/game/profile", async (c) => {
     },
 
     weapons: {
-      owned: weaponRows.length,
-      masterworked: weaponRows.filter((weapon) => Number(weapon.masterwork) >= VAULT_MAX_MASTERWORK).length,
+      owned: Number(weaponSummary?.owned ?? 0),
+      masterworked: Number(weaponSummary?.masterworked ?? 0),
       total: Number(
         totalWeapons?.count ?? 0
       ),
