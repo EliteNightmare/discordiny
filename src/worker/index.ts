@@ -10398,9 +10398,11 @@ app.get("/api/game/activity/feed", async (c) => {
 
          WHERE global_activity_feed.weapon_name IS NOT NULL
            AND TRIM(global_activity_feed.weapon_name) <> ''
-           AND date(global_activity_feed.created_at) = date('now')
+           AND global_activity_feed.created_at >= date('now')
+           AND global_activity_feed.created_at < date('now', '+1 day')
 
          ORDER BY
+           global_activity_feed.created_at DESC,
            global_activity_feed.id DESC
 
          LIMIT 30`,
