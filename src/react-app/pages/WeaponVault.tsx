@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import TopBar from "../components/TopBar";
+import { fetchProfileSnapshot, invalidateProfileSnapshot } from "../lib/profileRequest";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
 import VaultMaterials from "../components/arsenal/VaultMaterials";
 import VaultTransition from "../components/arsenal/VaultTransition";
@@ -33,9 +34,6 @@ type WeaponVaultProps = {
   categorySlug: string;
   activitySlug?: string;
   embedded?: boolean;
-  focusWeapon?: string;
-  favorites?: string[];
-  onToggleFavorite?: (name: string) => Promise<void>;
   selectedTier?: WeaponTier;
   onTierChange?: (tier: WeaponTier) => void;
 };
@@ -310,9 +308,6 @@ function WeaponVault({
   categorySlug,
   activitySlug,
   embedded = false,
-  focusWeapon,
-  favorites = [],
-  onToggleFavorite,
   selectedTier,
   onTierChange,
 }: WeaponVaultProps) {
@@ -406,32 +401,13 @@ function WeaponVault({
             weaponSource as string,
           )}`;
 
-        const [
-          weaponResponse,
-          profileResponse,
-        ] = await Promise.all([
-          fetch(
-            weaponUrl,
-            {
-              credentials:
-                "include",
-            },
-          ),
-
-          fetch(
-            "/api/game/profile",
-            {
-              credentials:
-                "include",
-            },
-          ),
+        const [weaponResponse, profileResult] = await Promise.all([
+          fetch(weaponUrl, { credentials: "include" }),
+          fetchProfileSnapshot<ProfileResponse>(),
         ]);
 
         const weaponResult =
           (await weaponResponse.json()) as WeaponResponse;
-
-        const profileResult =
-          (await profileResponse.json()) as ProfileResponse;
 
         if (
           !weaponResponse.ok ||
@@ -443,7 +419,6 @@ function WeaponVault({
         }
 
         if (
-          !profileResponse.ok ||
           !profileResult.authenticated
         ) {
           throw new Error(
@@ -538,17 +513,6 @@ function WeaponVault({
       [weapons, weaponSource, tier],
     );
 
-  useEffect(() => {
-    if (!focusWeapon || loading || !visibleWeapons.length) return;
-    const id = window.requestAnimationFrame(() => {
-      const target = Array.from(document.querySelectorAll<HTMLElement>('.weapon-vault-item[data-weapon-name]'))
-        .find(element => element.dataset.weaponName?.toLowerCase() === focusWeapon.toLowerCase());
-      target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target?.classList.add('weapon-vault-focused');
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [focusWeapon, loading, visibleWeapons]);
-
   const collectionOwned =
     visibleWeapons.filter(
       (weapon) => weapon.owned,
@@ -556,7 +520,6 @@ function WeaponVault({
 
   const collectionTotal =
     visibleWeapons.length;
-  const collectionMaxed = visibleWeapons.filter(weapon => weapon.owned && weapon.masterwork >= MAX_MASTERWORK).length;
 
   async function readMasterworkResponse(response: Response): Promise<MasterworkResponse> {
     const body = await response.text();
@@ -616,23 +579,19 @@ function WeaponVault({
         );
       }
 
-      const [weaponResponse, profileResponse] =
-        await Promise.all([
-          fetch(
-            `/api/game/weapons?source=${encodeURIComponent(
-              weaponSource as string,
-            )}`,
-            { credentials: "include" },
-          ),
-          fetch("/api/game/profile", {
-            credentials: "include",
-          }),
-        ]);
+      // Masterworking changes both weapon power and currencies. Do not reuse
+      // the pre-action profile snapshot for the refreshed Vault UI.
+      invalidateProfileSnapshot();
+      const [weaponResponse, profileResult] = await Promise.all([
+        fetch(
+          `/api/game/weapons?source=${encodeURIComponent(weaponSource as string)}`,
+          { credentials: "include" },
+        ),
+        fetchProfileSnapshot<ProfileResponse>(0),
+      ]);
 
       const weaponResult =
         (await weaponResponse.json()) as WeaponResponse;
-      const profileResult =
-        (await profileResponse.json()) as ProfileResponse;
 
       setWeapons(weaponResult.weapons ?? []);
       setHoverCosts({});
@@ -837,7 +796,7 @@ function WeaponVault({
                     </h1>
 
                     <p>
-                      Weapon Collection · {collectionOwned}/{collectionTotal} UNLOCKED · {collectionMaxed}/{collectionTotal} MAXED
+                      Weapon Collection · {collectionOwned}/{collectionTotal} OWNED
                     </p>
                   </div>
 
@@ -928,8 +887,9 @@ function WeaponVault({
                           key={
                             weapon.name
                           }
-                          className={itemClass}
-                          data-weapon-name={weapon.name}
+                          className={
+                            itemClass
+                          }
                           onMouseEnter={() => { void previewHoverCost(weapon); }}
                           role={weapon.owned ? "button" : undefined}
                           tabIndex={weapon.owned ? 0 : -1}
@@ -948,11 +908,6 @@ function WeaponVault({
                             }
                           }}
                         >
-                          {weapon.owned && onToggleFavorite && <button type="button" className={favorites.includes(weapon.name) ? 'vault-favorite-star active' : 'vault-favorite-star'}
-                            aria-label={favorites.includes(weapon.name) ? `Remove ${weapon.name} from favorites` : `Favorite ${weapon.name}`}
-                            title={favorites.includes(weapon.name) ? 'Remove favorite' : favorites.filter(name => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name) === (tier === 'adept')).length >= 4 ? 'Maximum 4 favorites in this tier' : 'Favorite weapon'}
-                            disabled={!favorites.includes(weapon.name) && favorites.filter(name => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name) === (tier === "adept")).length >= 4}
-                            onClick={event => { event.stopPropagation(); void onToggleFavorite(weapon.name); }}>{favorites.includes(weapon.name) ? "★" : "☆"}</button>}
                           <div className="weapon-vault-image-frame">
                             {weapon.image ? (
                               <img
