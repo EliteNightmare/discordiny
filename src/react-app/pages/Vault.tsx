@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
 import { fetchProfileSnapshot } from "../lib/profileRequest";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
@@ -46,6 +46,8 @@ function Vault() {
   const [activitySlug, setActivitySlug] = useState<string | undefined>(VAULT_CATEGORIES[0].activities?.[0]?.slug);
   const [animationKey, setAnimationKey] = useState(0);
   const [tier, setTier] = useState<WeaponTier>("normal");
+  const [activeGroup, setActiveGroup] = useState<string | null>(VAULT_CATEGORIES[0].activities?.[0]?.group ?? null);
+  const pendingScrollY = useRef<number | null>(null);
   const [mobileQuickView, setMobileQuickView] = useState<"closed" | "recent" | "favorites">("closed");
 
   useEffect(() => {
@@ -73,16 +75,27 @@ function Vault() {
     return () => { active = false; };
   }, []);
 
+  // Preserve viewport when swapping collections with different weapon counts.
+  useEffect(() => {
+    if (pendingScrollY.current === null) return;
+    const previous = pendingScrollY.current;
+    pendingScrollY.current = null;
+    requestAnimationFrame(() => window.scrollTo({ top: previous, behavior: "instant" }));
+  }, [category, activitySlug]);
+
   function openCategory(next: VaultCategory) {
+    pendingScrollY.current = window.scrollY;
     setFocusWeapon(undefined);
     setCategory(next);
     setActivitySlug(next.activities?.[0]?.slug);
+    setActiveGroup(next.activities?.[0]?.group ?? null);
     setTier("normal");
     setAnimationKey(value => value + 1);
   }
 
   function selectActivity(slug: string) {
     if (slug === activitySlug) return;
+    pendingScrollY.current = window.scrollY;
     setFocusWeapon(undefined);
     setActivitySlug(slug);
     setAnimationKey(value => value + 1);
@@ -93,6 +106,7 @@ function Vault() {
     const location = sourceLocation(weapon.source);
     if (!location) return;
     setCategory(location.category);
+    setActiveGroup(location.category.activities?.find(a => a.slug === location.activity)?.group ?? null);
     setActivitySlug(location.activity);
     setTier(/\((Adept|Timelost|Harrowed)\)$/i.test(weapon.name) ? 'adept' : 'normal');
     setFocusWeapon(weapon.name);
@@ -115,6 +129,10 @@ function Vault() {
     finally { setFavoritesBusy(false); }
   }
 
+  const groups = Array.from(new Set((category.activities ?? []).map(activity => activity.group).filter((group): group is string => Boolean(group))));
+  const visibleActivities = groups.length ? category.activities?.filter(activity => activity.group === (activeGroup ?? groups[0])) : category.activities;
+  const normalFavorites = overview?.favorites.filter(name => !isAdeptFavorite(name)) ?? [];
+  const adeptFavorites = overview?.favorites.filter(isAdeptFavorite) ?? [];
   const selectedActivity = category.activities?.find((item) => item.slug === activitySlug);
   const selectedSource = selectedActivity?.weaponSource ?? category.directSource;
   const selectedSourceStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()] : undefined;
@@ -123,17 +141,38 @@ function Vault() {
 
   const renderRecent = (limit: number) => (
     <div className="vault-recent-column"><span className="vault-eyebrow">WEAPON HISTORY</span>
-              <h2>Recent Drops</h2>
-              <p>Latest acquired weapons</p>
-              {overviewError && <p className="vault-overview-error">{overviewError}</p>}
-              {!overview && !overviewError && <p>Loading...</p>}
-              {overview?.recent.length === 0 && <p>No recorded drops yet.</p>}
-              {overview?.recent.slice(0, limit).map((weapon, index) => <button type="button" key={`${weapon.name}-${index}`} className="vault-recent-item" onClick={() => jumpToWeapon(weapon)}>
-                {weaponIcon(weapon.source, weapon.name) ? <img src={weaponIcon(weapon.source, weapon.name)} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
-                <span><strong>{weapon.name}</strong><small>{sourceLocation(weapon.source)?.category.name ?? weapon.source}</small></span>
-                <span aria-hidden="true">›</span>
-              </button>)}
-              </div>
+      <h2>Recent Drops</h2>
+      {overviewError && <p className="vault-overview-error">{overviewError}</p>}
+      {!overview && !overviewError && <p>Loading...</p>}
+      {overview?.recent.length === 0 && <p>No recorded drops yet.</p>}
+      {overview?.recent.slice(0, limit).map((weapon, index) => {
+        const isFavorite = overview.favorites.includes(weapon.name);
+        const limitReached = (isAdeptFavorite(weapon.name) ? adeptFavorites : normalFavorites).length >= 4;
+        return <div className={`collections-recent-entry${isAdeptFavorite(weapon.name) ? " collections-recent-adept" : ""}`} key={`${weapon.name}-${index}`}>
+          <button type="button" className="vault-recent-item" onClick={() => jumpToWeapon(weapon)}>
+            {weaponIcon(weapon.source, weapon.name) ? <img src={weaponIcon(weapon.source, weapon.name)} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
+            <span><strong>{weapon.name}</strong></span>
+          </button>
+          <button type="button" className={`collections-recent-star${isFavorite ? " active" : ""}`} aria-label={`${isFavorite ? "Remove" : "Add"} ${weapon.name} ${isFavorite ? "from" : "to"} favourites`} title={limitReached && !isFavorite ? "Four favourites per tier" : "Toggle favourite"} disabled={favoritesBusy || (!isFavorite && limitReached)} onClick={() => void toggleFavorite(weapon.name)}>{isFavorite ? "★" : "☆"}</button>
+        </div>;
+      })}
+    </div>
+  );
+
+  const renderFavoriteSlots = () => (
+    <div className="collections-favorite-slots" aria-label="Favourite weapons">
+      {([['NORMAL', normalFavorites], ['ADEPT', adeptFavorites]] as const).map(([label, names]) => <div className="collections-favorite-tier" key={label}>
+        <span className="collections-favorite-tier-label">{label}</span>
+        <div className="collections-favorite-row">{Array.from({ length: 4 }, (_, index) => {
+          const name = names[index];
+          const weapon = name ? overview?.favoriteWeapons.find(item => item.name === name) : undefined;
+          const icon = weapon ? weaponIcon(weapon.source, weapon.name) : undefined;
+          return <button type="button" key={`${label}-${index}`} className={`collections-favorite-slot${name ? " filled" : ""}${label === 'ADEPT' ? " adept" : ""}`} disabled={!weapon} title={name ?? `${label} slot ${index + 1}`} aria-label={name ? `View ${name}` : `Empty ${label} favourite slot`} onClick={() => weapon && jumpToWeapon(weapon)}>
+            {icon ? <img src={icon} alt="" /> : <span>{name ? "★" : "+"}</span>}
+          </button>;
+        })}</div>
+      </div>) }
+    </div>
   );
 
   const renderFavorites = () => (
@@ -180,9 +219,9 @@ function Vault() {
           <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
         ) : (
           <ArsenalLayout left={null}
-            right={<aside className="vault-recent-panel collections-desktop-history">{renderRecent(10)}{renderFavorites()}</aside>}>
+            right={<aside className="vault-recent-panel collections-desktop-history">{renderRecent(10)}</aside>}>
             <div className="collections-page">
-              <div className="collections-topline"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>
+              <div className="collections-topline"><div className="collections-title-group"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>{renderFavoriteSlots()}</div>
               <div className="collections-mobile-quick" aria-label="Recent drops and favourites">
                 <div className="collections-quick-controls">
                   <button type="button" aria-expanded={mobileQuickView === "recent"} className={mobileQuickView === "recent" ? "active" : ""} onClick={() => setMobileQuickView(v => v === "recent" ? "closed" : "recent")}>Recent Drops <span>▾</span></button>
@@ -209,24 +248,31 @@ function Vault() {
                   })}
                 </nav>
                 <div className="collections-main">
-                  <header className="collections-heading"><div><span className="vault-eyebrow">{category.name.toUpperCase()} / {selectedActivity?.group?.toUpperCase() ?? "COLLECTIONS"}</span><h2>{selectedActivity?.name ?? category.name}</h2></div></header>
+                  <header className="collections-heading">
+                    <div className="collections-source-title"><span className="vault-eyebrow">{category.name.toUpperCase()}</span><h2>{selectedActivity?.name ?? category.name}</h2></div>
+                    {groups.length > 0 && <nav className="collections-group-tabs" aria-label={`${category.name} activity types`}>
+                      {groups.map(group => <button type="button" key={group} className={group === (activeGroup ?? groups[0]) ? "selected" : ""} aria-pressed={group === (activeGroup ?? groups[0])} onClick={() => {
+                        if (group === activeGroup) return;
+                        pendingScrollY.current = window.scrollY;
+                        setActiveGroup(group);
+                        const first = category.activities?.find(activity => activity.group === group);
+                        if (first) { setActivitySlug(first.slug); setFocusWeapon(undefined); setAnimationKey(value => value + 1); }
+                      }}>{group}</button>)}
+                    </nav>}
+                  </header>
                   <div className="collections-workspace">
                     <nav className="collections-subnav" aria-label={`${category.name} loot pools`}>
                       <span className="collections-label">{category.name.toUpperCase()}</span>
-                      {category.activities?.map((activity, index) => {
+                      {visibleActivities?.map(activity => {
                         const sourceStats = overview?.sources[activity.weaponSource.toLowerCase()];
                         const stats = sourceStats ? { total: sourceStats.normal.total + sourceStats.adept.total, owned: sourceStats.normal.owned + sourceStats.adept.owned, maxed: sourceStats.normal.maxed + sourceStats.adept.maxed } : undefined;
                         const complete = Boolean(stats && stats.total > 0 && stats.owned >= stats.total);
                         const mastered = Boolean(complete && stats && stats.maxed >= stats.total);
-                        const groupStart = Boolean(activity.group && (index === 0 || category.activities?.[index - 1]?.group !== activity.group));
-                        return <div key={activity.slug}>
-                          {groupStart && <div className="collections-subgroup">{activity.group}</div>}
-                          <button type="button" aria-pressed={activity.slug === activitySlug}
-                            className={`collections-subcategory${activity.slug === activitySlug ? " selected" : ""}${mastered ? " mastered" : complete ? " complete" : ""}`}
-                            onClick={() => selectActivity(activity.slug)}><span>{activity.name}</span>
-                            {stats && stats.total > 0 && <small>{complete ? `${stats.maxed}/${stats.total} MAXED` : `${stats.owned}/${stats.total} UNLOCKED`}</small>}
-                          </button>
-                        </div>;
+                        return <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
+                          className={`collections-subcategory${activity.slug === activitySlug ? " selected" : ""}${mastered ? " mastered" : complete ? " complete" : ""}`}
+                          onClick={() => selectActivity(activity.slug)}><span>{activity.name}</span>
+                          {stats && stats.total > 0 && <small>{complete ? `${stats.maxed}/${stats.total} MAXED` : `${stats.owned}/${stats.total} UNLOCKED`}</small>}
+                        </button>;
                       })}
                       {!category.activities?.length && <p className="collections-empty">Collections coming soon.</p>}
                     </nav>
