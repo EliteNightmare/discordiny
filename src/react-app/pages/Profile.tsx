@@ -1,3 +1,4 @@
+import { fetchGlobalActivityFeed } from "../lib/globalFeedRequest";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
 import "./Profile.css";
@@ -91,7 +92,7 @@ function Profile(){
     if(feedRefreshingRef.current)return;
     feedRefreshingRef.current=true;
     try{
-      const response=await fetch("/api/game/activity/feed",{credentials:"include"});
+      const response=await fetchGlobalActivityFeed();
       const result=await response.json() as {authenticated?:boolean;events?:FeedEvent[]};
       if(!response.ok||!result.authenticated)throw new Error("Unable to load feed");
       setFeed(Array.isArray(result.events)?result.events:[]);setFeedError(false);
