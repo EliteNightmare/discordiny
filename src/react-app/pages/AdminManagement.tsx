@@ -28,7 +28,7 @@ export function PlayerManagement(){
     </>}{message&&<p role="status" className="dc-admin-message">{message}</p>}
   </div>
 }
-export function EventManagement(){
+export function LegacyEventManagement(){
   const [events,setEvents]=useState<EventRow[]>([]);const [draft,setDraft]=useState<EventRow>({...blankEvent});const [editing,setEditing]=useState(false);const [message,setMessage]=useState("");const [busy,setBusy]=useState(false);
   async function load(){const d=await api("/api/admin/events");setEvents(d.events)}
   useEffect(()=>{void load().catch(e=>setMessage(String(e)))},[]);
@@ -54,3 +54,47 @@ export function EventManagement(){
   </div>
 }
 export function AuditManagement(){const [entries,setEntries]=useState<{id:number;action:string;target:string;details_json:string;created_at:string}[]>([]);const [message,setMessage]=useState("");useEffect(()=>{void api("/api/admin/audit").then(d=>setEntries(d.entries)).catch(e=>setMessage(String(e)))},[]);return <div className="dc-admin-panel"><h2>Recent admin actions</h2>{message&&<p>{message}</p>}{entries.map(e=><div className="dc-admin-audit" key={e.id}><strong>{e.action}</strong><span>Target #{e.target}</span><small>{e.created_at}</small><code>{e.details_json}</code></div>)}</div>}
+
+// Event Hub v2 administration: schedules are UTC, status is derived by the server.
+import { type HubEvent, type EventActivity } from "./EventHubTypes";
+type EventDraft = Omit<HubEvent, 'status' | 'created_at'> & { cancelled: boolean };
+const emptyHubEvent: EventDraft = { slug:'',title:'',eyebrow:'',description:'',cover_url:'',theme:'gold',start_at:'',end_at:'',cancelled_at:null,cancelled:false,published:false,featured_slot:0,activities:[] };
+const localInput = (s: string) => s ? new Date(new Date(s).getTime() - new Date(s).getTimezoneOffset() * 60000).toISOString().slice(0,16) : '';
+export function EventManagement() {
+  const [events,setEvents]=useState<HubEvent[]>([]);
+  const [draft,setDraft]=useState<EventDraft>({...emptyHubEvent});
+  const [editing,setEditing]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [message,setMessage]=useState('');
+  async function load(){const data=await api('/api/admin/event-hub');setEvents(data.events ?? []);}
+  useEffect(()=>{void load().catch(e=>setMessage(String(e)));},[]);
+  function change<K extends keyof EventDraft>(key:K,value:EventDraft[K]){setDraft(d=>({...d,[key]:value}));}
+  async function save(e:FormEvent){e.preventDefault();setBusy(true);setMessage('');try{
+    const payload={...draft,start_at:new Date(draft.start_at).toISOString(),end_at:new Date(draft.end_at).toISOString()};
+    await api(editing?`/api/admin/event-hub/${encodeURIComponent(draft.slug)}`:'/api/admin/event-hub',{method:editing?'PUT':'POST',body:JSON.stringify(payload)});
+    setMessage('Event saved. Schedule and featured slots updated.');setDraft({...emptyHubEvent});setEditing(false);await load();
+  }catch(e){setMessage(e instanceof Error?e.message:'Unable to save event');}finally{setBusy(false);}}
+  async function remove(slug:string){if(!window.confirm(`Permanently delete ${slug}?`))return;try{await api(`/api/admin/event-hub/${encodeURIComponent(slug)}`,{method:'DELETE'});await load();setMessage('Event deleted.');}catch(e){setMessage(String(e));}}
+  function edit(e:HubEvent){setDraft({...e,start_at:e.start_at,end_at:e.end_at,cancelled:!!e.cancelled_at});setEditing(true);setMessage('');}
+  function updateActivity(i:number,key:keyof EventActivity,value:string){change('activities',draft.activities.map((a,j)=>j===i?{...a,[key]:value}:a));}
+  return <div className="dc-admin-panel"><h2>Event Hub Management</h2><p>Create scheduled events, select cover artwork and themes, assign up to three linked activities, and feature up to two active events on the homepage. Dates use your browser's local timezone.</p>
+    <div className="dc-admin-event-list">{events.map(e=><article key={e.slug}><div><strong>{e.title}</strong><small>{e.status} · {e.published?'Published':'Draft'} · {e.featured_slot?`Featured ${e.featured_slot}`:'Not featured'}</small></div><button type="button" onClick={()=>edit(e)}>Edit</button><button type="button" className="danger" onClick={()=>void remove(e.slug)}>Delete</button></article>)}</div>
+    <form className="dc-admin-event-form" onSubmit={save}><h3>{editing?`Edit: ${draft.title}`:'Create an event'}</h3>
+      <label>URL slug<input required disabled={editing} pattern="[a-z0-9]+(-[a-z0-9]+)*" value={draft.slug} onChange={e=>change('slug',e.target.value)} placeholder="festival-of-light"/></label>
+      <label>Title<input required maxLength={160} value={draft.title} onChange={e=>change('title',e.target.value)}/></label>
+      <label>Eyebrow<input value={draft.eyebrow} onChange={e=>change('eyebrow',e.target.value)} placeholder="SEASONAL OPERATION"/></label>
+      <label>Description<textarea rows={4} value={draft.description} onChange={e=>change('description',e.target.value)}/></label>
+      <label>Cover art URL<input value={draft.cover_url} onChange={e=>change('cover_url',e.target.value)} placeholder="/assets/events/banner.webp or https://..."/></label>
+      <label>Theme<select value={draft.theme} onChange={e=>change('theme',e.target.value)}>{['gold','teal','crimson','violet','blue','emerald'].map(x=><option key={x} value={x}>{x.toUpperCase()}</option>)}</select></label>
+      <label>Start date/time<input type="datetime-local" required value={localInput(draft.start_at)} onChange={e=>change('start_at',e.target.value ? new Date(e.target.value).toISOString() : '')}/></label>
+      <label>End date/time<input type="datetime-local" required min={localInput(draft.start_at)} value={localInput(draft.end_at)} onChange={e=>change('end_at',e.target.value ? new Date(e.target.value).toISOString() : '')}/></label>
+      <label>Homepage featured slot<select value={draft.featured_slot} onChange={e=>change('featured_slot',Number(e.target.value))}><option value={0}>Not featured</option><option value={1}>Featured #1</option><option value={2}>Featured #2</option></select></label>
+      <label className="dc-admin-check"><input type="checkbox" checked={Boolean(draft.published)} onChange={e=>change('published',e.target.checked)}/> Publish / make visible</label>
+      <label className="dc-admin-check"><input type="checkbox" checked={draft.cancelled} onChange={e=>change('cancelled',e.target.checked)}/> Cancel event early (uncheck to restore)</label>
+      <h3>Linked activities ({draft.activities.length}/3)</h3><p>Internal page redirects only. Example: /activities or /vault. Activities remain independent; Nanite Break is not modified.</p>
+      {draft.activities.map((a,i)=><div className="dc-admin-inline" key={i}><input required aria-label={`Activity ${i+1} title`} placeholder="Activity name" value={a.title} onChange={e=>updateActivity(i,'title',e.target.value)}/><input required aria-label={`Activity ${i+1} route`} placeholder="/activities" value={a.path} onChange={e=>updateActivity(i,'path',e.target.value)}/><button type="button" onClick={()=>change('activities',draft.activities.filter((_,j)=>j!==i))}>Remove</button></div>)}
+      {draft.activities.length<3&&<button type="button" onClick={()=>change('activities',[...draft.activities,{title:'',path:''}])}>+ Add activity</button>}
+      <div className="dc-admin-inline"><button disabled={busy}>{busy?'Saving…':editing?'Save event changes':'Create event'}</button>{editing&&<button type="button" onClick={()=>{setDraft({...emptyHubEvent});setEditing(false)}}>New event</button>}</div>
+    </form>{message&&<p className="dc-admin-message" role="status">{message}</p>}
+  </div>;
+}
