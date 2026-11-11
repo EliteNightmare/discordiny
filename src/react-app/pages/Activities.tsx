@@ -1,3 +1,4 @@
+import { fetchProfileSnapshot, invalidateProfileSnapshot } from "../lib/profileRequest";
 import { fetchGlobalActivityFeed } from "../lib/globalFeedRequest";
 import {
   useCallback,
@@ -915,6 +916,7 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
           break;
         }
         if (!data.success || !data.result) throw new Error("Could not finalize activity. Please retry.");
+        invalidateProfileSnapshot();
         if (cancelled) return;
         const result = data.result;
         if (!result.fullClear) {
@@ -1016,8 +1018,7 @@ export default function Activities() {
       filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 180 : 90) * 1000});
       localStorage.setItem(timedStorageKey, JSON.stringify(filtered));
     } catch { /* optional browser persistence */ }
-    void fetch("/api/game/profile", { credentials: "include" })
-      .then(response => response.ok ? response.json() : null)
+    void fetchProfileSnapshot<{ level?: LevelProgress }>()
       .then(profile => { if (profile?.level) beforeLevelRef.current = profile.level as LevelProgress; })
       .catch(() => {});
   }
@@ -1026,8 +1027,7 @@ export default function Activities() {
     if (!selectedEndgameActivity) return;
     let cancelled = false;
     beforeLevelRef.current = null;
-    void fetch("/api/game/profile", { credentials: "include" })
-      .then((response) => response.ok ? response.json() : null)
+    void fetchProfileSnapshot<{ level?: LevelProgress }>()
       .then((data) => { if (!cancelled && data?.level) beforeLevelRef.current = data.level as LevelProgress; })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -1599,11 +1599,8 @@ export default function Activities() {
     setClaimingExploration(true);
     let explorationBefore: LevelProgress | null = null;
     try {
-      const profileResponse = await fetch("/api/game/profile", { credentials: "include" });
-      if (profileResponse.ok) {
-        const profileData = await profileResponse.json();
-        explorationBefore = profileData?.level ?? null;
-      }
+      const profileData = await fetchProfileSnapshot<{ level?: LevelProgress }>();
+      explorationBefore = profileData?.level ?? null;
     } catch { /* XP popup still works without a starting level snapshot. */ }
     setError("");
 
@@ -1640,6 +1637,7 @@ export default function Activities() {
             "Failed to claim exploration rewards.",
         );
       }
+      invalidateProfileSnapshot();
 
       const weapons = result.weapons ?? (result.weapon?.dropped && result.weapon.name
         ? [{ name: result.weapon.name, rarity: null, adept: /\(Adept\)$/i.test(result.weapon.name) }]
