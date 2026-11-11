@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
 import { fetchProfileSnapshot } from "../lib/profileRequest";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
-import VaultMaterials from "../components/arsenal/VaultMaterials";
-import WeaponVault, { WeaponTierControl, type WeaponTier } from "./WeaponVault";
+import WeaponVault, { type WeaponTier } from "./WeaponVault";
 import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
 import "./VaultCollections.css";
@@ -118,7 +117,8 @@ function Vault() {
 
   const selectedActivity = category.activities?.find((item) => item.slug === activitySlug);
   const selectedSource = selectedActivity?.weaponSource ?? category.directSource;
-  const selectedStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()]?.[tier] : undefined;
+  const selectedSourceStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()] : undefined;
+  const selectedStats = selectedSourceStats ? { total: selectedSourceStats.normal.total + selectedSourceStats.adept.total, owned: selectedSourceStats.normal.owned + selectedSourceStats.adept.owned, maxed: selectedSourceStats.normal.maxed + selectedSourceStats.adept.maxed } : undefined;
   const hasCollection = Boolean(category.directSource || selectedActivity);
 
   const renderRecent = (limit: number) => (
@@ -179,7 +179,7 @@ function Vault() {
         {loading ? <div className="vault-status">Loading Vault...</div> : error || !profile ? (
           <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
         ) : (
-          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}
+          <ArsenalLayout left={null}
             right={<aside className="vault-recent-panel collections-desktop-history">{renderRecent(10)}{renderFavorites()}</aside>}>
             <div className="collections-page">
               <div className="collections-topline"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>
@@ -209,12 +209,13 @@ function Vault() {
                   })}
                 </nav>
                 <div className="collections-main">
-                  <header className="collections-heading"><div><span className="vault-eyebrow">{category.name.toUpperCase()} / {selectedActivity?.group?.toUpperCase() ?? "COLLECTIONS"}</span><h2>{selectedActivity?.name ?? category.name}</h2></div><WeaponTierControl tier={tier} onChange={setTier} /></header>
+                  <header className="collections-heading"><div><span className="vault-eyebrow">{category.name.toUpperCase()} / {selectedActivity?.group?.toUpperCase() ?? "COLLECTIONS"}</span><h2>{selectedActivity?.name ?? category.name}</h2></div></header>
                   <div className="collections-workspace">
                     <nav className="collections-subnav" aria-label={`${category.name} loot pools`}>
                       <span className="collections-label">{category.name.toUpperCase()}</span>
                       {category.activities?.map((activity, index) => {
-                        const stats = overview?.sources[activity.weaponSource.toLowerCase()]?.[tier];
+                        const sourceStats = overview?.sources[activity.weaponSource.toLowerCase()];
+                        const stats = sourceStats ? { total: sourceStats.normal.total + sourceStats.adept.total, owned: sourceStats.normal.owned + sourceStats.adept.owned, maxed: sourceStats.normal.maxed + sourceStats.adept.maxed } : undefined;
                         const complete = Boolean(stats && stats.total > 0 && stats.owned >= stats.total);
                         const mastered = Boolean(complete && stats && stats.maxed >= stats.total);
                         const groupStart = Boolean(activity.group && (index === 0 || category.activities?.[index - 1]?.group !== activity.group));
