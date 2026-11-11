@@ -1,3 +1,4 @@
+import { fetchGlobalActivityFeed } from "../lib/globalFeedRequest";
 import {
   useCallback,
   useEffect,
@@ -1183,13 +1184,7 @@ export default function Activities() {
 
         try {
           const response =
-            await fetch(
-              "/api/game/activity/feed",
-              {
-                credentials:
-                  "include",
-              },
-            );
+            await fetchGlobalActivityFeed();
 
           const result =
             (await response.json()) as
