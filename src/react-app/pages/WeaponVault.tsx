@@ -593,6 +593,7 @@ function WeaponVault({
       );
 
       setRequestedRanks(1);
+      window.dispatchEvent(new Event('discordiny:weapon-masterworked'));
     } catch (err) {
       setMasterworkError(
         err instanceof Error
