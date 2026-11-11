@@ -101,9 +101,11 @@ function Profile(){
   useEffect(()=>{
     if(!data)return;
     void loadGlobalActivityFeed();
-    const refresh=window.setInterval(()=>{void loadGlobalActivityFeed();},15000);
+    const refresh=window.setInterval(()=>{if(document.visibilityState==="visible")void loadGlobalActivityFeed();},60000);
+    const onVisible=()=>{if(document.visibilityState==="visible")void loadGlobalActivityFeed();};
+    document.addEventListener("visibilitychange",onVisible);
     const clock=window.setInterval(()=>setFeedClock(Date.now()),30000);
-    return ()=>{window.clearInterval(refresh);window.clearInterval(clock);};
+    return ()=>{document.removeEventListener("visibilitychange",onVisible);window.clearInterval(refresh);window.clearInterval(clock);};
   },[data?.user.id,loadGlobalActivityFeed]);
   useEffect(()=>{
     const media=window.matchMedia("(max-width: 650px)");
@@ -195,7 +197,7 @@ function Profile(){
               </div>
               <span className="global-activity-event-activity">{event.activity}</span>
               <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.result}</span>
-              {event.weapon&&<div className="global-activity-event-weapon">
+              {event.weapon&&<div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
                 {getWeaponImage(event.weapon.name)&&<img className="global-activity-event-weapon-icon" src={getWeaponImage(event.weapon.name)} alt="" aria-hidden="true"/>}
                 <div><span>WEAPON DROP</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
               </div>}
