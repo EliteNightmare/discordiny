@@ -8,7 +8,9 @@ import './ArchonsForge.css';
 
 type VectorInput = { x: number; y: number };
 type Settings = { cameraDistance: number; cameraHeight: number; speed: number; modelScale: number };
-const MODEL = '/models/archons-forge/arena.glb';
+// Set this in your Cloudflare/Vite build environment to the public R2 object URL.
+// Example: https://assets.discordiny.com/archons-forge/arena.glb
+const MODEL = import.meta.env.VITE_ARCHONS_FORGE_ARENA_URL?.trim() || '';
 const DEFAULTS: Settings = { cameraDistance: 15, cameraHeight: 19, speed: 6, modelScale: 1 };
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -177,9 +179,9 @@ export default function ArchonsForge() {
   return <main className="af-page">
     <header className="af-topbar"><a href="/events">← EVENTS</a><strong>OPERATION: CLEANSE <span>/ ARCHON'S FORGE</span></strong><button onClick={() => setShowCalibration((v) => !v)}>CALIBRATE</button></header>
     <section className="af-viewport">
-      <Canvas camera={{ fov: 52, near: 0.1, far: 5000, position: [0, 25, 20] }} dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: 'high-performance' }}>
+      {MODEL ? <Canvas camera={{ fov: 52, near: 0.1, far: 5000, position: [0, 25, 20] }} dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: 'high-performance' }}>
         <Suspense fallback={null}><World keys={keys} touch={touch} settings={settings} spawnRequest={spawnRequest} onStatus={setStatusStable} /></Suspense>
-      </Canvas>
+      </Canvas> : <div role="alert" style={{padding: 32, color: "#ff8e7d"}}>R2 arena URL is not configured. Set VITE_ARCHONS_FORGE_ARENA_URL in your build environment and rebuild.</div>}
       <div className="af-vignette" />
       <div className="af-mission"><small>ARCHON'S FORGE // RECONNAISSANCE</small><h1>PERFECTION COMPLEX</h1><p>Explore the full arena, stairs and raised platforms.</p></div>
       <div className="af-status" role="status">{status}</div>
