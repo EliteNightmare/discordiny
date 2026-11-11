@@ -2832,7 +2832,7 @@ app.post("/api/game/weapons/masterwork", async (c) => {
 
   let body: {
     weaponName?: string;
-    amount?: 1 | 10 | "max";
+    amount?: number | "max";
   };
 
   try {
@@ -2848,7 +2848,7 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     return c.json({ error: "Invalid weapon name" }, 400);
   }
 
-  if (amount !== 1 && amount !== 10 && amount !== "max") {
+  if (amount !== "max" && (!Number.isInteger(amount) || amount < 1 || amount > VAULT_MAX_MASTERWORK)) {
     return c.json({ error: "Invalid Masterwork amount" }, 400);
   }
 
@@ -2994,10 +2994,8 @@ app.post("/api/game/weapons/masterwork", async (c) => {
   }
 
   /*
-   * +1 and +10 are exact actions.
-   * If the requested number of ranks cannot be fully afforded,
-   * spend nothing. MAX is intentionally partial and stops at the
-   * highest affordable rank.
+   * Numeric rank increments are exact actions: spend nothing if the
+   * complete requested upgrade is unaffordable. MAX may stop early.
    */
   if (
     amount !== "max" &&
@@ -3006,9 +3004,7 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     return c.json(
       {
         error:
-          amount === 10
-            ? "You do not have enough materials to Masterwork +10."
-            : "You do not have enough materials to Masterwork +1.",
+          `You do not have enough materials to Masterwork +${amount}.`,
         masterwork: currentMasterwork,
         maxMasterwork: VAULT_MAX_MASTERWORK,
       },
