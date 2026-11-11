@@ -1,3 +1,4 @@
+import { fetchProfileSnapshot, invalidateProfileSnapshot } from "../lib/profileRequest";
 import { fetchGlobalActivityFeed } from "../lib/globalFeedRequest";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopBar from "../components/TopBar";
@@ -77,9 +78,7 @@ function Profile(){
     let active=true;
     async function load(){
       try {
-        const response=await fetch("/api/game/profile",{credentials:"include"});
-        if(!response.ok)throw new Error("Please sign in to view your profile.");
-        const result=await response.json() as ProfileResponse;
+        const result=await fetchProfileSnapshot<ProfileResponse>(0);
         if(!result.authenticated)throw new Error("Please sign in to view your profile.");
         if(active){setData(result);}
       }catch(e){if(active)setError(e instanceof Error?e.message:"Could not load profile");}
@@ -133,6 +132,7 @@ function Profile(){
       const response=await fetch("/api/game/travel",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({destination})});
       const result=await response.json() as {success?:boolean;zone?:string;error?:string};
       if(!response.ok||!result.success)throw new Error(result.error||"Travel failed");
+      invalidateProfileSnapshot();
       setData(previous=>previous?{...previous,profile:{...previous.profile,zone:result.zone||destination}}:previous);
       setTravelOpen(false);
     }catch(e){setError(e instanceof Error?e.message:"Travel failed");}
