@@ -86,6 +86,7 @@ function World({ keys, touch, settings, cameraMode, spawnRequest, cameraReset, o
   const dragging = useRef(false);
   const lastPointer = useRef({ x: 0, y: 0 });
   const previousMode = useRef(cameraMode);
+
   const previousSpawnRequest = useRef(spawnRequest);
   const previousCameraReset = useRef(cameraReset);
 
@@ -123,24 +124,33 @@ function World({ keys, touch, settings, cameraMode, spawnRequest, cameraReset, o
   useEffect(() => {
     const canvas = gl.domElement;
     const down = (event: PointerEvent) => {
-      if (event.button !== 0 && event.button !== 2) return;
+      if (document.pointerLockElement === canvas || (event.button !== 0 && event.button !== 2)) return;
       dragging.current = true;
       lastPointer.current = { x: event.clientX, y: event.clientY };
       canvas.setPointerCapture(event.pointerId);
     };
     const move = (event: PointerEvent) => {
-      if (!dragging.current) return;
+      if (!dragging.current || document.pointerLockElement === canvas) return;
       const dx = event.clientX - lastPointer.current.x;
       const dy = event.clientY - lastPointer.current.y;
       lastPointer.current = { x: event.clientX, y: event.clientY };
       if (cameraMode === 'free') {
-        freeYaw.current -= dx * 0.005;
+        freeYaw.current += dx * 0.005;
         freePitch.current = THREE.MathUtils.clamp(freePitch.current - dy * 0.005, -1.5, 1.5);
       } else {
         followAzimuthOffset.current -= dx * 0.005;
         followPitchOffset.current = THREE.MathUtils.clamp(followPitchOffset.current + dy * 0.005, -1.2, 1.2);
       }
     };
+    const lockedMove = (event: MouseEvent) => {
+      if (document.pointerLockElement !== canvas || cameraMode !== 'free') return;
+      // Positive mouse X rotates the free camera right, matching inverted drag.
+      freeYaw.current += event.movementX * 0.003;
+      freePitch.current = THREE.MathUtils.clamp(freePitch.current - event.movementY * 0.003, -1.5, 1.5);
+    };
+    const lockChanged = () => { if (document.pointerLockElement !== canvas) dragging.current = false; };
+    document.addEventListener('mousemove', lockedMove);
+    document.addEventListener('pointerlockchange', lockChanged);
     const up = () => { dragging.current = false; };
     const wheel = (event: WheelEvent) => {
       event.preventDefault();
@@ -165,6 +175,8 @@ function World({ keys, touch, settings, cameraMode, spawnRequest, cameraReset, o
       canvas.removeEventListener('pointercancel', up);
       canvas.removeEventListener('wheel', wheel);
       canvas.removeEventListener('contextmenu', context);
+      document.removeEventListener('mousemove', lockedMove);
+      document.removeEventListener('pointerlockchange', lockChanged);
     };
   }, [gl, camera, cameraMode]);
 
@@ -280,11 +292,34 @@ export default function ArchonsForge() {
   const [cameraReset, setCameraReset] = useState(0);
   const [status, setStatus] = useState('Downloading arena (approximately 60 MB). Please wait…');
   const [showCalibration, setShowCalibration] = useState(false);
+  const [mouseLook, setMouseLook] = useState(false);
+  const canvasArea = useRef<HTMLElement>(null);
+  const toggleMouseLook = useCallback(() => {
+    if (document.pointerLockElement) {
+      void document.exitPointerLock();
+      return;
+    }
+    if (cameraMode !== 'free') setCameraMode('free');
+    const canvas = canvasArea.current?.querySelector('canvas');
+    if (canvas) void canvas.requestPointerLock().catch(() => setMouseLook(false));
+  }, [cameraMode]);
+  useEffect(() => {
+    const changed = () => setMouseLook(document.pointerLockElement !== null);
+    document.addEventListener('pointerlockchange', changed);
+    return () => document.removeEventListener('pointerlockchange', changed);
+  }, []);
+  useEffect(() => {
+    if (cameraMode !== 'free' && document.pointerLockElement) void document.exitPointerLock();
+  }, [cameraMode]);
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const key = e.key.toLowerCase();
       if (key === 'f' && !e.repeat) setCameraMode(v => v === 'follow' ? 'free' : 'follow');
+      if (key === 'c' && !e.repeat) {
+        e.preventDefault();
+        toggleMouseLook();
+      }
       if (['w','a','s','d','q','e','arrowup','arrowdown','arrowleft','arrowright','shift','control',' '].includes(key)) {
         e.preventDefault();
         keys.current.add(key);
@@ -296,19 +331,19 @@ export default function ArchonsForge() {
     window.addEventListener('keyup', up);
     window.addEventListener('blur', blur);
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
-  }, []);
+  }, [toggleMouseLook]);
   const setInput = useCallback((v: VectorInput) => { touch.current = v; }, []);
   const setStatusStable = useCallback((s: string) => setStatus(s), []);
   return <main className="af-page">
-    <header className="af-topbar"><a href="/events">← EVENTS</a><strong>OPERATION: CLEANSE <span>/ ARCHON'S FORGE</span></strong><div style={{ display: 'flex', gap: 8 }}><button onClick={() => setCameraMode(v => v === 'follow' ? 'free' : 'follow')}>{cameraMode === 'free' ? 'EXIT FREECAM (F)' : 'FREECAM (F)'}</button><button onClick={() => setShowCalibration(v => !v)}>CALIBRATE</button></div></header>
-    <section className="af-viewport">
+    <header className="af-topbar"><a href="/events">← EVENTS</a><strong>OPERATION: CLEANSE <span>/ ARCHON'S FORGE</span></strong><div style={{ display: 'flex', gap: 8 }}><button onClick={() => setCameraMode(v => v === 'follow' ? 'free' : 'follow')}>{cameraMode === 'free' ? 'EXIT FREECAM (F)' : 'FREECAM (F)'}</button><button onClick={toggleMouseLook}>{mouseLook ? 'UNLOCK MOUSE (C)' : 'MOUSE LOOK (C)'}</button><button onClick={() => setShowCalibration(v => !v)}>CALIBRATE</button></div></header>
+    <section className="af-viewport" ref={canvasArea}>
       <Canvas camera={{ fov: 52, near: 0.1, far: 5000, position: [0, 25, 20] }} dpr={[1, 1.5]} gl={{ antialias: false, powerPreference: 'high-performance' }}>
         <Suspense fallback={null}><World keys={keys} touch={touch} settings={settings} cameraMode={cameraMode} spawnRequest={spawnRequest} cameraReset={cameraReset} onStatus={setStatusStable} /></Suspense>
       </Canvas>
       <div className="af-vignette" style={{ pointerEvents: 'none' }} />
       <div className="af-mission" style={{ pointerEvents: 'none' }}><small>ARCHON'S FORGE // RECONNAISSANCE</small><h1>PERFECTION COMPLEX</h1><p>{cameraMode === 'free' ? 'FREECAM ACTIVE — Explore without moving your Guardian.' : 'Explore the full arena, stairs and raised platforms.'}</p></div>
       <div className="af-status" role="status" style={{ pointerEvents: 'none' }}>{status}</div>
-      <div className="af-controls"><Joystick onMove={setInput} /><div className="af-hint">{cameraMode === 'free' ? <>FREECAM: WASD MOVE · Q/E UP/DOWN<br />DRAG TO LOOK · SCROLL FORWARD/BACK<br />SHIFT FAST · F RETURN TO GUARDIAN</> : <>WASD / ARROWS · SHIFT SPRINT<br />DRAG TO ORBIT · SCROLL TO ZOOM<br />F FREECAM · CLICK FLOOR TO REPOSITION</>}</div><button onClick={() => setCameraReset(v => v + 1)}>RESET CAMERA</button><button onClick={() => setSpawnRequest(v => v + 1)}>RESET SPAWN</button></div>
+      <div className="af-controls"><Joystick onMove={setInput} /><div className="af-hint">{cameraMode === 'free' ? <>FREECAM: WASD MOVE · Q/E UP/DOWN<br />DRAG TO LOOK · C MOUSE LOOK (ESC RELEASE)<br />SHIFT FAST · F RETURN TO GUARDIAN</> : <>WASD / ARROWS · SHIFT SPRINT<br />DRAG TO ORBIT · SCROLL TO ZOOM<br />F FREECAM · CLICK FLOOR TO REPOSITION</>}</div><button onClick={() => setCameraReset(v => v + 1)}>RESET CAMERA</button><button onClick={() => setSpawnRequest(v => v + 1)}>RESET SPAWN</button></div>
       {showCalibration && <aside className="af-calibration"><h2>CAMERA & ARENA CALIBRATION</h2>{([
         ['cameraDistance', 'Camera distance', 2, 120],
         ['cameraHeight', 'Camera elevation', 1, 120],
@@ -316,7 +351,7 @@ export default function ArchonsForge() {
         ['cameraFov', 'Field of view', 25, 100],
         ['speed', 'Movement speed', 1, 30],
         ['modelScale', 'Model scale', 0.05, 10]
-      ] as const).map(([key, label, min, max]) => <label key={key}>{label}: {settings[key].toFixed(2)}<input type="range" min={min} max={max} step={key === 'modelScale' ? 0.05 : 1} value={settings[key]} onChange={e => setSettings(v => ({ ...v, [key]: Number(e.target.value) }))} /></label>)}<p>Drag in the arena to orbit or look around. In freecam, WASD moves the camera, not the Guardian. Changing model scale resets spawn.</p><button onClick={() => { setSettings(DEFAULTS); setCameraReset(v => v + 1); }}>RESET CAMERA SETTINGS</button></aside>}
+      ] as const).map(([key, label, min, max]) => <label key={key}>{label}: {settings[key].toFixed(2)}<input type="range" min={min} max={max} step={key === 'modelScale' ? 0.05 : 1} value={settings[key]} onChange={e => setSettings(v => ({ ...v, [key]: Number(e.target.value) }))} /></label>)}<p>Drag in the arena to orbit or look around. Press C for mouse-look (pointer lock), Esc to release. In freecam, WASD moves the camera, not the Guardian. Changing model scale resets spawn.</p><button onClick={() => { setSettings(DEFAULTS); setCameraReset(v => v + 1); }}>RESET CAMERA SETTINGS</button></aside>}
     </section>
     <footer className="af-footer">PROTOTYPE // EXPLORATION ONLY · NO COMBAT OR REWARDS YET</footer>
   </main>;
