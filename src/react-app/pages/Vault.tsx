@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
 import { fetchProfileSnapshot } from "../lib/profileRequest";
 import ArsenalLayout from "../components/arsenal/ArsenalLayout";
@@ -6,6 +6,7 @@ import VaultMaterials from "../components/arsenal/VaultMaterials";
 import WeaponVault, { WeaponTierControl, type WeaponTier } from "./WeaponVault";
 import { VAULT_CATEGORIES, type VaultCategory } from "../data/vaultCategories";
 import "./Vault.css";
+import "./VaultCollections.css";
 
 const isAdeptFavorite = (name: string) => /\((Adept|Timelost|Harrowed)\)\s*$/i.test(name);
 type VaultRecentWeapon = { name: string; source: string; masterwork: number; acquiredAt: string };
@@ -42,12 +43,10 @@ function Vault() {
   const [profile, setProfile] = useState<VaultProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [category, setCategory] = useState<VaultCategory | null>(null);
-  const [activitySlug, setActivitySlug] = useState<string | undefined>();
+  const [category, setCategory] = useState<VaultCategory>(VAULT_CATEGORIES[0]);
+  const [activitySlug, setActivitySlug] = useState<string | undefined>(VAULT_CATEGORIES[0].activities?.[0]?.slug);
   const [animationKey, setAnimationKey] = useState(0);
   const [tier, setTier] = useState<WeaponTier>("normal");
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -74,48 +73,19 @@ function Vault() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    if (!category) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        // Weapon Masterwork dialog, when open, owns Escape handling.
-        if (document.querySelector(".weapon-masterwork-backdrop")) return;
-        setCategory(null);
-      }
-      if (event.key === "Tab") {
-        const modal = document.querySelector<HTMLElement>(".vault-collection-dialog");
-        const focusables = modal?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
-        if (!focusables?.length) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
-      triggerRef.current?.focus();
-    };
-  }, [category]);
-
-  function openCategory(next: VaultCategory, trigger: HTMLButtonElement) {
-    triggerRef.current = trigger;
+  function openCategory(next: VaultCategory) {
     setFocusWeapon(undefined);
     setCategory(next);
     setActivitySlug(next.activities?.[0]?.slug);
     setTier("normal");
-    setAnimationKey((value) => value + 1);
+    setAnimationKey(value => value + 1);
   }
 
   function selectActivity(slug: string) {
     if (slug === activitySlug) return;
+    setFocusWeapon(undefined);
     setActivitySlug(slug);
-    setAnimationKey((value) => value + 1);
+    setAnimationKey(value => value + 1);
   }
 
   function jumpToWeapon(weapon: VaultRecentWeapon | { name: string; source: string }) {
@@ -144,10 +114,10 @@ function Vault() {
     finally { setFavoritesBusy(false); }
   }
 
-  const selectedActivity = category?.activities?.find((item) => item.slug === activitySlug);
-  const selectedSource = selectedActivity?.weaponSource ?? category?.directSource;
+  const selectedActivity = category.activities?.find((item) => item.slug === activitySlug);
+  const selectedSource = selectedActivity?.weaponSource ?? category.directSource;
   const selectedStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()]?.[tier] : undefined;
-  const hasCollection = Boolean(category?.directSource || selectedActivity);
+  const hasCollection = Boolean(category.directSource || selectedActivity);
 
   return (
     <div className="vault-screen">
@@ -204,90 +174,58 @@ function Vault() {
               })}
               </div>
             </aside>}>
-            <div className="vault-content">
-              <section className="vault-block vault-legendary">
-                <div className="vault-block-header"><div>
-                  <span className="vault-eyebrow">ARSENAL</span>
-                  <h1>Legendary Vault</h1>
-                  <p>Select a collection to open its weapon archives.</p>
-                </div></div>
-                <div className="vault-category-grid">
-                  {VAULT_CATEGORIES.map((item) => {
-                    const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(activity => activity.weaponSource);
+            <div className="collections-page">
+              <div className="collections-topline"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>
+              <div className="collections-layout">
+                <nav className="collections-main-nav" aria-label="Collection categories">
+                  <span className="collections-label">CATEGORIES</span>
+                  {VAULT_CATEGORIES.map(item => {
+                    const sources = (item.activities ?? []).map(a => a.weaponSource);
                     const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
-                    const owned = rows.reduce((sum, row) => sum + row.normal.owned + row.adept.owned, 0);
-                    const total = rows.reduce((sum, row) => sum + row.normal.total + row.adept.total, 0);
-                    const maxed = rows.reduce((sum, row) => sum + row.normal.maxed + row.adept.maxed, 0);
-                    const complete = overview && total > 0 && rows.length === sources.length && owned >= total;
-                    const mastered = complete && maxed >= total;
-                    return (
-                    <button key={item.slug} type="button" className={`vault-category${mastered ? " vault-category-mastered" : complete ? " vault-category-complete" : ""}`}
-                      onClick={(event) => openCategory(item, event.currentTarget)}>
-                      <span className="vault-category-name">{item.name}</span>
-                      <span className="vault-category-stats">{overview ? `${owned}/${total} UNLOCKED · ${maxed}/${total} MAXED` : 'LOADING COLLECTION'}</span>
-                      <span className="vault-category-arrow">›</span>
-                    </button>
-                    );
+                    const total = rows.reduce((n,row) => n + row.normal.total + row.adept.total, 0);
+                    const owned = rows.reduce((n,row) => n + row.normal.owned + row.adept.owned, 0);
+                    const maxed = rows.reduce((n,row) => n + row.normal.maxed + row.adept.maxed, 0);
+                    return <button key={item.slug} type="button" aria-current={category.slug === item.slug ? "page" : undefined}
+                      className={`collections-category${category.slug === item.slug ? " selected" : ""}${total > 0 && maxed >= total && rows.length === sources.length ? " mastered" : ""}`}
+                      onClick={() => openCategory(item)}><strong>{item.name.toUpperCase()}</strong>
+                      {overview && total > 0 && <small>{owned >= total ? `${maxed}/${total} MAXED` : `${owned}/${total} UNLOCKED`}</small>}
+                    </button>;
                   })}
+                </nav>
+                <div className="collections-main">
+                  <header className="collections-heading"><div><span className="vault-eyebrow">{category.name.toUpperCase()} / {selectedActivity?.group?.toUpperCase() ?? "COLLECTIONS"}</span><h2>{selectedActivity?.name ?? category.name}</h2></div><WeaponTierControl tier={tier} onChange={setTier} /></header>
+                  <div className="collections-workspace">
+                    <nav className="collections-subnav" aria-label={`${category.name} loot pools`}>
+                      <span className="collections-label">{category.name.toUpperCase()}</span>
+                      {category.activities?.map((activity, index) => {
+                        const stats = overview?.sources[activity.weaponSource.toLowerCase()]?.[tier];
+                        const complete = Boolean(stats && stats.total > 0 && stats.owned >= stats.total);
+                        const mastered = Boolean(complete && stats && stats.maxed >= stats.total);
+                        const groupStart = Boolean(activity.group && (index === 0 || category.activities?.[index - 1]?.group !== activity.group));
+                        return <div key={activity.slug}>
+                          {groupStart && <div className="collections-subgroup">{activity.group}</div>}
+                          <button type="button" aria-pressed={activity.slug === activitySlug}
+                            className={`collections-subcategory${activity.slug === activitySlug ? " selected" : ""}${mastered ? " mastered" : complete ? " complete" : ""}`}
+                            onClick={() => selectActivity(activity.slug)}><span>{activity.name}</span>
+                            {stats && stats.total > 0 && <small>{complete ? `${stats.maxed}/${stats.total} MAXED` : `${stats.owned}/${stats.total} UNLOCKED`}</small>}
+                          </button>
+                        </div>;
+                      })}
+                      {!category.activities?.length && <p className="collections-empty">Collections coming soon.</p>}
+                    </nav>
+                    <div className="collections-grid-panel">
+                      {selectedStats && selectedStats.total > 0 && <div className="collections-progress">{selectedStats.owned >= selectedStats.total ? `${selectedStats.maxed}/${selectedStats.total} MAXED` : `${selectedStats.owned}/${selectedStats.total} UNLOCKED`}</div>}
+                      {hasCollection && selectedActivity ? <div key={`${category.slug}-${animationKey}`} className="collections-weapon-content">
+                        <WeaponVault embedded focusWeapon={focusWeapon} favorites={overview?.favorites ?? []} onToggleFavorite={toggleFavorite} selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity.slug} />
+                      </div> : <div className="collections-empty">No weapon collections configured yet.</div>}
+                    </div>
+                  </div>
                 </div>
-              </section>
-              <section className="vault-block vault-exotic">
-                <div className="vault-block-header"><div>
-                  <span className="vault-eyebrow">ARSENAL</span>
-                  <h2>Exotic Vault</h2>
-                  <p>Exotic weapon collection.</p>
-                </div></div>
-                <div className="vault-coming-soon"><span>EXOTIC VAULT</span><strong>COMING SOON</strong></div>
-              </section>
+              </div>
             </div>
           </ArsenalLayout>
         )}
       </div>
-      {category && (
-        <div className="vault-collection-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) setCategory(null);
-        }}>
-          <section className="vault-collection-dialog" role="dialog" aria-modal="true" aria-labelledby="vault-dialog-title">
-            <header className="vault-collection-header">
-              <div className="vault-collection-title"><span className="vault-eyebrow">LEGENDARY ARCHIVES</span><h2 id="vault-dialog-title">{category.name}</h2></div>
-              {selectedStats && <span className="vault-dialog-stats">{selectedStats.total > 0 && selectedStats.owned >= selectedStats.total ? `${selectedStats.maxed}/${selectedStats.total} MAXED` : `${selectedStats.owned}/${selectedStats.total} UNLOCKED`}</span>}
-              <WeaponTierControl tier={tier} onChange={setTier} />
-              <button ref={closeRef} type="button" className="vault-collection-close" aria-label="Close collection" onClick={() => setCategory(null)}>×</button>
-            </header>
-            {Boolean(category.activities?.length) && (
-              <nav className="vault-collection-activities" aria-label={`${category.name} loot pools`}>
-                {category.activities?.map((activity) => (
-                  (() => {
-                    const source = overview?.sources[activity.weaponSource.toLowerCase()];
-                    // Each tier has independent completion and gold masterwork styling.
-                    const stats = source?.[tier];
-                    const total = stats?.total ?? 0;
-                    const owned = stats?.owned ?? 0;
-                    const maxed = stats?.maxed ?? 0;
-                    const complete = total > 0 && owned >= total;
-                    const mastered = complete && maxed >= total;
-                    return (
-                      <button key={activity.slug} type="button" aria-pressed={activity.slug === activitySlug}
-                        className={`vault-activity-tab${activity.slug === activitySlug ? " active" : ""}${mastered ? " vault-activity-tab-mastered" : complete ? " vault-activity-tab-complete" : ""}`}
-                        onClick={() => selectActivity(activity.slug)}>
-                        {activity.name}
-                        {stats && <small className="vault-tab-stats">{stats.total > 0 && stats.owned >= stats.total ? `${stats.maxed}/${stats.total} MAXED` : `${stats.owned}/${stats.total} UNLOCKED`}</small>}
-                      </button>
-                    );
-                  })()
-                ))}
-              </nav>
-            )}
-            <div className="vault-collection-body">
-              {hasCollection ? (
-                <div className="vault-collection-swoosh" key={`${category.slug}-${animationKey}`}>
-                  <WeaponVault embedded focusWeapon={focusWeapon} favorites={overview?.favorites ?? []} onToggleFavorite={toggleFavorite} selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
-                </div>
-              ) : <div className="vault-collection-empty">This collection does not have any configured loot pools yet.</div>}
-            </div>
-          </section>
-        </div>
-      )}
     </div>
   );
 }
