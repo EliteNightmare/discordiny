@@ -47,6 +47,7 @@ function Vault() {
   const [activitySlug, setActivitySlug] = useState<string | undefined>(VAULT_CATEGORIES[0].activities?.[0]?.slug);
   const [animationKey, setAnimationKey] = useState(0);
   const [tier, setTier] = useState<WeaponTier>("normal");
+  const [mobileQuickView, setMobileQuickView] = useState<"closed" | "recent" | "favorites">("closed");
 
   useEffect(() => {
     let active = true;
@@ -89,6 +90,7 @@ function Vault() {
   }
 
   function jumpToWeapon(weapon: VaultRecentWeapon | { name: string; source: string }) {
+    setMobileQuickView("closed");
     const location = sourceLocation(weapon.source);
     if (!location) return;
     setCategory(location.category);
@@ -119,28 +121,23 @@ function Vault() {
   const selectedStats = selectedSource ? overview?.sources[selectedSource.toLowerCase()]?.[tier] : undefined;
   const hasCollection = Boolean(category.directSource || selectedActivity);
 
-  return (
-    <div className="vault-screen">
-      <TopBar />
-      <div className="vault-page">
-        {loading ? <div className="vault-status">Loading Vault...</div> : error || !profile ? (
-          <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
-        ) : (
-          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}
-            right={<aside className="vault-recent-panel">
-              <div className="vault-recent-column"><span className="vault-eyebrow">WEAPON HISTORY</span>
+  const renderRecent = (limit: number) => (
+    <div className="vault-recent-column"><span className="vault-eyebrow">WEAPON HISTORY</span>
               <h2>Recent Drops</h2>
-              <p>Last 10 newly acquired weapons</p>
+              <p>Latest acquired weapons</p>
               {overviewError && <p className="vault-overview-error">{overviewError}</p>}
               {!overview && !overviewError && <p>Loading...</p>}
               {overview?.recent.length === 0 && <p>No recorded drops yet.</p>}
-              {overview?.recent.map((weapon, index) => <button type="button" key={`${weapon.name}-${index}`} className="vault-recent-item" onClick={() => jumpToWeapon(weapon)}>
+              {overview?.recent.slice(0, limit).map((weapon, index) => <button type="button" key={`${weapon.name}-${index}`} className="vault-recent-item" onClick={() => jumpToWeapon(weapon)}>
                 {weaponIcon(weapon.source, weapon.name) ? <img src={weaponIcon(weapon.source, weapon.name)} alt="" /> : <span className="vault-recent-placeholder">◆</span>}
                 <span><strong>{weapon.name}</strong><small>{sourceLocation(weapon.source)?.category.name ?? weapon.source}</small></span>
                 <span aria-hidden="true">›</span>
               </button>)}
               </div>
-              <div className="vault-favorites-column">
+  );
+
+  const renderFavorites = () => (
+    <div className="vault-favorites-column">
               <span className="vault-eyebrow">PINNED WEAPONS</span>
               <h2>Favorites</h2>
               <p>4 Normal · 4 Adept</p>
@@ -173,14 +170,33 @@ function Vault() {
                 </div>;
               })}
               </div>
-            </aside>}>
+  );
+
+  return (
+    <div className="vault-screen">
+      <TopBar />
+      <div className="vault-page">
+        {loading ? <div className="vault-status">Loading Vault...</div> : error || !profile ? (
+          <div className="vault-status vault-status-error">{error || "Failed to load Vault."}</div>
+        ) : (
+          <ArsenalLayout left={<VaultMaterials currencies={profile.currencies} upgradeMaterials={profile.upgradeMaterials} />}
+            right={<aside className="vault-recent-panel collections-desktop-history">{renderRecent(10)}{renderFavorites()}</aside>}>
             <div className="collections-page">
               <div className="collections-topline"><span className="collections-emblem">✦</span><div><span className="vault-eyebrow">ARSENAL / COLLECTIONS</span><h1>WEAPON COLLECTIONS</h1></div></div>
+              <div className="collections-mobile-quick" aria-label="Recent drops and favourites">
+                <div className="collections-quick-controls">
+                  <button type="button" aria-expanded={mobileQuickView === "recent"} className={mobileQuickView === "recent" ? "active" : ""} onClick={() => setMobileQuickView(v => v === "recent" ? "closed" : "recent")}>Recent Drops <span>▾</span></button>
+                  <button type="button" aria-expanded={mobileQuickView === "favorites"} className={mobileQuickView === "favorites" ? "active" : ""} onClick={() => setMobileQuickView(v => v === "favorites" ? "closed" : "favorites")}>Favourites <span>▾</span></button>
+                </div>
+                {mobileQuickView !== "closed" && <div className="collections-quick-panel">
+                  {mobileQuickView === "recent" ? renderRecent(5) : renderFavorites()}
+                </div>}
+              </div>
               <div className="collections-layout">
                 <nav className="collections-main-nav" aria-label="Collection categories">
                   <span className="collections-label">CATEGORIES</span>
                   {VAULT_CATEGORIES.map(item => {
-                    const sources = (item.activities ?? []).map(a => a.weaponSource);
+                    const sources = item.directSource ? [item.directSource] : (item.activities ?? []).map(a => a.weaponSource);
                     const rows = sources.map(source => overview?.sources[source.toLowerCase()]).filter((row): row is NonNullable<typeof row> => Boolean(row));
                     const total = rows.reduce((n,row) => n + row.normal.total + row.adept.total, 0);
                     const owned = rows.reduce((n,row) => n + row.normal.owned + row.adept.owned, 0);
@@ -215,8 +231,8 @@ function Vault() {
                     </nav>
                     <div className="collections-grid-panel">
                       {selectedStats && selectedStats.total > 0 && <div className="collections-progress">{selectedStats.owned >= selectedStats.total ? `${selectedStats.maxed}/${selectedStats.total} MAXED` : `${selectedStats.owned}/${selectedStats.total} UNLOCKED`}</div>}
-                      {hasCollection && selectedActivity ? <div key={`${category.slug}-${animationKey}`} className="collections-weapon-content">
-                        <WeaponVault embedded focusWeapon={focusWeapon} favorites={overview?.favorites ?? []} onToggleFavorite={toggleFavorite} selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity.slug} />
+                      {hasCollection && (selectedActivity || category.directSource) ? <div key={`${category.slug}-${animationKey}`} className="collections-weapon-content">
+                        <WeaponVault embedded focusWeapon={focusWeapon} favorites={overview?.favorites ?? []} onToggleFavorite={toggleFavorite} selectedTier={tier} onTierChange={setTier} categorySlug={category.slug} activitySlug={selectedActivity?.slug} />
                       </div> : <div className="collections-empty">No weapon collections configured yet.</div>}
                     </div>
                   </div>
