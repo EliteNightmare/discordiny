@@ -19,6 +19,7 @@ import Articles from "./pages/Articles";
 import AdminPanel from "./pages/AdminPanel";
 import Patchnotes from "./pages/Patchnotes";
 import About from "./pages/About";
+import ArchonsForge from "./pages/ArchonsForge";
 
 import SiteGate, {
   shouldGateSite,
@@ -297,6 +298,10 @@ function App() {
 
   if (path === "/events/operation-cleanse/nanite-break") {
     return <NaniteBreak />;
+  }
+
+  if (path === "/events/operation-cleanse/archons-forge") {
+    return <ArchonsForge />;
   }
 
   if (path === "/events/operation-cleanse") {
