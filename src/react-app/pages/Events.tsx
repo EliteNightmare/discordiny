@@ -1,38 +1,21 @@
-import { useEffect, useState } from "react";
-import TopBar from "../components/TopBar";
-import { type HubEvent, eventImage, displayDate } from "./EventHubTypes";
-import "./Events.css";
-
-export default function Events() {
-  const [events, setEvents] = useState<HubEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/event-hub', { signal: controller.signal }).then(async r => {
-      if (!r.ok) throw new Error('Unable to load events');
-      return r.json() as Promise<{ events: HubEvent[] }>;
-    }).then(d => setEvents(d.events ?? [])).catch(e => { if (!controller.signal.aborted) setError(String(e)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, []);
-  const slug = decodeURIComponent(window.location.pathname.split('/')[2] ?? '');
-  const selected = slug ? events.find(e => e.slug === slug) : undefined;
-  const featured = events.filter(e => e.featured_slot > 0 && e.status === 'ACTIVE').sort((a,b) => a.featured_slot - b.featured_slot);
-  const list = [...events].sort((a,b) => ({ ACTIVE:0, UPCOMING:1, CONCLUDED:2, CANCELLED:3 }[a.status] - { ACTIVE:0, UPCOMING:1, CONCLUDED:2, CANCELLED:3 }[b.status]));
-  function card(e: HubEvent, large = false) { return <a key={e.slug} href={`/events/${e.slug}`} className={`eh-card eh-theme-${e.theme}${large ? ' eh-large' : ''}`} style={eventImage(e.cover_url) ? { backgroundImage:`linear-gradient(90deg,rgba(8,12,19,.94),rgba(8,12,19,.18)),url("${eventImage(e.cover_url)}")` } : undefined}>
-    <span className="eh-kicker">{e.eyebrow || 'DISCORDINY EVENT'}</span><span className={`eh-status eh-${e.status.toLowerCase()}`}>{e.status}</span>
-    <h2>{e.title}</h2><p>{e.description}</p><small>{displayDate(e.start_at)} — {displayDate(e.end_at)}</small><strong>EXPLORE EVENT ↗</strong>
-  </a>; }
-  return <div className="events-screen"><TopBar/><main className="eh-shell">
-    {loading ? <p>Loading events…</p> : error ? <p role="alert">{error}</p> : slug ? selected ? <>
-      <a className="eh-back" href="/events">← ALL EVENTS</a>
-      <header className={`eh-hero eh-theme-${selected.theme}`} style={eventImage(selected.cover_url) ? { backgroundImage:`linear-gradient(90deg,rgba(8,12,19,.94),rgba(8,12,19,.28)),url("${eventImage(selected.cover_url)}")` } : undefined}>
-        <span className="eh-kicker">{selected.eyebrow || 'LIMITED-TIME EVENT'}</span><span className={`eh-status eh-${selected.status.toLowerCase()}`}>{selected.status}</span><h1>{selected.title}</h1><p>{selected.description}</p><div className="eh-dates">{displayDate(selected.start_at)} — {displayDate(selected.end_at)}</div>
-      </header><section className="eh-section"><div className="eh-section-head"><span>EVENT DESTINATIONS</span><h2>CHOOSE YOUR ACTIVITY</h2></div><div className="eh-activities">{selected.activities.map((a,i) => <a href={a.path} key={`${a.path}-${i}`} className="eh-activity"><span>0{i+1} / ACTIVITY</span><h3>{a.title}</h3><strong>ENTER ACTIVITY ↗</strong></a>)}{!selected.activities.length && <p>No activities have been assigned yet.</p>}</div></section>
-    </> : <><a href="/events" className="eh-back">← ALL EVENTS</a><p>Event not found.</p></> : <>
-      <header className="eh-page-title"><span className="eh-kicker">DISCORDINY / LIVE OPERATIONS</span><h1>EVENT HUB</h1><p>Limited-time events, upcoming operations and event activities.</p></header>
-      {featured.length > 0 && <section className="eh-section"><div className="eh-section-head"><span>SPOTLIGHT</span><h2>FEATURED EVENTS</h2></div><div className="eh-featured">{featured.map(e => card(e,true))}</div></section>}
-      <section className="eh-section"><div className="eh-section-head"><span>EVENT DIRECTORY</span><h2>ALL EVENTS</h2></div><div className="eh-list">{list.map(e => card(e))}{!list.length && <div className="eh-empty">No events are currently published. Check back soon.</div>}</div></section>
-    </>}
-  </main></div>;
+import { useEffect, useState, type CSSProperties } from 'react';
+import TopBar from '../components/TopBar';
+import './Events.css';
+import './EventStudio.css';
+type Activity={id:number;title:string;description:string;path:string;icon_url:string};
+type Item={id:number;name:string;icon_url:string};
+type Occurrence={start_at:string;end_at:string;status:string};
+type Event={id:number;slug:string;title:string;eyebrow:string;description:string;event_type:string;item_id:number|null;target:number;cover_url:string;background_url:string;accent:string;accent_secondary:string;surface:string;foreground:string;overlay_opacity:number;featured_slot:number;activities:number[];occurrence:Occurrence|null;status:string};
+const validImage=(s:string)=>s&&(s.startsWith('/')&&!s.startsWith('//')||/^https:\/\//.test(s))?s:'';
+const date=(s:string)=>new Date(s).toLocaleString('en-GB',{timeZone:'Europe/Brussels',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+export default function Events(){
+ const [events,setEvents]=useState<Event[]>([]),[activities,setActivities]=useState<Activity[]>([]),[items,setItems]=useState<Item[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const [progress,setProgress]=useState({total:0,mine:0,target:0});
+ useEffect(()=>{const c=new AbortController();fetch('/api/event-studio',{signal:c.signal}).then(r=>{if(!r.ok)throw Error('Unable to load events');return r.json()}).then(d=>{setEvents(d.events||[]);setActivities(d.activities||[]);setItems(d.items||[])}).catch(e=>{if(!c.signal.aborted)setError(String(e))}).finally(()=>{if(!c.signal.aborted)setLoading(false)});return()=>c.abort()},[]);
+ const slug=decodeURIComponent(window.location.pathname.split('/')[2]||'');const selected=events.find(e=>e.slug===slug);
+ useEffect(()=>{if(!selected?.occurrence)return;const c=new AbortController();fetch(`/api/event-studio/${encodeURIComponent(selected.slug)}/progress`,{signal:c.signal,credentials:'include'}).then(r=>r.json()).then(d=>{if(!c.signal.aborted)setProgress({total:d.total||0,mine:d.mine||0,target:d.target||0})}).catch(()=>{});return()=>c.abort()},[selected?.slug,selected?.occurrence?.start_at]);
+ const style=(e:Event)=>({'--es-accent':e.accent,'--es-secondary':e.accent_secondary,'--es-surface':e.surface,'--es-foreground':e.foreground} as CSSProperties);
+ const image=(e:Event)=>validImage(e.background_url||e.cover_url)?{backgroundImage:`linear-gradient(90deg,rgba(8,11,17,${e.overlay_opacity}),rgba(8,11,17,.22)),url("${validImage(e.background_url||e.cover_url)}")`}:undefined;
+ const card=(e:Event)=><a href={`/events/${e.slug}`} key={e.id} className="eh-card" style={{...style(e),...image(e),borderTopColor:e.accent}}><span className="eh-kicker" style={{color:e.accent}}>{e.eyebrow||'DISCORDINY EVENT'}</span><span className="eh-status" style={{color:e.accent}}>{e.status}</span><h2>{e.title}</h2><p>{e.description}</p><small>{e.occurrence?`${date(e.occurrence.start_at)} — ${date(e.occurrence.end_at)}`:'DATES TO BE ANNOUNCED'}</small><strong style={{color:e.accent}}>OPEN EVENT ↗</strong></a>;
+ return <div className="events-screen"><TopBar/><main className="eh-shell">{loading?<p>Loading events…</p>:error?<p role="alert">{error}</p>:slug?selected?<><a href="/events" className="eh-back">‹ EVENT DIRECTORY</a><div className="es-preview eh-detail" style={style(selected)}><div className="es-preview-hero" style={image(selected)}><span className="es-kicker">{selected.eyebrow||'EVENT HUB'}</span><h1>{selected.title}</h1><div className="eh-dates">{selected.occurrence?`${date(selected.occurrence.start_at)} — ${date(selected.occurrence.end_at)}`:'SCHEDULE TO BE ANNOUNCED'} · {selected.status}</div></div><div className="es-preview-grid"><div><h3>OVERVIEW</h3><p>{selected.description}</p><div className="es-preview-stat"><strong>{selected.event_type==='ITEM_COLLECTION'?items.find(i=>i.id===selected.item_id)?.name||'EVENT MATERIAL':'COMMUNITY PROGRESS'}</strong><span>{progress.total.toLocaleString()} / {selected.target.toLocaleString()} COLLECTED</span><div className="es-preview-bar"><i style={{width:`${Math.min(100,progress.total/Math.max(1,selected.target)*100)}%`}}/></div><small>YOUR CONTRIBUTION: {progress.mine.toLocaleString()}</small></div><h3>EVENT REWARD PATH</h3><div className="es-preview-empty">Reserved for future rewards</div></div><div><h3>EVENT ACTIVITIES</h3>{selected.activities.map(id=>activities.find(a=>a.id===id)).filter((a):a is Activity=>!!a).map(a=><a className="es-preview-activity eh-linked" href={a.path} key={a.id}><strong>{a.title}</strong><p>{a.description}</p><span>ENTER ACTIVITY ↗</span></a>)}{!selected.activities.length&&<p>No activities assigned.</p>}</div></div></div></>:<><a href="/events" className="eh-back">‹ EVENT DIRECTORY</a><p>Event not found.</p></>:<><header className="eh-page-title"><span className="eh-kicker">DISCORDINY / LIVE OPERATIONS</span><h1>EVENT HUB</h1><p>Live operations and upcoming events.</p></header>{events.some(e=>e.featured_slot&&e.status==='ACTIVE')&&<section className="eh-section"><div className="eh-section-head"><span>SPOTLIGHT</span><h2>FEATURED EVENTS</h2></div><div className="eh-featured">{events.filter(e=>e.featured_slot&&e.status==='ACTIVE').sort((a,b)=>a.featured_slot-b.featured_slot).slice(0,2).map(card)}</div></section>}<section className="eh-section"><div className="eh-section-head"><span>EVENT DIRECTORY</span><h2>ALL EVENTS</h2></div><div className="eh-list">{events.filter(e=>e.occurrence).sort((a,b)=>(a.status==='ACTIVE'?0:a.status==='UPCOMING'?1:2)-(b.status==='ACTIVE'?0:b.status==='UPCOMING'?1:2)).map(card)}{!events.some(e=>e.occurrence)&&<p>No events scheduled yet.</p>}</div></section></>}</main></div>;
 }
