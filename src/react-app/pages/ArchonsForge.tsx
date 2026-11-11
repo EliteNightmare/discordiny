@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useLoader } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import './ArchonsForge.css';
 
@@ -15,10 +16,10 @@ const DEFAULTS: Settings = { cameraDistance: 15, cameraHeight: 19, speed: 6, mod
 const UP = new THREE.Vector3(0, 1, 0);
 
 function Arena({ register, modelScale, onClick }: { register: (meshes: THREE.Mesh[], bounds: THREE.Box3) => void; modelScale: number; onClick: (event: ThreeEvent<MouseEvent>) => void }) {
-  const gltf = useLoader(GLTFLoader, MODEL);
+  const gltf = useLoader(GLTFLoader, MODEL) as GLTF;
   const group = useMemo(() => {
     const root = gltf.scene.clone(true);
-    root.traverse((obj) => {
+    root.traverse((obj: THREE.Object3D) => {
       if (obj instanceof THREE.Mesh) {
         obj.castShadow = false;
         obj.receiveShadow = true;
@@ -31,7 +32,7 @@ function Arena({ register, modelScale, onClick }: { register: (meshes: THREE.Mes
     group.scale.setScalar(modelScale);
     group.updateMatrixWorld(true);
     const meshes: THREE.Mesh[] = [];
-    group.traverse((obj) => { if (obj instanceof THREE.Mesh && obj.visible) meshes.push(obj); });
+    group.traverse((obj: THREE.Object3D) => { if (obj instanceof THREE.Mesh && obj.visible) meshes.push(obj); });
     register(meshes, new THREE.Box3().setFromObject(group));
     return () => register([], new THREE.Box3());
   }, [group, modelScale, register]);

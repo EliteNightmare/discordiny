@@ -12,9 +12,11 @@
 		"publish": true
 	},
 	"dependencies": {
+		"@react-three/fiber": "^9.8.2",
 		"hono": "4.11.1",
 		"react": "19.2.1",
-		"react-dom": "19.2.1"
+		"react-dom": "19.2.1",
+		"three": "^0.187.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "1.52.1",
@@ -22,6 +24,7 @@
 		"@types/node": "24.10.1",
 		"@types/react": "19.2.7",
 		"@types/react-dom": "19.2.3",
+		"@types/three": "^0.187.0",
 		"@vitejs/plugin-react": "5.1.1",
 		"eslint": "9.39.2",
 		"eslint-plugin-react-hooks": "7.0.1",
