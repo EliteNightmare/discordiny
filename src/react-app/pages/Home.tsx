@@ -46,12 +46,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <span className="dh-eyebrow">{children}</span>;
 }
 function FeaturedOperation({ interactive = true }: { interactive?: boolean }) {
-  const contents = <>
-    <div className="dh-operation-header"><SectionLabel>COMMUNITY OPERATIONS</SectionLabel><span className="dh-red-dot" aria-hidden="true" /></div>
-    <div className="dh-operation-copy"><span className="dh-muted">PLAGUELANDS // SIVA</span><h3>Operation: CLEANSE</h3><p>Enter the Plaguelands and discover the ongoing community operation.</p></div>
-    <span className="dh-operation-link">OPERATION: CLEANSE <span aria-hidden="true">✦</span></span>
-  </>;
-  return interactive ? <a className="dh-operation" href="/events">{contents}</a> : <div className="dh-operation" aria-label="Operation CLEANSE preview">{contents}</div>;
+  const [featured,setFeatured] = useState<{slug:string;title:string;description:string;cover_url:string;theme:string}[]>([]);
+  useEffect(()=>{const controller=new AbortController();fetch('/api/event-hub',{signal:controller.signal}).then(r=>r.ok?r.json():null).then(d=>{if(!controller.signal.aborted)setFeatured((d?.events??[]).filter((e:{status:string;featured_slot:number})=>e.status==='ACTIVE'&&e.featured_slot>0).sort((a:{featured_slot:number},b:{featured_slot:number})=>a.featured_slot-b.featured_slot).slice(0,2));}).catch(()=>{});return()=>controller.abort();},[]);
+  const content = <><div className="dh-operation-header"><SectionLabel>FEATURED EVENTS</SectionLabel></div>{featured.length ? featured.map(e=><div key={e.slug} className="dh-operation-copy" style={e.cover_url ? {backgroundImage:`linear-gradient(90deg,rgba(10,13,19,.94),rgba(10,13,19,.55)),url("${e.cover_url}")`,backgroundSize:'cover',backgroundPosition:'center',padding:'12px'}:undefined}><span className="dh-muted">LIVE EVENT</span><h3>{e.title}</h3><p>{e.description}</p><a href={`/events/${e.slug}`} className="dh-operation-link">OPEN EVENT ↗</a></div>) : <div className="dh-operation-copy"><span className="dh-muted">EVENT NETWORK</span><h3>Upcoming events</h3><p>Check the event hub for scheduled operations.</p></div>}</>;
+  return interactive ? <div className="dh-operation">{content}</div> : <div className="dh-operation">{content}</div>;
 }
 function GuestLanding() {
   return <div className="dh-container dh-guest">
