@@ -80,3 +80,140 @@
  .collections-weapon-content .weapon-vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
 @media(max-width:420px){.collections-page{padding:10px 7px}.collections-heading{flex-wrap:wrap}.collections-heading .weapon-tier-switch{width:100%;flex:1 1 100%;max-width:260px}.collections-weapon-content .weapon-vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:4px!important}.collections-weapon-content .weapon-vault-item-info strong{font-size:10px}.collections-subcategory{font-size:10px}}
+
+/* ============================================================
+   Discordiny Collections — softer, site-consistent visual pass
+   Scoped to .vault-screen; no gameplay or shared-layout changes.
+   ============================================================ */
+.vault-screen {
+  --collections-gold: #d4b977;
+  --collections-line: rgba(210, 222, 241, .105);
+  --collections-surface: rgba(12, 17, 27, .78);
+  --collections-muted: #a2adbe;
+}
+.vault-screen .arsenal-layout {
+  width: min(1760px, calc(100% - 36px));
+  gap: clamp(12px, 1.2vw, 20px);
+  grid-template-columns: minmax(184px, 218px) minmax(0, 1fr) minmax(205px, 246px);
+}
+.vault-screen .collections-page {
+  background: radial-gradient(ellipse at 65% -15%, rgba(73, 92, 125, .16), transparent 58%), rgba(9, 13, 21, .42);
+  border: 1px solid rgba(190, 207, 232, .09);
+  border-top: 2px solid rgba(214, 186, 115, .48);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.16);
+  padding: clamp(14px, 1.5vw, 24px);
+}
+.vault-screen .collections-topline { border-bottom-color: rgba(255,255,255,.09); padding-bottom: 16px; }
+.vault-screen .collections-topline h1 { letter-spacing: .045em; font-weight: 760; }
+.vault-screen .collections-emblem { font-size: 25px; filter: drop-shadow(0 0 9px rgba(210,180,105,.2)); }
+.vault-screen .collections-layout { grid-template-columns: minmax(132px, 172px) minmax(0, 1fr); gap: clamp(14px, 1.6vw, 26px); margin-top: 19px; }
+.vault-screen .collections-main-nav { gap: 2px; border-right: 1px solid rgba(255,255,255,.08); padding-right: 10px; }
+.vault-screen .collections-label { color: #aeb8c8; opacity: .8; font-size: 9px; }
+.vault-screen .collections-category {
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 7px 7px 0;
+  background: transparent;
+  padding: 11px 11px;
+  min-height: 46px;
+  gap: 3px;
+  transition: background .18s, border-color .18s, color .18s;
+}
+.vault-screen .collections-category strong { font-size: 11px; font-weight: 760; letter-spacing: .045em; }
+.vault-screen .collections-category:hover { background: rgba(165, 184, 211, .075); border-color: rgba(255,255,255,.2); }
+.vault-screen .collections-category.selected {
+  background: linear-gradient(90deg, rgba(189, 205, 230, .17), rgba(189,205,230,.025));
+  border-left-color: #d6e0ee;
+  color: #fff;
+}
+.vault-screen .collections-category.mastered { border-left-color: var(--collections-gold); box-shadow: none; }
+.vault-screen .collections-category.mastered.selected { background: linear-gradient(90deg, rgba(212,185,119,.18), transparent); }
+.vault-screen .collections-heading { border-bottom-color: rgba(255,255,255,.08); padding-bottom: 15px; }
+.vault-screen .collections-heading h2 { font-weight: 730; letter-spacing: .015em; }
+.vault-screen .collections-workspace { gap: 9px; }
+.vault-screen .collections-subnav { gap: 5px 7px; border-bottom: 1px solid rgba(255,255,255,.08); padding-bottom: 15px; }
+.vault-screen .collections-subgroup { color: #b9c2d1; margin-top: 13px; letter-spacing: .13em; }
+.vault-screen .collections-subcategory {
+  background: rgba(158, 177, 206, .045);
+  border: 1px solid rgba(182, 201, 229, .095);
+  border-radius: 6px;
+  min-height: 39px;
+  padding: 8px 12px;
+  color: #c9d1dd;
+  transition: background .18s, border-color .18s, transform .18s;
+}
+.vault-screen .collections-subcategory:hover { background: rgba(183,201,227,.11); border-color: rgba(213,226,243,.25); transform: translateY(-1px); }
+.vault-screen .collections-subcategory.selected { background: rgba(171,194,227,.15); border-color: rgba(213,226,243,.43); color: #fff; }
+.vault-screen .collections-subcategory.mastered { border-color: rgba(212,185,119,.66); color: #e8ce91; box-shadow: inset 0 -2px rgba(212,185,119,.5); }
+.vault-screen .collections-subcategory.mastered.selected { background: rgba(212,185,119,.14); }
+.vault-screen .collections-grid-panel {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 4px 1px 6px;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+.vault-screen .collections-grid-panel::-webkit-scrollbar, .vault-screen .collections-weapon-content .weapon-vault-grid::-webkit-scrollbar { display: none; }
+.vault-screen .collections-weapon-content .weapon-vault-grid { gap: 7px !important; scrollbar-width: none; }
+.vault-screen .collections-weapon-content .weapon-vault-item {
+  border-radius: 6px !important;
+  overflow: hidden;
+  border-color: rgba(208,220,239,.13) !important;
+  background-color: rgba(29,37,52,.55) !important;
+}
+.vault-screen .collections-weapon-content .weapon-vault-item:hover { border-color: rgba(220,231,248,.37) !important; }
+.vault-screen .collections-weapon-content .weapon-vault-item-info { padding: 7px 8px !important; }
+.vault-screen .collections-weapon-content .weapon-vault-item-info strong { font-size: 11px; line-height: 1.3; }
+.vault-screen .vault-recent-panel {
+  background: rgba(12,17,27,.65);
+  border: 1px solid rgba(193,209,232,.1);
+  border-radius: 11px;
+  padding: 16px 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.1);
+}
+.vault-screen .vault-recent-panel h2 { color: #f1f4fa; }
+.vault-screen .vault-recent-item { border-radius: 6px; }
+.vault-screen .vault-favorites-column { border-top-color: rgba(255,255,255,.09); }
+/* Materials: never let a large currency balance collide with its label. */
+.vault-screen .vault-materials {
+  background: rgba(12,17,27,.65);
+  border: 1px solid rgba(193,209,232,.1);
+  border-radius: 11px;
+  padding: 15px 11px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.1);
+}
+.vault-screen .vault-material-row { display: grid; grid-template-columns: 27px minmax(0,1fr); align-items: center; gap: 8px; padding: 8px 6px; border-radius: 6px; background: rgba(255,255,255,.025); }
+.vault-screen .vault-material-icon { width: 27px; height: 27px; flex-basis: auto; }
+.vault-screen .vault-material-info { display: grid; grid-template-columns: minmax(0,1fr); gap: 3px; min-width: 0; justify-items: start; }
+.vault-screen .vault-material-info span { display: block; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
+.vault-screen .vault-material-info strong { display: block; min-width: 0; max-width: 100%; overflow-wrap: anywhere; font-size: 12px; font-variant-numeric: tabular-nums; color: #f3e4bd; line-height: 1.3; }
+@media (min-width: 1500px) {
+  .vault-screen .arsenal-layout { grid-template-columns: minmax(195px,230px) minmax(0,1fr) minmax(220px,265px); }
+  .vault-screen .collections-weapon-content .weapon-vault-grid { grid-template-columns: repeat(3,minmax(0,1fr)) !important; }
+}
+@media (max-width: 1099px) and (min-width: 801px) {
+  .vault-screen .arsenal-layout { grid-template-columns: minmax(165px,200px) minmax(0,1fr); }
+  .vault-screen .arsenal-layout-right { grid-column: 2; grid-row: 2; }
+  .vault-screen .collections-layout { grid-template-columns: minmax(116px,145px) minmax(0,1fr); }
+}
+@media (max-width: 800px) {
+  .vault-screen .arsenal-layout { width: calc(100% - 20px); display: flex; flex-direction: column; gap: 12px; }
+  .vault-screen .collections-page { border-radius: 10px; padding: 14px 11px; }
+  .vault-screen .collections-layout { display: block; margin-top: 12px; }
+  .vault-screen .collections-main-nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; border: 0; border-bottom: 1px solid rgba(255,255,255,.08); padding: 0 0 10px; gap: 3px; }
+  .vault-screen .collections-category { flex: 0 0 auto; min-width: 105px; width: auto; border: 0; border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
+  .vault-screen .collections-category.selected { border-bottom-color: #d6e0ee; background: rgba(189,205,230,.12); }
+  .vault-screen .collections-category.mastered { border-bottom-color: var(--collections-gold); }
+  .vault-screen .collections-quick-controls button { border-radius: 7px; background: rgba(159,180,210,.065); border-color: rgba(192,209,233,.15); }
+  .vault-screen .collections-quick-controls button.active { background: rgba(189,205,230,.13); border-color: rgba(213,225,242,.4); }
+  .vault-screen .collections-quick-panel { border-radius: 0 0 8px 8px; background: rgba(13,18,28,.85); }
+  .vault-screen .collections-grid-panel { max-height: none; overflow: visible; }
+  .vault-screen .vault-material-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 480px) {
+  .vault-screen .vault-material-list { grid-template-columns: 1fr; }
+  .vault-screen .collections-page { padding: 11px 8px; }
+  .vault-screen .collections-weapon-content .weapon-vault-grid { gap: 5px !important; }
+}
