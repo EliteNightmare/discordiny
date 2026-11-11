@@ -1,3 +1,4 @@
+import { registerEventStudioRoutes } from "./event-studio.routes";
 import type { Hono } from "hono";
 
 type Bindings = { DB: D1Database };
@@ -187,6 +188,7 @@ export function registerAdminManagementRoutes<T extends Bindings>(app: Hono<{ Bi
     await c.env.DB.prepare("DELETE FROM event_hub WHERE slug=?").bind(slug).run();
     await log(c,"event_hub_delete",slug,{});return c.json({success:true});
   });
+  registerEventStudioRoutes(app, getUser);
   app.get("/api/admin/audit", async c => {
     if (!(await allowed(c))) return deny(c);
     const rows = await c.env.DB.prepare("SELECT id, actor_id, action, target, details_json, created_at FROM admin_action_log ORDER BY id DESC LIMIT 100").all();
