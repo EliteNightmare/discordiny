@@ -250,3 +250,58 @@
 @media(max-width:1150px){.collections-weapon-content .weapon-vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:800px){.vault-screen .arsenal-layout{display:flex!important;flex-direction:column!important}.vault-screen .arsenal-layout-main{width:100%!important}.vault-screen .arsenal-layout-right{display:none!important}.collections-weapon-content .weapon-vault-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.collections-weapon-content .weapon-vault-item{grid-template-columns:42px minmax(0,1fr)!important;min-height:56px!important}.collections-weapon-content .weapon-vault-image-frame{width:42px!important;height:54px!important}.collections-weapon-content .weapon-vault-item-info strong{font-size:10px!important}.collections-grid-panel{max-height:none!important}}
 @media(max-width:370px){.collections-weapon-content .weapon-vault-grid{grid-template-columns:1fr!important}}
+
+/* Collection usability polish: favourite slots, grouped activities and mobile navigation */
+.vault-screen .collections-topline {display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.collections-title-group {display:flex;align-items:center;gap:11px;min-width:0}
+.collections-favorite-slots {display:flex;gap:15px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.collections-favorite-tier {display:flex;flex-direction:column;gap:4px}
+.collections-favorite-tier-label {font-size:9px;letter-spacing:.13em;color:#aeb8c8;font-weight:750}
+.collections-favorite-row {display:grid;grid-template-columns:repeat(4,35px);gap:4px}
+.collections-favorite-slot {width:35px;height:38px;padding:2px;border:1px solid rgba(209,222,243,.2);border-radius:3px;background:rgba(255,255,255,.04);color:#798292;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.collections-favorite-slot.filled {border-color:rgba(201,215,238,.45);background:rgba(125,143,177,.12)}
+.collections-favorite-slot.adept.filled {border-color:rgba(216,182,106,.65);background:rgba(216,182,106,.09)}
+.collections-favorite-slot img {width:100%;height:100%;object-fit:contain}
+.collections-favorite-slot:disabled {cursor:default}
+.collections-recent-entry {display:grid;grid-template-columns:minmax(0,1fr) 30px;align-items:center;gap:3px;border-left:2px solid transparent}
+.collections-recent-entry.collections-recent-adept {border-left-color:#d7b775;background:linear-gradient(90deg,rgba(205,171,97,.11),transparent)}
+.collections-recent-entry .vault-recent-item {min-width:0}
+.collections-recent-star {border:0;background:transparent;color:#a9b4c4;font-size:20px;cursor:pointer;min-width:28px;min-height:34px;padding:2px}
+.collections-recent-star.active {color:#e8c576}
+.collections-recent-star:disabled {opacity:.35;cursor:not-allowed}
+.vault-screen .collections-heading {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.collections-source-title {min-width:0}
+.collections-group-tabs {display:flex;align-items:center;flex-wrap:wrap;gap:4px;min-width:0}
+.collections-group-tabs button {border:0;border-bottom:2px solid transparent;border-radius:3px 3px 0 0;padding:9px 10px;background:rgba(171,189,216,.065);color:#bac4d3;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.collections-group-tabs button.selected {border-bottom-color:#d8bd82;background:rgba(206,184,130,.14);color:#fff}
+.vault-screen .collections-subnav {display:flex!important;flex-wrap:wrap!important;gap:5px!important;max-height:none!important;overflow:visible!important}
+.vault-screen .collections-subnav>.collections-label {display:none}
+.vault-screen .collections-subcategory {flex:0 1 auto;min-height:33px;padding:6px 9px;gap:2px}
+.vault-screen .collections-subcategory small {font-size:9px}
+.vault-screen .collections-grid-panel {overscroll-behavior:contain;overflow-y:auto!important;max-height:min(73vh,760px)!important;scrollbar-width:none;overflow-anchor:none}
+.vault-screen .collections-grid-panel::-webkit-scrollbar {display:none}
+.vault-screen .collections-weapon-content .weapon-vault-item {position:relative;grid-template-columns:52px minmax(0,1fr) 29px!important}
+.vault-screen .collections-weapon-content .weapon-vault-item-info {grid-column:2!important;min-width:0!important;overflow:hidden;padding:4px!important}
+.vault-screen .collections-weapon-content .weapon-vault-item-info strong {display:block;overflow-wrap:anywhere;padding-right:0!important}
+.vault-screen .collections-weapon-content .vault-favorite-star {position:relative!important;grid-column:3!important;grid-row:1!important;right:auto!important;top:auto!important;left:auto!important;bottom:auto!important;transform:none!important;z-index:3!important;justify-self:center;align-self:center;width:27px;height:34px;padding:0;display:flex;align-items:center;justify-content:center;font-size:19px}
+.vault-screen .vault-rank-picker-row input[type=range] {accent-color:#c6a65f}
+.vault-screen .vault-rank-picker-row input[type=number] {border-color:rgba(206,180,119,.45);background:#111720;color:#f2e6ca}
+@media(max-width:800px) {
+ .vault-screen .collections-topline {align-items:flex-start;gap:12px}
+ .collections-favorite-slots {margin-left:0;width:100%;justify-content:space-between;gap:8px}
+ .collections-favorite-row {grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+ .collections-favorite-slot {width:clamp(29px,8vw,38px);height:38px}
+ .collections-favorite-tier {flex:1 1 0;min-width:0}
+ .collections-heading {align-items:flex-start}
+ .collections-group-tabs {width:100%;gap:3px}
+ .collections-group-tabs button {flex:1 1 auto;padding:8px 6px;font-size:10px}
+ .vault-screen .collections-subnav {gap:4px!important;padding-bottom:9px}
+ .vault-screen .collections-subcategory {padding:7px 8px;min-height:38px;font-size:10px}
+ .vault-screen .collections-subcategory small {display:none}
+ .vault-screen .collections-category small {display:none}
+ .vault-screen .collections-grid-panel {max-height:min(70vh,620px)!important;overflow-y:auto!important;min-height:200px}
+ .vault-screen .collections-weapon-content .weapon-vault-item {grid-template-columns:42px minmax(0,1fr) 27px!important}
+ .vault-screen .collections-weapon-content .vault-favorite-star {width:25px;font-size:18px}
+ .vault-screen .collections-weapon-content .weapon-vault-item-info span {font-size:8px!important}
+}
+@media(max-width:380px) {.collections-group-tabs button {font-size:9px}.collections-favorite-slot {width:29px;height:33px}}
