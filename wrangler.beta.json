@@ -19,6 +19,11 @@
       "binding": "DB",
       "database_name": "beta-discordiny",
       "database_id": "2ae57a83-48bd-4338-8896-a2b3bb0bae0d"
+    },
+    {
+      "binding": "ACCESS_DB",
+      "database_name": "discordiny",
+      "database_id": "dd9fba3b-076f-475a-8641-e29db68b9505"
     }
   ],
   "assets": {
