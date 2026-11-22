@@ -212,8 +212,7 @@ function App() {
    * TERMINAL SUBDOMAIN
    */
   if (
-    hostname ===
-    "terminal.discordiny.com"
+    (hostname === "terminal.discordiny.com" || hostname === "beta.terminal.discordiny.com")
   ) {
     return <Terminal />;
   }
@@ -227,8 +226,7 @@ function App() {
    * as an unauthorized endpoint.
    */
   if (
-    hostname ===
-    "root.discordiny.com"
+    (hostname === "root.discordiny.com" || hostname === "beta.root.discordiny.com")
   ) {
     if (
       path ===
