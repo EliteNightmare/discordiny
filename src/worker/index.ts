@@ -4045,11 +4045,12 @@ app.post("/api/game/explore/claim", async (c) => {
     }
   }
 
-  // Each completed 12-hour interval guarantees one weapon; the remainder
-  // is a linear chance for one more. Maximum: two weapons at 24 hours.
-  const weaponIntervalSeconds = 12 * 60 * 60;
+  // Each completed 8-hour interval guarantees one weapon; the remainder
+  // uses a fourth-power chance for one more. Maximum: two weapons at 16 hours.
+  const weaponIntervalSeconds = 8 * 60 * 60;
   const guaranteedWeapons = Math.floor(elapsedSeconds / weaponIntervalSeconds);
-  const fractionalChance = (elapsedSeconds % weaponIntervalSeconds) / weaponIntervalSeconds;
+  const fractionalProgress = (elapsedSeconds % weaponIntervalSeconds) / weaponIntervalSeconds;
+  const fractionalChance = Math.pow(fractionalProgress, 4);
   const requestedWeaponCount = Math.min(2, guaranteedWeapons + (Math.random() < fractionalChance ? 1 : 0));
   const adeptChance = 0.10; // Same successful-drop Adept chance as Showdown.
 
@@ -9604,7 +9605,7 @@ app.post("/api/game/activity/run", async (c) => {
 
   // Raid/dungeon timers are checked on the Worker, not just in React.
   // A pending run is tied to the authenticated player and activity.
-  const runDurationSeconds = activity.type === "raid" ? 180 : 90;
+  const runDurationSeconds = activity.type === "raid" ? 60 : 30;
   const pendingRunKey = `__endgame_pending_${activity.id}`;
   if (body.phase === "start") {
     // Preserve a run that is already underway rather than restarting its clock.
