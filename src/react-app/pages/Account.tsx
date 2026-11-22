@@ -262,7 +262,7 @@ export default function Account() {
           {!betaStatus?.hasAccess && <form onSubmit={e => { e.preventDefault(); void betaAction("/api/beta/redeem", { code: betaCode }); }}>
             <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15}
               pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode}
-              onChange={e => setBetaCode(e.target.value.replace(/\\D/g, "").slice(0, 15))} />
+              onChange={e => setBetaCode(e.target.value.replace(/\D/g, "").slice(0, 15))} />
             <button type="submit" disabled={betaBusy || betaCode.length !== 15}>Redeem code</button>
           </form>}
           {betaStatus?.isAdmin && <div style={{ marginTop: 16 }}>
