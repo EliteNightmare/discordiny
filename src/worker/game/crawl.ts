@@ -17,7 +17,7 @@
  * - 10% chance for one secret encounter per run
  * - Secret is assigned to one random encounter
  * - Coil / Contest secrets last 15 seconds
- * - Nether secret lasts 20 seconds
+ * - Nether secret lasts 15 seconds
  * - Successful secret doubles rewards from the secret
  *   encounter onward
  * - Full clear awards 25,000 XP
@@ -49,7 +49,7 @@ export const CRAWL_SECRET_CHANCE = 1.00;
 
 export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
 
-export const CRAWL_NETHER_TIMEOUT_SECONDS = 20;
+export const CRAWL_NETHER_TIMEOUT_SECONDS = 15;
 
 export const CRAWL_XP = 25000;
 
@@ -1280,7 +1280,7 @@ export function runCrawl(
       : null;
 
   /*
-   * Nether receives 20 seconds.
+   * Nether receives 15 seconds.
    *
    * Coil and Contest remain at 15 seconds.
    */
