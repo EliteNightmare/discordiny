@@ -858,7 +858,7 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
   onFinished: (loot: ActivityLootPayload | null) => void;
   onProgress: (progress: { remaining: number; percentage: number; checkpoints: number; total: number }) => void;
 }) {
-  const duration = activity.type === "raid" ? 180 : 90;
+  const duration = activity.type === "raid" ? 60 : 30;
   const [remaining, setRemaining] = useState(duration);
   const [failure, setFailure] = useState("");
   useEffect(() => {
@@ -877,14 +877,15 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
         const seconds = start.remainingSeconds ?? start.durationSeconds ?? duration;
         // The server uses integer seconds. Add a small grace period so a
         // browser clock cannot attempt to finish before the Worker permits it.
-        const finishAt = Date.now() + (seconds + 1.25) * 1000;
+        const finishAt = Date.now() + seconds * 1000;
+        const serverFinishAt = finishAt + 1250;
         setRemaining(seconds);
         await new Promise<void>(resolve => {
           interval = window.setInterval(() => {
             if (cancelled) { window.clearInterval(interval); resolve(); return; }
             const left = Math.max(0, Math.ceil((finishAt - Date.now()) / 1000));
             setRemaining(left);
-            if (left === 0) { window.clearInterval(interval); resolve(); }
+            if (Date.now() >= serverFinishAt) { window.clearInterval(interval); resolve(); }
           }, 200);
         });
         if (cancelled) return;
@@ -1015,7 +1016,7 @@ export default function Activities() {
     try {
       const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id:string; expires:number}>;
       const filtered = saved.filter(entry => entry.id !== String(activity.id) && entry.expires > Date.now() - 300000);
-      filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 180 : 90) * 1000});
+      filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 60 : 30) * 1000});
       localStorage.setItem(timedStorageKey, JSON.stringify(filtered));
     } catch { /* optional browser persistence */ }
     void fetchProfileSnapshot<{ level?: LevelProgress }>()
