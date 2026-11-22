@@ -60,6 +60,46 @@ function Vault() {
   const [tier, setTier] = useState<WeaponTier>("normal");
   const [activeGroup, setActiveGroup] = useState<string | null>(VAULT_CATEGORIES[0].activities?.[0]?.group ?? null);
   const pendingScrollY = useRef<number | null>(null);
+  const recentViewportRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const viewport = recentViewportRef.current;
+    if (!viewport || (overview?.recent.length ?? 0) < 2) return;
+    let frame = 0;
+    let last = 0;
+    let pauseUntil = 0;
+    const normalize = () => {
+      const half = viewport.scrollWidth / 2;
+      if (half > 0 && viewport.scrollLeft >= half) viewport.scrollLeft -= half;
+      if (viewport.scrollLeft < 0 && half > 0) viewport.scrollLeft += half;
+    };
+    const wheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+        event.preventDefault();
+      }
+      viewport.scrollLeft += event.deltaX || event.deltaY;
+      normalize();
+      pauseUntil = performance.now() + 1800;
+    };
+    const touch = () => { pauseUntil = performance.now() + 1800; };
+    const tick = (now: number) => {
+      if (last && now >= pauseUntil && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        viewport.scrollLeft += Math.min(50, now - last) * 0.035;
+        normalize();
+      }
+      last = now;
+      frame = requestAnimationFrame(tick);
+    };
+    viewport.addEventListener("wheel", wheel, { passive: false });
+    viewport.addEventListener("touchstart", touch, { passive: true });
+    viewport.addEventListener("touchmove", touch, { passive: true });
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener("wheel", wheel);
+      viewport.removeEventListener("touchstart", touch);
+      viewport.removeEventListener("touchmove", touch);
+    };
+  }, [overview?.recent.length]);
 
   useEffect(() => {
     let active = true;
@@ -172,7 +212,7 @@ function Vault() {
     <section className="collections-recent-strip" aria-label="15 most recent weapon drops">
       <div className="collections-strip-label"><strong>RECENT DROPS</strong></div>
       {overviewError && <small className="vault-overview-error">{overviewError}</small>}
-      <div className="collections-recent-viewport">
+      <div className="collections-recent-viewport" ref={recentViewportRef} aria-label="Scroll recent weapons horizontally">
       <div className="collections-recent-slots" style={{ "--recent-duration": `${Math.max(18, recentWeapons.length * 4)}s` } as React.CSSProperties}>
         {(recentWeapons.length > 1 ? [...recentWeapons, ...recentWeapons] : recentWeapons).map((weapon, index) => {
           const adept = isAdeptFavorite(weapon.name);
