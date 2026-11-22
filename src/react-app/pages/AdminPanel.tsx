@@ -5,9 +5,11 @@ import ArticleManagement from "./ArticleManagement";
 import "./AdminPanel.css";
 
 type Asset = { path: string; url: string; mime_type: string; byte_size: number; created_at: string };
+const betaHost = window.location.hostname.startsWith("beta.");
+const subdomain = (name: string) => `https://${betaHost ? "beta." : ""}${name}.discordiny.com`;
 const links = [
-  { name: "Terminal", description: "Manage terminal files and discoveries", url: "https://terminal.discordiny.com/" },
-  { name: "Root", description: "Manage the Root filesystem", url: "https://root.discordiny.com/5dfg46df4gs4gs6" },
+  { name: "Terminal", description: "Manage terminal files and discoveries", url: subdomain("terminal") + "/" },
+  { name: "Root", description: "Manage the Root filesystem", url: subdomain("root") + "/5dfg46df4gs4gs6" },
   { name: "Events", description: "View current operations", url: "/events" },
 ];
 
