@@ -4046,12 +4046,12 @@ app.post("/api/game/explore/claim", async (c) => {
   }
 
   // Each completed 8-hour interval guarantees one weapon; the remainder
-  // uses a fourth-power chance for one more. Maximum: two weapons at 16 hours.
+  // uses a fourth-power chance for one more. Maximum: three weapons at 24 hours.
   const weaponIntervalSeconds = 8 * 60 * 60;
   const guaranteedWeapons = Math.floor(elapsedSeconds / weaponIntervalSeconds);
   const fractionalProgress = (elapsedSeconds % weaponIntervalSeconds) / weaponIntervalSeconds;
   const fractionalChance = Math.pow(fractionalProgress, 4);
-  const requestedWeaponCount = Math.min(2, guaranteedWeapons + (Math.random() < fractionalChance ? 1 : 0));
+  const requestedWeaponCount = Math.min(3, guaranteedWeapons + (Math.random() < fractionalChance ? 1 : 0));
   const adeptChance = 0.10; // Same successful-drop Adept chance as Showdown.
 
   // Destination sources in D1 are lowercase. Explicitly normalize the lookup.
