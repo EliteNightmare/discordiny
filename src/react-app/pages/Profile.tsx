@@ -26,6 +26,12 @@ const DESTINATIONS = [
   ["Pale Heart","pale_heart"],["Plaguelands","plaguelands"]
 ] as const;
 const CURRENCY_ICONS: Record<string,string> = {"Glimmer":glimmerIcon,"Lumia Leaves":lumiaLeavesIcon,"Armor Plating":armorPlatingIcon,"Synthweave":synthweaveIcon,"Spoils of Conquest":spoilsIcon};
+const currencyIconFiles = import.meta.glob("../assets/icons/currencies/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const pinnacleCipherIcon = Object.entries(currencyIconFiles).find(([path]) =>
+  path.toLowerCase().replace(/[^a-z0-9]/g, "").includes("pinnaclecipher")
+)?.[1];
+if (pinnacleCipherIcon) CURRENCY_ICONS["Pinnacle Cipher"] = pinnacleCipherIcon;
+
 // Discover existing upgrade-material icons at build time; no extra assets required.
 const upgradeMaterialIconFiles = import.meta.glob("../assets/icons/upgrade-materials/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
 const normalizeMaterialName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
