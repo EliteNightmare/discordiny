@@ -3,6 +3,8 @@ declare global {
     DISCORD_CLIENT_SECRET: string;
     BUNGIE_API_KEY: string;
     DB: D1Database;
+    ACCESS_DB?: D1Database;
+    DISCORDINY_ENV?: string;
     ASSETS_BUCKET: R2Bucket;
   }
 }
@@ -10,6 +12,7 @@ declare global {
 import { Hono } from "hono";
 import { registerArticleRoutes } from "./articles.routes";
 import { registerAdminAssetRoutes } from "./admin-assets.routes";
+import { registerBetaRoutes } from "./beta.routes";
 import { registerAdminManagementRoutes } from "./admin-management.routes";
 import {
   deleteCookie,
@@ -10510,6 +10513,11 @@ app.get("/api/game/activity/feed", async (c) => {
 });
 
 /* Articles: reuse the existing, expiry-checked Discord session resolver. */
+registerBetaRoutes(app, async (c) => {
+  const user = await getTerminalUser(c);
+  return user ? { discord_id: user.discord_id } : null;
+});
+
 registerArticleRoutes(app, async (c) => {
   const user = await getTerminalUser(c);
   return user ? { id: user.user_id } : null;
