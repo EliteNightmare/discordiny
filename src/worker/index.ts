@@ -93,6 +93,15 @@ const DISCORD_CLIENT_ID = "1529513718176813166";
 
 const DISCORD_REDIRECT_URI =
   "https://discordiny.com/api/auth/callback";
+const DISCORD_PREVIEW_REDIRECT_URI =
+  "https://game-updates-vite-react-template.darko-kennedy12.workers.dev/api/auth/callback";
+
+function discordRedirectUri(requestUrl: string): string {
+  const host = new URL(requestUrl).hostname.toLowerCase();
+  return host === "game-updates-vite-react-template.darko-kennedy12.workers.dev"
+    ? DISCORD_PREVIEW_REDIRECT_URI
+    : DISCORD_REDIRECT_URI;
+}
 
 const BUNGIE_CLIENT_ID =
   "55059";
@@ -1611,7 +1620,7 @@ app.get("/api/auth/login", (c) => {
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     response_type: "code",
-    redirect_uri: DISCORD_REDIRECT_URI,
+    redirect_uri: discordRedirectUri(c.req.url),
     scope: "identify",
   });
 
@@ -1653,7 +1662,7 @@ app.get("/api/auth/callback", async (c) => {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: DISCORD_REDIRECT_URI,
+        redirect_uri: discordRedirectUri(c.req.url),
       }),
     }
   );
