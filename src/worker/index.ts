@@ -98,9 +98,9 @@ const DISCORD_PREVIEW_REDIRECT_URI =
 
 function discordRedirectUri(requestUrl: string): string {
   const host = new URL(requestUrl).hostname.toLowerCase();
-  return host === "game-updates-vite-react-template.darko-kennedy12.workers.dev"
-    ? DISCORD_PREVIEW_REDIRECT_URI
-    : DISCORD_REDIRECT_URI;
+  if (host === "game-updates-vite-react-template.darko-kennedy12.workers.dev") return DISCORD_PREVIEW_REDIRECT_URI;
+  if (host === "beta.discordiny.com" || host === "beta.api.discordiny.com") return "https://beta.discordiny.com/api/auth/callback";
+  return DISCORD_REDIRECT_URI;
 }
 
 const BUNGIE_CLIENT_ID =
@@ -108,6 +108,13 @@ const BUNGIE_CLIENT_ID =
 
 const BUNGIE_REDIRECT_URI =
   "https://discordiny.com/api/bungie/callback";
+
+function bungieRedirectUri(requestUrl: string): string {
+  const host = new URL(requestUrl).hostname.toLowerCase();
+  return host === "beta.discordiny.com" || host === "beta.api.discordiny.com"
+    ? "https://beta.discordiny.com/api/bungie/callback"
+    : BUNGIE_REDIRECT_URI;
+}
 
 const SESSION_COOKIE =
   "__Host-discordiny_session";
@@ -2033,7 +2040,7 @@ app.get("/api/bungie/link", async (c) => {
     client_id: BUNGIE_CLIENT_ID,
     response_type: "code",
     state,
-    redirect_uri: BUNGIE_REDIRECT_URI,
+    redirect_uri: bungieRedirectUri(c.req.url),
   });
 
   return c.redirect(
