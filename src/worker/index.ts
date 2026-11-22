@@ -92,6 +92,34 @@ type ArtifactRow = {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Beta gameplay is isolated. Access is checked against the production invitation
+// registry; beta account IDs must never confer administrator privileges.
+app.use("/api/*", async (c, next) => {
+  if (c.env.DISCORDINY_ENV !== "beta") return next();
+  const path = c.req.path;
+  if (path === "/api/auth/login" || path === "/api/auth/callback" ||
+      path === "/api/auth/logout" || path === "/api/auth/me" ||
+      path === "/api/beta/status" || path.startsWith("/api/beta/admin/")) return next();
+  // Existing administrative endpoints trust local user ID 1; never expose
+  // them in beta until converted to production Discord-identity checks.
+  if (path.startsWith("/api/admin/")) return c.json({ error: "Beta admin endpoint disabled" }, 403);
+  const session = await getTerminalUser(c);
+  if (!session) return c.json({ error: "Beta login required" }, 401);
+  const accessDb = c.env.ACCESS_DB;
+  if (!accessDb) return c.json({ error: "Beta access registry not configured" }, 503);
+  const setting = await accessDb.prepare("SELECT enabled FROM beta_settings WHERE id = 1")
+    .first<{ enabled: number }>();
+  const owner = await accessDb.prepare("SELECT discord_id FROM users WHERE id = 1")
+    .first<{ discord_id: string }>();
+  if (owner?.discord_id === session.discord_id) return next();
+  if (setting?.enabled !== 1) return c.json({ error: "Beta is currently closed" }, 403);
+  const invited = await accessDb.prepare(
+    "SELECT 1 AS allowed FROM beta_invites WHERE redeemed_by_discord_id = ? LIMIT 1"
+  ).bind(session.discord_id).first();
+  if (!invited) return c.json({ error: "A beta invitation is required" }, 403);
+  return next();
+});
+
 const DISCORD_CLIENT_ID = "1529513718176813166";
 
 const DISCORD_REDIRECT_URI =
