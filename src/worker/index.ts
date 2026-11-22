@@ -2162,7 +2162,7 @@ app.get("/api/bungie/callback", async (c) => {
         code,
 
         redirect_uri:
-          BUNGIE_REDIRECT_URI,
+          bungieRedirectUri(c.req.url),
       }),
     }
   );
