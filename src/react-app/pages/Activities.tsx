@@ -974,6 +974,9 @@ export default function Activities() {
     exploreElapsed,
     setExploreElapsed,
   ] = useState(0);
+  const [claimTimerHours, setClaimTimerHours] = useState(0);
+  const [savingClaimTimer, setSavingClaimTimer] = useState(false);
+  const [claimTimerError, setClaimTimerError] = useState('');
 
   const [
     travelOpen,
@@ -1164,6 +1167,7 @@ export default function Activities() {
             ),
           );
 
+          setClaimTimerHours(result.player.explore.elapsedSeconds / 3600);
           setClock(0);
           setError("");
         } catch (err) {
@@ -1848,6 +1852,41 @@ export default function Activities() {
       .explore
       .maxSeconds;
 
+  async function saveClaimTimer() {
+    if (!data?.canSetExplorationTimer || savingClaimTimer) return;
+    setSavingClaimTimer(true);
+    setClaimTimerError("");
+    try {
+      const elapsedSeconds = Math.round(claimTimerHours * 3600);
+      const response = await fetch("/api/game/explore/set-max-timer", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elapsedSeconds }),
+      });
+      const result = await response.json() as { success?: boolean; elapsedSeconds?: number; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Unable to update timer.");
+      const saved = result.elapsedSeconds ?? elapsedSeconds;
+      loadedAtRef.current = Date.now();
+      setClock(0);
+      setExploreElapsed(saved);
+      setData(previous => previous ? {
+        ...previous,
+        player: { ...previous.player, explore: {
+          ...previous.player.explore,
+          elapsedSeconds: saved,
+          lastClaim: Math.floor(Date.now() / 1000) - saved,
+          percentage: saved / 86400 * 100,
+          capped: saved >= 86400,
+        } },
+      } : previous);
+    } catch (error) {
+      setClaimTimerError(error instanceof Error ? error.message : "Unable to update timer.");
+    } finally {
+      setSavingClaimTimer(false);
+    }
+  }
+
   const explorePercentage =
     Math.min(
       100,
@@ -2369,6 +2408,25 @@ export default function Activities() {
                   </div>
                 </div>
 
+                {data.canSetExplorationTimer && (
+                  <div className="exploration-admin-timer">
+                    <label htmlFor="exploration-claim-timer-slider">
+                      CLAIM TIMER CONTROL <strong>{claimTimerHours.toFixed(2)}h / 24h</strong>
+                    </label>
+                    <input id="exploration-claim-timer-slider" type="range"
+                      min={0} max={24} step={0.25} value={claimTimerHours}
+                      disabled={savingClaimTimer}
+                      onChange={event => setClaimTimerHours(Number(event.target.value))} />
+                    <div className="exploration-admin-timer-actions">
+                      <span>0h</span>
+                      <button type="button" onClick={() => void saveClaimTimer()} disabled={savingClaimTimer}>
+                        {savingClaimTimer ? "SAVING..." : "SET CLAIM TIMER"}
+                      </button>
+                      <span>24h</span>
+                    </div>
+                    {claimTimerError && <p role="alert">{claimTimerError}</p>}
+                  </div>
+                )}
                 <div className="exploration-progress">
                   <div
                     className="exploration-progress-fill"
