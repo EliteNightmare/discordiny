@@ -17,10 +17,6 @@ async function digest(code: string): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
 }
-async function ensureCodeStore(c: any): Promise<void> {
-  // Separate admin-only lookup: legacy invitation hashes remain valid but unrecoverable.
-  await registry(c).prepare("CREATE TABLE IF NOT EXISTS beta_invite_codes (code_hash TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE)").run();
-}
 
 async function invitationKey(c: any): Promise<CryptoKey> {
   const secret = c.env.DISCORD_CLIENT_SECRET;
@@ -80,7 +76,6 @@ export function registerBetaRoutes<T extends Bindings>(
   app.get("/api/beta/admin/codes", async c => {
     const identity = await getIdentity(c);
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
-    await ensureCodeStore(c);
     const result = await registry(c).prepare(
       "SELECT code_hash, code_ciphertext, created_at, created_by_discord_id, redeemed_by_discord_id, redeemed_at FROM beta_invites ORDER BY created_at DESC, code_hash DESC LIMIT 1000"
     ).all<{ code_hash: string; code_ciphertext: string | null; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
@@ -100,15 +95,13 @@ export function registerBetaRoutes<T extends Bindings>(
   app.post("/api/beta/admin/generate", async c => {
     const identity = await getIdentity(c);
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
-    await ensureCodeStore(c);
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = newCode();
       const hash = await digest(code);
       const result = await registry(c).prepare(
         "INSERT OR IGNORE INTO beta_invites (code_hash, created_by_discord_id, code_ciphertext) VALUES (?, ?, ?)"
-      ).bind(hash, identity!.discord_id).run();
+      ).bind(hash, identity!.discord_id, await encryptCode(c, code)).run();
       if (result.meta.changes) {
-        await registry(c).prepare("INSERT INTO beta_invite_codes (code_hash, code) VALUES (?, ?)").bind(hash, code).run();
         return c.json({ code });
       }
     }
