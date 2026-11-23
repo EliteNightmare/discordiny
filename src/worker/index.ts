@@ -5931,12 +5931,12 @@ const VANGUARD_COOLDOWNS = {
   gm: 120,
 } as const;
 
-const INFILTRATION_COOLDOWN_SECONDS = 20;
-const SHOWDOWN_COOLDOWN_SECONDS = 30;
-const CRAWL_COOLDOWN_SECONDS = 90;
+const (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS) = 20;
+const (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS) = 30;
+const (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS) = 90;
 
-const ENDGAME_DUNGEON_COOLDOWN_SECONDS = 45;
-const ENDGAME_RAID_COOLDOWN_SECONDS = 90;
+const (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS) = 45;
+const (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS) = 90;
 const ENDGAME_DAILY_MAX_CHARGES = 3;
 
 const ENDGAME_DUNGEON_COOLDOWN_KEY =
@@ -6526,17 +6526,17 @@ app.get("/api/game/activities", async (c) => {
 
       vanguard: {
         strike: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.strike,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.strike),
           remainingSeconds: Math.max(0, vanguardStrikeReadyAt - nowSeconds),
           readyAt: vanguardStrikeReadyAt,
         },
         nightfall: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.nightfall,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.nightfall),
           remainingSeconds: Math.max(0, vanguardNightfallReadyAt - nowSeconds),
           readyAt: vanguardNightfallReadyAt,
         },
         gm: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.gm,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.gm),
           remainingSeconds: Math.max(0, vanguardGmReadyAt - nowSeconds),
           readyAt: vanguardGmReadyAt,
           minLevel: GM_MIN_LEVEL,
@@ -6545,7 +6545,7 @@ app.get("/api/game/activities", async (c) => {
 
       infiltration: {
         cooldownSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
       
         remainingSeconds:
           Math.max(
@@ -6559,7 +6559,7 @@ app.get("/api/game/activities", async (c) => {
 
       showdown: {
         cooldownSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         remainingSeconds:
           Math.max(
@@ -6585,7 +6585,7 @@ app.get("/api/game/activities", async (c) => {
 
       crawl: {
         cooldownSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         remainingSeconds:
           Math.max(
@@ -6600,7 +6600,7 @@ app.get("/api/game/activities", async (c) => {
       endgame: {
         dungeon: {
           cooldownSeconds:
-            ENDGAME_DUNGEON_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS),
 
           remainingSeconds:
             Math.max(
@@ -6614,7 +6614,7 @@ app.get("/api/game/activities", async (c) => {
 
         raid: {
           cooldownSeconds:
-            ENDGAME_RAID_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS),
 
           remainingSeconds:
             Math.max(
@@ -7650,7 +7650,7 @@ app.post("/api/game/activity/run", async (c) => {
         readyAt - nowSeconds,
       );
 
-    if (remainingSeconds > 0) {
+    if (c.env.DISCORDINY_ENV !== "beta" && remainingSeconds > 0) {
       return c.json(
         {
           authenticated: true,
@@ -7664,7 +7664,7 @@ app.post("/api/game/activity/run", async (c) => {
               "cooldown" as const,
 
             cooldownSeconds:
-              INFILTRATION_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
             remainingSeconds,
 
@@ -7873,7 +7873,7 @@ app.post("/api/game/activity/run", async (c) => {
 
     const nextReadyAt =
       nowSeconds +
-      INFILTRATION_COOLDOWN_SECONDS;
+      (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS);
 
     writes.push(
       c.env.DB
@@ -8159,10 +8159,10 @@ app.post("/api/game/activity/run", async (c) => {
           "cooldown" as const,
 
         cooldownSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
         readyAt:
           nextReadyAt,
@@ -8237,14 +8237,14 @@ app.post("/api/game/activity/run", async (c) => {
       : vanguardActivity.type === "nightfall"
         ? VANGUARD_NIGHTFALL_COOLDOWN_KEY
         : VANGUARD_GM_COOLDOWN_KEY;
-    const cooldownSeconds = VANGUARD_COOLDOWNS[vanguardActivity.type];
+    const cooldownSeconds = c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS[vanguardActivity.type];
 
     const cooldownRow = await c.env.DB.prepare(
       `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
     ).bind(session.user_id, cooldownKey).first<{ timestamp: number }>();
     const readyAt = Math.max(0, Number(cooldownRow?.timestamp ?? 0));
 
-    if (nowSeconds < readyAt) {
+    if (c.env.DISCORDINY_ENV !== "beta" && nowSeconds < readyAt) {
       return c.json({
         error: "Activity cooldown is still active.",
         limit: { kind: "cooldown", cooldownSeconds, remainingSeconds: readyAt - nowSeconds, readyAt },
@@ -8540,7 +8540,7 @@ app.post("/api/game/activity/run", async (c) => {
           ) || 0,
         );
 
-      if (readyAt > nowSeconds) {
+      if (c.env.DISCORDINY_ENV !== "beta" && readyAt > nowSeconds) {
         return c.json(
           {
             authenticated: true,
@@ -8554,7 +8554,7 @@ app.post("/api/game/activity/run", async (c) => {
                 "cooldown" as const,
 
               cooldownSeconds:
-                SHOWDOWN_COOLDOWN_SECONDS,
+                (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
               remainingSeconds:
                 readyAt - nowSeconds,
@@ -8778,7 +8778,7 @@ app.post("/api/game/activity/run", async (c) => {
             SHOWDOWN_COOLDOWN_KEY,
 
             nowSeconds +
-              SHOWDOWN_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
           ),
       );
     }
@@ -9070,16 +9070,16 @@ app.post("/api/game/activity/run", async (c) => {
     } else {
       const readyAt =
         nowSeconds +
-        SHOWDOWN_COOLDOWN_SECONDS;
+        (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS);
 
       showdownLimit = {
         kind: "cooldown",
 
         cooldownSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         readyAt,
       };
@@ -9261,7 +9261,7 @@ app.post("/api/game/activity/run", async (c) => {
               "cooldown" as const,
 
             cooldownSeconds:
-              CRAWL_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
             remainingSeconds:
               Math.max(
@@ -9302,7 +9302,7 @@ app.post("/api/game/activity/run", async (c) => {
 
     const nextReadyAt =
       nowSeconds +
-      CRAWL_COOLDOWN_SECONDS;
+      (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS);
 
     const cooldownWrite =
       c.env.DB
@@ -9407,10 +9407,10 @@ app.post("/api/game/activity/run", async (c) => {
             "cooldown" as const,
 
           cooldownSeconds:
-            CRAWL_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
           remainingSeconds:
-            CRAWL_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
           readyAt:
             nextReadyAt,
@@ -9511,10 +9511,10 @@ app.post("/api/game/activity/run", async (c) => {
           "cooldown" as const,
 
         cooldownSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         readyAt:
           nextReadyAt,
@@ -9779,8 +9779,8 @@ app.post("/api/game/activity/run", async (c) => {
   } else {
     const cooldownSeconds =
       activity.type === "raid"
-        ? ENDGAME_RAID_COOLDOWN_SECONDS
-        : ENDGAME_DUNGEON_COOLDOWN_SECONDS;
+        ? (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS)
+        : (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS);
 
     const cooldownKey =
       activity.type === "raid"
@@ -10360,8 +10360,8 @@ app.post("/api/game/activity/run", async (c) => {
             kind: "cooldown" as const,
             cooldownSeconds:
               activity.type === "raid"
-                ? ENDGAME_RAID_COOLDOWN_SECONDS
-                : ENDGAME_DUNGEON_COOLDOWN_SECONDS,
+                ? (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS)
+                : (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS),
           },
 
     result,
