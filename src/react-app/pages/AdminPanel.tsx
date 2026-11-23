@@ -15,32 +15,39 @@ const links = [
 ];
 
 
+type BetaMember = { discord_id: string; username: string | null; global_name: string | null; redeemed_at: string; code_id: string };
 type BetaCode = { code: string | null; code_id: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null; used: boolean };
 function BetaAdministration() {
   const [codes, setCodes] = useState<BetaCode[]>([]);
+  const [members, setMembers] = useState<BetaMember[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [message, setMessage] = useState("");
   const [filter, setFilter] = useState<"all" | "used" | "unused">("all");
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [error, setError] = useState("");
   async function refresh() {
-    const [listResponse, statusResponse] = await Promise.all([
+    const [listResponse, statusResponse, membersResponse] = await Promise.all([
       fetch("/api/beta/admin/codes", { credentials: "include" }),
       fetch("/api/beta/status", { credentials: "include" }),
+      fetch("/api/beta/admin/members", { credentials: "include" }),
     ]);
-    if (!listResponse.ok || !statusResponse.ok) throw new Error("Unable to load beta administration");
-    const [list, status] = await Promise.all([listResponse.json(), statusResponse.json()]);
+    if (!listResponse.ok || !statusResponse.ok || !membersResponse.ok) throw new Error("Unable to load beta administration");
+    const [list, status, memberList] = await Promise.all([listResponse.json(), statusResponse.json(), membersResponse.json()]);
+    setMembers(memberList.members ?? []);
     setCodes(list.codes ?? []);
     setActive(status.active === true);
   }
   useEffect(() => { void refresh().catch(e => setError(String(e))); }, []);
   async function action(path: string, body: object) {
-    setBusy(true); setError("");
+    setBusy(true); setError(""); setMessage("");
     try {
       const response = await fetch(path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Request failed");
       if (data.code) setNewCode(data.code);
+      if (data.success) setMessage("Change saved successfully.");
       await refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Request failed"); }
     finally { setBusy(false); }
@@ -59,7 +66,11 @@ function BetaAdministration() {
     </div>
     {newCode && <p role="status">New invitation code: <strong>{newCode}</strong> <button onClick={() => void navigator.clipboard.writeText(newCode)}>Copy</button><br/><small>New codes are now retained in the administrator-only invitation list.</small></p>}
     <div className="dc-admin-list-head"><h2>Invitations ({codes.length})</h2><label>Show <select aria-label="Filter beta invitations" value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="used">Used</option><option value="unused">Unused</option></select></label></div>
-    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Invitation code</th><th>Status</th><th>Created</th><th>Redeemed by Discord ID</th><th>Redeemed</th></tr></thead><tbody>{visible.map(code => <tr key={code.code_id}><td>{code.code ? <><code>{code.code}</code> <button type="button" onClick={() => void navigator.clipboard.writeText(code.code!)}>Copy</button></> : <span title={`Legacy hash reference: ${code.code_id}`}>Legacy code — unavailable</span>}</td><td>{code.used ? "Used" : "Unused"}</td><td>{code.created_at}</td><td>{code.redeemed_by_discord_id ?? "—"}</td><td>{code.redeemed_at ?? "—"}</td></tr>)}</tbody></table>{visible.length === 0 && <p>No matching invitations.</p>}</div>
+    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Invitation code</th><th>Status</th><th>Created</th><th>Redeemed by Discord ID</th><th>Redeemed</th><th>Actions</th></tr></thead><tbody>{visible.map(code => <tr key={code.code_id}><td>{code.code ? <><code>{code.code}</code> <button type="button" onClick={() => void navigator.clipboard.writeText(code.code!)}>Copy</button></> : <span title={`Legacy hash reference: ${code.code_id}`}>Legacy code — unavailable</span>}</td><td>{code.used ? "Used" : "Unused"}</td><td>{code.created_at}</td><td>{code.redeemed_by_discord_id ?? "—"}</td><td>{code.redeemed_at ?? "—"}</td><td><button type="button" disabled={busy} onClick={() => { if (window.confirm(code.used ? "Delete this used invitation and revoke the account’s beta access?" : "Permanently delete this unused invitation?")) void action("/api/beta/admin/delete-code", { code_id: code.code_id }); }}>Delete</button></td></tr>)}</tbody></table>{visible.length === 0 && <p>No matching invitations.</p>}</div>
+    <div className="dc-admin-list-head"><h2>Beta Accounts ({members.length})</h2><input aria-label="Search beta accounts" placeholder="Search name or Discord ID" value={memberSearch} onChange={e => setMemberSearch(e.target.value)} /></div>
+    <p>Accounts listed here have redeemed an invitation. Revoking access removes their permission to enter beta, but does not delete their Discordiny account or game data.</p>
+    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Account</th><th>Discord ID</th><th>Joined</th><th>Actions</th></tr></thead><tbody>{members.filter(m => [m.username, m.global_name, m.discord_id].some(v => v?.toLowerCase().includes(memberSearch.toLowerCase()))).map(member => <tr key={member.discord_id}><td>{member.global_name || member.username || "Unknown account"}</td><td><code>{member.discord_id}</code></td><td>{member.redeemed_at}</td><td><button type="button" disabled={busy} onClick={() => { if (window.confirm(`Revoke beta access for ${member.global_name || member.username || member.discord_id}? They will lose access immediately on their next API request.`)) void action("/api/beta/admin/revoke", { discord_id: member.discord_id }); }}>Revoke access</button></td></tr>)}</tbody></table>{members.length === 0 && <p>No accounts have redeemed invitations yet.</p>}</div>
+    {message && <p role="status">{message}</p>}
     {error && <p role="alert">{error}</p>}
   </section>;
 }
