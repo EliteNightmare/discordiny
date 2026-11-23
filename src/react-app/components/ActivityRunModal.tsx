@@ -485,6 +485,8 @@ export default function ActivityRunModal({
     useState<number[]>([]);
   const [netherExpired, setNetherExpired] = useState(false);
   const [netherSpawned, setNetherSpawned] = useState(0);
+  const [netherNow, setNetherNow] = useState(() => Date.now());
+  const netherSpawnTimes = useRef<number[]>([]);
   const netherResolvingRef = useRef(false);
 
   const [resolvingSecret, setResolvingSecret] =
@@ -713,420 +715,28 @@ export default function ActivityRunModal({
     if (contestMissing && crawlRunId && !resolvingSecret) void resolveCrawlSecret([]);
   }, [contestMissing, crawlRunId]);
 
-  // Spawn seven total eyes in waves of one or two during encounters.
+  // Each eye expires seven seconds after spawning; completion stops future waves.
   useEffect(() => {
-    if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "nether") return;
-    const timeouts = [1, 3, 5, 7].map((count, index) =>
-      window.setTimeout(() => setNetherSpawned(count), index * ENCOUNTER_MS)
+    if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "nether" || netherResolvingRef.current) return;
+    const spawn = (count: number, previous: number) => {
+      if (netherResolvingRef.current) return;
+      const now = Date.now();
+      for (let i = previous; i < count; i++) netherSpawnTimes.current[i] = now;
+      setNetherNow(now);
+      setNetherSpawned(count);
+    };
+    spawn(1, 0);
+    const timeouts = [3, 5, 7].map((count, index) =>
+      window.setTimeout(() => spawn(count, [1, 3, 5][index]), (index + 1) * ENCOUNTER_MS)
     );
-    return () => timeouts.forEach(window.clearTimeout);
+    const interval = window.setInterval(() => {
+      if (!netherResolvingRef.current) setNetherNow(Date.now());
+    }, 250);
+    return () => {
+      timeouts.forEach(window.clearTimeout);
+      window.clearInterval(interval);
+    };
   }, [phase, crawlRunId, result?.secret?.challenge?.type]);
-
-  useEffect(() => {
-    if (phase !== "encounters" || visible <= 0 || !result || !onEncounterLoot) return;
-    const index = Math.min(visible - 1, result.encounters.length - 1);
-    if (index <= lastRewardedEncounterRef.current || index < 0) return;
-    lastRewardedEncounterRef.current = index;
-    const materials = result.encounters[index]?.rewards ?? {};
-    if (Object.values(materials).some((amount) => amount > 0)) onEncounterLoot(materials);
-  }, [phase, visible, result, onEncounterLoot]);
-
-  /* ------------------------------------------------------------------------ */
-  /*                              RESULT REVEAL                               */
-  /* ------------------------------------------------------------------------ */
-
-  function reveal(
-    run: RunResult,
-  ) {
-    /*
-     * CRAWL
-     *
-     * Crawl encounter RNG is already complete on the
-     * server. If no secret is pending, reveal the four
-     * encounters and then the final weapon roll.
-     */
-    if (isCrawl) {
-      crawlRevealDone.current = false;
-      if (!run.encounters.length) {
-        setPhase("complete");
-        finish();
-        return;
-      }
-
-      setVisible(1);
-
-      run.encounters
-        .slice(1)
-        .forEach((_, index) => {
-          timers.current.push(
-            window.setTimeout(
-              () =>
-                setVisible(
-                  index + 2,
-                ),
-              ENCOUNTER_MS *
-                (index + 1),
-            ),
-          );
-        });
-
-      const duration =
-        ENCOUNTER_MS *
-        run.encounters.length;
-
-      timers.current.push(
-        window.setTimeout(
-          () => {
-            crawlRevealDone.current = true;
-            if (!crawlPending.current) { setPhase("complete"); finish(); }
-            else if (run.secret?.challenge?.type === "contest") {
-              if (contestCollectedRef.current.size === 4) setPhase("secret");
-              else setContestMissing(true); // Missing fragments: no puzzle.
-            } else if (delayedCrawlSecret.current) setPhase("secret");
-          },
-          duration,
-        ),
-      );
-
-      return;
-    }
-
-    /*
-     * INFILTRATION
-     *
-     * Reveal all three operations one after
-     * another, then resolve the weapon rolls.
-     */
-    if (isInfiltration) {
-      if (!run.encounters.length) {
-        setPhase("complete");
-        finish();
-        return;
-      }
-
-      setVisible(1);
-
-      run.encounters
-        .slice(1)
-        .forEach(
-          (_, index) => {
-            timers.current.push(
-              window.setTimeout(
-                () => {
-                  setVisible(
-                    index + 2,
-                  );
-                },
-                ENCOUNTER_MS *
-                  (index + 1),
-              ),
-            );
-          },
-        );
-
-      const operationDuration =
-        ENCOUNTER_MS *
-        run.encounters.length;
-
-      timers.current.push(
-        window.setTimeout(
-          () => {
-            // Weapon results are already resolved server-side.
-            setPhase("complete");
-              finish();
-          },
-          operationDuration,
-        ),
-      );
-
-      return;
-    }
-
-    /*
-     * VANGUARD
-     */
-    if (isVanguard) {
-      setVisible(
-        run.encounters.length,
-      );
-
-      timers.current.push(
-        window.setTimeout(
-          () => {
-            if (
-              run.weapon?.rolled
-            ) {
-              setPhase("complete");
-              finish();
-            } else {
-              setPhase(
-                "complete",
-              );
-
-              finish();
-            }
-          },
-          ENCOUNTER_MS,
-        ),
-      );
-
-      return;
-    }
-
-    /*
-     * RAID / DUNGEON
-     */
-    if (!run.encounters.length) {
-      setPhase("complete");
-      finish();
-      return;
-    }
-
-    setVisible(1);
-
-    run.encounters
-      .slice(1)
-      .forEach(
-        (_, index) => {
-          timers.current.push(
-            window.setTimeout(
-              () => {
-                setVisible(
-                  index + 2,
-                );
-              },
-              ENCOUNTER_MS *
-                (index + 1),
-            ),
-          );
-        },
-      );
-
-    timers.current.push(
-      window.setTimeout(
-        () => {
-          if (
-            run.fullClear &&
-            run.weapon?.rolled
-          ) {
-            setPhase("complete");
-              finish();
-          } else {
-            setPhase(
-              "complete",
-            );
-
-            finish();
-          }
-        },
-        ENCOUNTER_MS *
-          run.encounters.length,
-      ),
-    );
-  }
-
-  /* ------------------------------------------------------------------------ */
-  /*                              BEGIN ACTIVITY                              */
-  /* ------------------------------------------------------------------------ */
-
-  async function begin() {
-    if (busy) {
-      return;
-    }
-
-    clearTimers();
-
-    finished.current = false;
-    completedResultRef.current = null;
-    lastRewardedEncounterRef.current = -1;
-
-    setError("");
-    setPayload(null);
-    setVisible(0);
-    setCrawlRunId(null);
-    setCrawlExpiresAt(null);
-    setCrawlSecondsLeft(0);
-    setCoilAnswer("");
-    setContestPieces([]);
-    setClickedEyes([]);
-    setResolvingSecret(false);
-    setPhase("loading");
-
-    try {
-      const response =
-        await fetch(
-          "/api/game/activity/run",
-          {
-            method: "POST",
-
-            credentials:
-              "include",
-
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-
-            body: JSON.stringify({
-              activityId:
-                activity.id,
-            }),
-          },
-        );
-
-      const data =
-        (await response.json()) as
-          RunResponse;
-
-      if (
-        !response.ok ||
-        !data.success ||
-        !data.result
-      ) {
-        throw new Error(
-          data.error ||
-            "Unable to begin activity.",
-        );
-      }
-
-      completedResultRef.current = data.result;
-      setPayload(data);
-
-      if (
-        isCrawl &&
-        data.pendingSecret &&
-        data.runId &&
-        data.expiresAt &&
-        data.result.secret?.challenge
-      ) {
-        setCrawlRunId(
-          data.runId,
-        );
-        setCrawlExpiresAt(
-          data.expiresAt,
-        );
-        setCrawlSecondsLeft(
-          Math.max(
-            0,
-            data.expiresAt -
-              Math.floor(Date.now() / 1000),
-          ),
-        );
-
-        if (
-          data.result.secret.challenge.type ===
-          "contest"
-        ) {
-          setContestPieces(
-            scrambleContestSlider(
-              [...data.result.secret.challenge.pieces],
-            ),
-          );
-        }
-
-        setContestSpawned(0);
-        setContestCollected([]);
-        setContestMissing(false);
-        contestCollectedRef.current = new Set();
-        setNetherExpired(false);
-        setClickedEyes([]);
-        setNetherSpawned(0);
-        netherResolvingRef.current = false;
-        crawlPending.current = true;
-        delayedCrawlSecret.current = data.result.secret.challenge.type === "coil";
-        setPhase("encounters");
-        reveal(data.result);
-        return;
-      }
-
-      setPhase(
-        "encounters",
-      );
-
-      reveal(
-        data.result,
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to begin activity.",
-      );
-
-      setPhase("error");
-    }
-  }
-
-
-  async function resolveCrawlSecret(
-    submission: string | number[],
-  ) {
-    if (
-      !crawlRunId ||
-      resolvingSecret
-    ) {
-      return;
-    }
-
-    setResolvingSecret(true);
-    setError("");
-
-    try {
-      const response =
-        await fetch(
-          "/api/game/activity/crawl/resolve",
-          {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type":
-                "application/json",
-            },
-            body: JSON.stringify({
-              runId: crawlRunId,
-              submission,
-            }),
-          },
-        );
-
-      const data =
-        (await response.json()) as
-          RunResponse;
-
-      if (
-        !response.ok ||
-        !data.success ||
-        !data.result
-      ) {
-        throw new Error(
-          data.error ||
-            "Unable to resolve Crawl secret.",
-        );
-      }
-
-      // Preserve encounter animation on inline secret resolution.
-      if (delayedCrawlSecret.current || crawlRevealDone.current) clearTimers();
-      completedResultRef.current = data.result;
-      setPayload(data);
-      setCrawlRunId(null);
-      setCrawlExpiresAt(null);
-      setResolvingSecret(false);
-      crawlPending.current = false;
-      if (crawlRevealDone.current) {
-        delayedCrawlSecret.current = false;
-        setPhase("complete");
-        finish();
-      }
-    } catch (err) {
-      setResolvingSecret(false);
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to resolve Crawl secret.",
-      );
-      setPhase("error");
-    }
-  }
 
   useEffect(() => {
     if (
@@ -1629,7 +1239,7 @@ export default function ActivityRunModal({
             })}
           </div>
         )}
-        {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "nether" && (
+        {phase === "encounters" && crawlRunId && !netherResolvingRef.current && !resolvingSecret && result?.secret?.challenge?.type === "nether" && (
           <div className="activity-run-inline-nether" style={{position:"absolute",inset:0,zIndex:12,pointerEvents:"none"}}>
               {true && (
                 <div className="activity-run-nether-secret">
@@ -1642,7 +1252,7 @@ export default function ActivityRunModal({
                             eye.id,
                           );
 
-                        if (clicked) {
+                        if (clicked || netherNow - (netherSpawnTimes.current[eye.id - 1] ?? 0) >= 7000) {
                           return null;
                         }
 
@@ -1666,6 +1276,7 @@ export default function ActivityRunModal({
                               setClickedEyes(next);
                               if (next.length >= 5) {
                                 netherResolvingRef.current = true;
+                                setNetherSpawned(0);
                                 void resolveCrawlSecret(next.slice(0, 5));
                               }
                             }}
