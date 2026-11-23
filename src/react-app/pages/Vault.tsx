@@ -99,7 +99,7 @@ function Vault() {
       viewport.removeEventListener("touchstart", touch);
       viewport.removeEventListener("touchmove", touch);
     };
-  }, [overview?.recent.length]);
+  }, [overview?.recent.length, loading, profile, error]);
 
   useEffect(() => {
     let active = true;
