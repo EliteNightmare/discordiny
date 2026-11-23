@@ -6489,6 +6489,35 @@ app.get("/api/game/activities", async (c) => {
   const dailyShowdownChargeState = dailyChargeState(endgameCooldownMap.get(dailyShowdownChargeKey) ?? 0, nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
   const dailyShowdownUsed = dailyShowdownChargeState.used;
 
+  // Persist regenerated charges, rather than only reporting a calculated
+  // balance. Also migrate legacy counter-only rows onto a recharge clock.
+  // The compare-and-swap predicate prevents overwriting a concurrent spend.
+  if (c.env.DISCORDINY_ENV === "beta") {
+    const rechargeUpdates: D1PreparedStatement[] = [];
+    for (const [key, max] of [
+      [dailyDungeonChargeKey, ENDGAME_DAILY_MAX_CHARGES],
+      [dailyRaidChargeKey, ENDGAME_DAILY_MAX_CHARGES],
+      [dailyShowdownChargeKey, DAILY_SHOWDOWN_MAX_CHARGES],
+    ] as const) {
+      const raw = endgameCooldownMap.get(key);
+      if (raw === undefined) continue;
+      const state = dailyChargeState(raw, nowSeconds, max, true);
+      // A legacy row had no timestamp; begin its first minute now.
+      const next = raw < 10000000000 && state.used > 0
+        ? nowSeconds * 10 + state.used
+        : state.encoded;
+      if (next !== raw) {
+        rechargeUpdates.push(
+          c.env.DB.prepare(
+            "UPDATE player_cooldowns SET timestamp = ? WHERE user_id = ? AND activity = ? AND timestamp = ?"
+          ).bind(next, session.user_id, key, raw)
+        );
+      }
+    }
+    if (rechargeUpdates.length) await c.env.DB.batch(rechargeUpdates);
+  }
+
+
   /* =======================================================
      RESPONSE
   ======================================================= */
