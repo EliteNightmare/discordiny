@@ -97,6 +97,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use("/api/*", async (c, next) => {
   if (c.env.DISCORDINY_ENV !== "beta") return next();
   const path = c.req.path;
+  if (path.startsWith("/api/bungie/")) return c.json({ error: "Bungie linking is not yet supported on beta" }, 403);
   if (path === "/api/auth/login" || path === "/api/auth/callback" ||
       path === "/api/auth/logout" || path === "/api/auth/me" ||
       path === "/api/beta/status" || path.startsWith("/api/beta/admin/")) return next();
@@ -140,11 +141,10 @@ const BUNGIE_CLIENT_ID =
 const BUNGIE_REDIRECT_URI =
   "https://discordiny.com/api/bungie/callback";
 
-function bungieRedirectUri(requestUrl: string): string {
-  const host = new URL(requestUrl).hostname.toLowerCase();
-  return host === "beta.discordiny.com" || host === "beta.api.discordiny.com"
-    ? "https://beta.discordiny.com/api/bungie/callback"
-    : BUNGIE_REDIRECT_URI;
+function bungieRedirectUri(_requestUrl: string): string {
+  // Bungie supports a single registered redirect URI per application.
+  // Beta linking is disabled until a secure production callback broker exists.
+  return BUNGIE_REDIRECT_URI;
 }
 
 const SESSION_COOKIE =
