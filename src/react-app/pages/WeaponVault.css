@@ -1178,3 +1178,40 @@
 }
 .weapon-masterwork-admin button:disabled { opacity: .55; cursor: wait; }
 .weapon-masterwork-admin p[role="alert"] { color: #ffaaa9; }
+
+
+/* Masterwork rank selection uses the same tactile, round-thumb vault control. */
+.vault-rank-picker input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border: 1px solid rgba(224,184,96,.42);
+  border-radius: 999px;
+  background: linear-gradient(90deg,#8c6528,#d3ab5a 52%,#302a22);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.42);
+  cursor: pointer;
+}
+.vault-rank-picker input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 23px;
+  height: 23px;
+  border: 3px solid #fff0bf;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 28%,#ffe9af,#d5a13f 70%,#95611c);
+  box-shadow: 0 2px 8px rgba(0,0,0,.5),0 0 0 2px #65471c;
+  cursor: grab;
+}
+.vault-rank-picker input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff0bf;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 28%,#ffe9af,#d5a13f 70%,#95611c);
+  box-shadow: 0 2px 8px rgba(0,0,0,.5),0 0 0 2px #65471c;
+  cursor: grab;
+}
+.vault-rank-picker input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
+.vault-rank-picker input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
+.vault-rank-picker input[type="range"]:focus-visible { outline: 2px solid #ffe18a; outline-offset: 6px; }
+.weapon-masterwork-next-cost .weapon-masterwork-unaffordable { margin: 10px 0 0; }
