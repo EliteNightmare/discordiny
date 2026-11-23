@@ -2952,7 +2952,7 @@ export default function Activities() {
                         event,
                       ) => (
                         <article
-                          className={`global-activity-event${event.activityType === "masterwork" ? " global-activity-event-masterwork" : event.weapon?.adept ? " global-activity-event-adept" : ""}`}
+                          className={`global-activity-event${event.activityType === "exotic_achievement" ? " global-activity-event-exotic" : event.activityType === "legendary_achievement" ? " global-activity-event-legendary" : event.activityType === "masterwork" ? " global-activity-event-achievement" : event.weapon?.adept ? " global-activity-event-adept" : ""}`}
                           key={
                             event.id
                           }
@@ -2986,7 +2986,7 @@ export default function Activities() {
                           </div>
 
                           <span className="global-activity-event-activity">
-                            {event.activityType === "masterwork" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activity}
+                            {event.activityType === "masterwork" ? "✦ ACHIEVEMENT ✦" : event.activityType === "legendary_achievement" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activityType === "exotic_achievement" ? "✦ EXOTIC ACHIEVEMENT ✦" : event.activity}
                           </span>
 
                           <span
@@ -2999,7 +2999,7 @@ export default function Activities() {
                               " ",
                             )}
                           >
-                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.result}
+                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.activityType === "legendary_achievement" ? "SOURCE COMPLETED · 77/77" : event.activityType === "exotic_achievement" ? "CATEGORY COMPLETED · 77/77" : event.result}
                           </span>
 
                           {event.weapon && (
