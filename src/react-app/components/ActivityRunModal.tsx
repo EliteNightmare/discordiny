@@ -1627,7 +1627,7 @@ export default function ActivityRunModal({
                     <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => scrambleContestSlider(current.filter((piece): piece is CrawlContestPiece => piece !== null)))}>
                       SHUFFLE
                     </button>
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.map((piece) => piece.id))}>
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id))}>
                       CONFIRM ORDER
                     </button>
                   </div>
