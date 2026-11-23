@@ -133,7 +133,7 @@ export function registerBetaRoutes<T extends Bindings>(
     if (!/^\\d{15,22}$/.test(discordId)) return c.json({ error: "Invalid Discord ID" }, 400);
     if (discordId === identity!.discord_id) return c.json({ error: "Cannot revoke the administrator" }, 403);
     const result = await registry(c).prepare(
-      "UPDATE beta_invites SET redeemed_by_discord_id = NULL, redeemed_at = NULL WHERE redeemed_by_discord_id = ?"
+      "DELETE FROM beta_invites WHERE redeemed_by_discord_id = ?"
     ).bind(discordId).run();
     if (!result.meta.changes) return c.json({ error: "Account has no active beta invitation" }, 404);
     return c.json({ success: true });
