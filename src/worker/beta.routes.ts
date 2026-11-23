@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 
-type Bindings = { DB: D1Database; ACCESS_DB?: D1Database; DISCORDINY_ENV?: string };
+type Bindings = { DB: D1Database; ACCESS_DB?: D1Database; DISCORDINY_ENV?: string; DISCORD_CLIENT_SECRET: string };
 type Identity = { discord_id: string } | null;
 const isBeta = (c: any) => c.env.DISCORDINY_ENV === "beta";
 const registry = (c: any): D1Database => c.env.ACCESS_DB ?? c.env.DB;
@@ -21,6 +21,27 @@ async function ensureCodeStore(c: any): Promise<void> {
   // Separate admin-only lookup: legacy invitation hashes remain valid but unrecoverable.
   await registry(c).prepare("CREATE TABLE IF NOT EXISTS beta_invite_codes (code_hash TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE)").run();
 }
+
+async function invitationKey(c: any): Promise<CryptoKey> {
+  const secret = c.env.DISCORD_CLIENT_SECRET;
+  if (!secret) throw new Error("Invitation encryption key is not configured");
+  const raw = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("discordiny-beta-invites-v1:" + secret));
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
+}
+const base64 = (bytes: Uint8Array): string => btoa(Array.from(bytes, n => String.fromCharCode(n)).join(""));
+const unbase64 = (value: string): Uint8Array => Uint8Array.from(atob(value), ch => ch.charCodeAt(0));
+async function encryptCode(c: any, code: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await invitationKey(c), new TextEncoder().encode(code));
+  return base64(iv) + "." + base64(new Uint8Array(ciphertext));
+}
+async function decryptCode(c: any, encrypted: string): Promise<string> {
+  const [iv, payload] = encrypted.split(".");
+  if (!iv || !payload) throw new Error("Invalid invitation ciphertext");
+  const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unbase64(iv) }, await invitationKey(c), unbase64(payload));
+  return new TextDecoder().decode(plaintext);
+}
+
 function newCode(): string {
   const digits = new Uint32Array(15);
   crypto.getRandomValues(digits);
@@ -61,9 +82,19 @@ export function registerBetaRoutes<T extends Bindings>(
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
     await ensureCodeStore(c);
     const result = await registry(c).prepare(
-      "SELECT i.code_hash, k.code, i.created_at, i.created_by_discord_id, i.redeemed_by_discord_id, i.redeemed_at FROM beta_invites i LEFT JOIN beta_invite_codes k ON k.code_hash = i.code_hash ORDER BY i.created_at DESC, i.code_hash DESC LIMIT 1000"
-    ).all<{ code_hash: string; code: string | null; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
-    return c.json({ codes: result.results.map(row => ({ code: row.code, code_id: row.code_hash.slice(0, 12), created_at: row.created_at, created_by_discord_id: row.created_by_discord_id, redeemed_by_discord_id: row.redeemed_by_discord_id, redeemed_at: row.redeemed_at, used: !!row.redeemed_by_discord_id })) });
+      "SELECT code_hash, code_ciphertext, created_at, created_by_discord_id, redeemed_by_discord_id, redeemed_at FROM beta_invites ORDER BY created_at DESC, code_hash DESC LIMIT 1000"
+    ).all<{ code_hash: string; code_ciphertext: string | null; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
+    const codes = await Promise.all(result.results.map(async row => {
+      let code: string | null = null;
+      if (row.code_ciphertext) {
+        try { code = await decryptCode(c, row.code_ciphertext); } catch { code = null; }
+      }
+      return { code, code_id: row.code_hash.slice(0, 12), used: !!row.redeemed_by_discord_id,
+        created_at: row.created_at, created_by_discord_id: row.created_by_discord_id,
+        redeemed_by_discord_id: row.redeemed_by_discord_id, redeemed_at: row.redeemed_at };
+    }));
+    c.header("Cache-Control", "no-store");
+    return c.json({ codes });
   });
 
   app.post("/api/beta/admin/generate", async c => {
@@ -74,7 +105,7 @@ export function registerBetaRoutes<T extends Bindings>(
       const code = newCode();
       const hash = await digest(code);
       const result = await registry(c).prepare(
-        "INSERT OR IGNORE INTO beta_invites (code_hash, created_by_discord_id) VALUES (?, ?)"
+        "INSERT OR IGNORE INTO beta_invites (code_hash, created_by_discord_id, code_ciphertext) VALUES (?, ?, ?)"
       ).bind(hash, identity!.discord_id).run();
       if (result.meta.changes) {
         await registry(c).prepare("INSERT INTO beta_invite_codes (code_hash, code) VALUES (?, ?)").bind(hash, code).run();
