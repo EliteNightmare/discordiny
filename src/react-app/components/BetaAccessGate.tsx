@@ -27,6 +27,9 @@ export default function BetaAccessGate({ children }: { children: ReactNode }) {
   const previewClosed = admin && isPreviewEnabled(PREVIEW_CLOSED);
   const previewRegular = admin && isPreviewEnabled(PREVIEW_REGULAR);
   void previewTick;
+  const adminPanelPath = window.location.pathname === "/command/8b6f9e2c4a71d05f3b8c92a6e14d7f0c";
+  // Keep owner-only beta administration reachable even during a shutdown.
+  if (!loading && admin && adminPanelPath) return <>{children}</>;
   if (!loading && status?.betaEnvironment && status.active && !previewClosed && ((admin && !previewRegular) || (!previewRegular && status.hasAccess))) {
     return <>{children}</>;
   }
@@ -39,7 +42,7 @@ export default function BetaAccessGate({ children }: { children: ReactNode }) {
         <p style={{ letterSpacing: ".22em", color: "#c4a28b" }}>DISCORDINY // RESTRICTED ACCESS</p>
         <h1 style={{ fontSize: "clamp(2rem,6vw,4rem)", margin: "16px 0" }}>DISCORDINY BETA</h1>
         <h2>{loading ? "CHECKING ACCESS…" : closed ? "BETA CURRENTLY DISABLED" : "BETA ACCESS REQUIRED"}</h2>
-        <p>{loading ? "Verifying your beta invitation." : closed ? "The beta has been disabled. All beta pages and gameplay are unavailable, including for administrators." : "Enter your 15-digit invitation code in your production Discordiny Account page to gain access."}</p>
+        <p>{loading ? "Verifying your beta invitation." : closed ? "The beta has been disabled. All beta pages and gameplay are unavailable." : "Enter your 15-digit invitation code in your production Discordiny Account page to gain access."}</p>
         {!closed && !loading && <a href="https://discordiny.com/account" style={{ display: "inline-block", marginTop: 18, padding: "12px 22px", border: "1px solid #c4a28b", borderRadius: 6, color: "#fff", textDecoration: "none" }}>ENTER CODE IN ACCOUNT FOR ACCESS</a>}
         {admin && (previewClosed || previewRegular) && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_CLOSED, false); setPreviewEnabled(PREVIEW_REGULAR, false); window.location.href = "/"; }} style={{ padding: "10px 18px", cursor: "pointer" }}>Exit preview / Restore admin view</button>}
         <p style={{ opacity: .6, fontSize: 13, marginTop: 24 }}>Navigation remains available above. Restricted pages will not load until beta access is enabled.</p>
