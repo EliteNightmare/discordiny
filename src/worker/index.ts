@@ -9345,7 +9345,8 @@ app.post("/api/game/activity/run", async (c) => {
 
       const expiresAt =
         nowSeconds +
-        initialRun.secret.timeoutSeconds;
+        initialRun.secret.timeoutSeconds +
+        (crawlSource === "coil" || crawlSource === "contest" ? 12 : 0);
 
       await c.env.DB.batch([
         cooldownWrite,
