@@ -102,8 +102,9 @@ app.use("/api/*", async (c, next) => {
       path === "/api/auth/logout" || path === "/api/auth/me" ||
       path === "/api/beta/status") return next();
   // The beta shutdown switch applies to every account, including the owner.
-  // Management stays available on production, which can reopen beta.
-  if (path.startsWith("/api/beta/admin/")) return c.json({ error: "Manage beta from the production admin panel" }, 403);
+  // Management endpoints independently verify the production owner identity.
+  // The frontend hides every beta page while closed; production can reopen it.
+  if (path.startsWith("/api/beta/admin/")) return next();
   // Existing administrative endpoints trust local user ID 1; never expose
   // them in beta until converted to production Discord-identity checks.
   if (path.startsWith("/api/admin/")) return c.json({ error: "Beta admin endpoint disabled" }, 403);
