@@ -888,6 +888,24 @@ function WeaponVault({
                       </div>
                     ) : (
                       <>
+                        <div className="weapon-masterwork-next-cost">
+                          <div className="weapon-masterwork-next-heading">
+                            <span>NEXT MASTERWORK RANK</span>
+                            <strong>{selectedWeapon.masterwork + 1} / {MAX_MASTERWORK}</strong>
+                          </div>
+                          <div className="weapon-masterwork-next-materials">
+                            {Object.entries(costForMasterworkRank(selectedWeapon, selectedWeapon.masterwork)).map(([name, amount]) => {
+                              const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
+                              return <div className="vault-rank-cost-row" key={name}>
+                                {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
+                                <span>{name}</span>
+                                <strong className={available < amount ? "weapon-masterwork-insufficient" : ""}>
+                                  {amount.toLocaleString()} / {available.toLocaleString()}
+                                </strong>
+                              </div>;
+                            })}
+                          </div>
+                        </div>
                         <div className="vault-rank-picker">
                           <label htmlFor="vault-rank-input">Ranks to masterwork</label>
                           <div className="vault-rank-picker-row">
