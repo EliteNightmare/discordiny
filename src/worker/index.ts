@@ -3145,7 +3145,7 @@ app.post("/api/game/weapons/masterwork", async (c) => {
       `INSERT INTO global_activity_feed
         (user_id, activity_name, activity_type, result, weapon_name, weapon_adept)
        VALUES (?, 'Weapon Masterwork', 'masterwork', 'MASTERWORKED', ?, ?)`
-    ).bind(session.user_id, weaponName, /\\(Adept\\)/i.test(weaponName) ? 1 : 0).run();
+    ).bind(session.user_id, weaponName, weaponName.toLowerCase().includes('(adept)') ? 1 : 0).run();
   }
 
   return c.json({
