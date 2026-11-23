@@ -2255,3 +2255,71 @@
 .exploration-admin-timer input[type="range"]:active::-webkit-slider-thumb { cursor: grabbing; }
 .exploration-admin-timer input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
 .exploration-admin-timer input[type="range"]:focus-visible { outline: 2px solid #ffe18a; }
+
+
+/* Destiny-inspired achievement rarity cards: restrained, unified surfaces. */
+.global-activity-feed .global-activity-event.global-activity-event-achievement,
+.global-activity-feed .global-activity-event.global-activity-event-legendary,
+.global-activity-feed .global-activity-event.global-activity-event-exotic {
+  --achievement-accent: #79b8ec;
+  --achievement-surface: #142d46;
+  --achievement-edge: #477fae;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--achievement-edge) !important;
+  border-radius: 11px !important;
+  padding: 12px 14px !important;
+  background: linear-gradient(115deg, var(--achievement-surface), #151b2a 85%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.055), 0 0 11px rgba(0,0,0,.12) !important;
+  color: #e9f1fc !important;
+}
+.global-activity-feed .global-activity-event.global-activity-event-legendary {
+  --achievement-accent: #c3a4fa;
+  --achievement-surface: #302047;
+  --achievement-edge: #8057bd;
+}
+.global-activity-feed .global-activity-event.global-activity-event-exotic {
+  --achievement-accent: #f1d17b;
+  --achievement-surface: #40341d;
+  --achievement-edge: #b99848;
+}
+.global-activity-feed .global-activity-event-achievement::before,
+.global-activity-feed .global-activity-event-legendary::before,
+.global-activity-feed .global-activity-event-exotic::before {
+  content: none !important;
+}
+.global-activity-feed .global-activity-event-achievement .global-activity-event-activity,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-activity,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-activity,
+.global-activity-feed .global-activity-event-achievement .global-activity-event-result,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-result,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-result {
+  color: var(--achievement-accent) !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  padding: 0 !important;
+  letter-spacing: .06em;
+  font-weight: 850;
+}
+.global-activity-feed .global-activity-event-achievement .global-activity-event-player,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-player,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-player,
+.global-activity-feed .global-activity-event-achievement .global-activity-event-time,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-time,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-time,
+.global-activity-feed .global-activity-event-achievement .global-activity-event-weapon strong,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-weapon strong,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-weapon strong {
+  color: #f0eff5 !important;
+  text-shadow: none !important;
+}
+.global-activity-feed .global-activity-event-achievement .global-activity-event-weapon,
+.global-activity-feed .global-activity-event-legendary .global-activity-event-weapon,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-weapon {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
