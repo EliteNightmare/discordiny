@@ -2698,17 +2698,22 @@ async function publishVaultAchievements(db: D1Database, userId: number, weaponNa
   const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
   const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
   const levels = new Map((owned.results ?? []).map(row => [row.weapon_name.trim().toLowerCase(), Number(row.masterwork)]));
-  // Check all real catalog variants, not inferred or synthetic variants.
-  const families = new Map<string, Set<string>>();
+  // Use the exact same two-tier family model as the Vault overview.
+  // Catalogs may contain only the base weapon row; the Vault still
+  // displays its Adept counterpart, so both must count toward completion.
+  const families = new Map<string, Map<string, "Adept" | "Timelost" | "Harrowed">>();
   for (const row of catalog.results ?? []) {
     const source = row.source.trim().toLowerCase();
-    if (!families.has(source)) families.set(source, new Set());
-    families.get(source)!.add(row.name.trim().toLowerCase());
+    const base = getVaultBaseWeaponName(row.name).trim().toLowerCase();
+    if (!families.has(source)) families.set(source, new Map());
+    const variants = families.get(source)!;
+    variants.set(base, getVaultVariantSuffix(row.name) ?? variants.get(base) ?? "Adept");
   }
   const complete = (source: string) => {
-    const names = families.get(source);
-    return !!names?.size && [...names].every(name =>
-      (levels.get(name) ?? -1) >= VAULT_MAX_MASTERWORK
+    const group = families.get(source);
+    return !!group?.size && [...group].every(([base, suffix]) =>
+      (levels.get(base) ?? -1) >= VAULT_MAX_MASTERWORK &&
+      (levels.get(`${base} (${suffix.toLowerCase()})`) ?? -1) >= VAULT_MAX_MASTERWORK
     );
   };
   const announce = async (activityName: string, activityType: string, result: string, name: string | null) => {
@@ -3597,10 +3602,13 @@ app.get("/api/game/weapons", async (c) => {
     }
   );
 
-  // Retroactively announce already-completed sources on Vault visit.
-  const sourceNames = (catalog.results ?? []).map(row => row.name.trim().toLowerCase());
-  if (sourceNames.length > 0 && sourceNames.every(name => (ownedMap.get(name) ?? -1) >= VAULT_MAX_MASTERWORK)) {
-    await publishVaultAchievements(c.env.DB, session.user_id, catalog.results[0].name, false);
+  // Compare against the displayed normal + special rows, not only
+  // literal catalog entries (which may omit the special variant).
+  if (weapons.length > 0 && weapons.every(weapon =>
+    weapon.normal.masterwork >= VAULT_MAX_MASTERWORK &&
+    weapon.adept.masterwork >= VAULT_MAX_MASTERWORK
+  )) {
+    await publishVaultAchievements(c.env.DB, session.user_id, weapons[0].name, false);
   }
 
   return c.json({
@@ -10592,7 +10600,7 @@ app.get("/api/game/activity/feed", async (c) => {
   // Workers Cache API is per data center; it prevents repeated D1 reads within
   // a colo without sharing private profile/session information.
   const feedCache = caches.default;
-  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v4", c.req.url).toString());
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v5", c.req.url).toString());
   const cachedFeed = await feedCache.match(feedCacheKey);
   if (cachedFeed) {
     return c.json(await cachedFeed.json());
