@@ -2684,18 +2684,17 @@ async function publishVaultAchievements(db: D1Database, userId: number, weaponNa
   const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
   const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
   const levels = new Map((owned.results ?? []).map(row => [row.weapon_name.trim().toLowerCase(), Number(row.masterwork)]));
+  // Check all real catalog variants, not inferred or synthetic variants.
   const families = new Map<string, Set<string>>();
   for (const row of catalog.results ?? []) {
     const source = row.source.trim().toLowerCase();
-    const base = getVaultBaseWeaponName(row.name).toLowerCase();
     if (!families.has(source)) families.set(source, new Set());
-    families.get(source)!.add(base);
+    families.get(source)!.add(row.name.trim().toLowerCase());
   }
   const complete = (source: string) => {
     const names = families.get(source);
     return !!names?.size && [...names].every(name =>
-      (levels.get(name) ?? 0) >= VAULT_MAX_MASTERWORK &&
-      ["adept","timelost","harrowed"].some(suffix => (levels.get(name + " (" + suffix + ")") ?? 0) >= VAULT_MAX_MASTERWORK)
+      (levels.get(name) ?? -1) >= VAULT_MAX_MASTERWORK
     );
   };
   const announce = async (activityName: string, activityType: string, result: string, name: string | null) => {
@@ -3573,6 +3572,12 @@ app.get("/api/game/weapons", async (c) => {
       };
     }
   );
+
+  // Retroactively announce already-completed sources on Vault visit.
+  const sourceNames = (catalog.results ?? []).map(row => row.name.trim().toLowerCase());
+  if (sourceNames.length > 0 && sourceNames.every(name => (ownedMap.get(name) ?? -1) >= VAULT_MAX_MASTERWORK)) {
+    await publishVaultAchievements(c.env.DB, session.user_id, catalog.results[0].name, false);
+  }
 
   return c.json({
     authenticated: true,
@@ -10563,7 +10568,7 @@ app.get("/api/game/activity/feed", async (c) => {
   // Workers Cache API is per data center; it prevents repeated D1 reads within
   // a colo without sharing private profile/session information.
   const feedCache = caches.default;
-  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v3", c.req.url).toString());
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v4", c.req.url).toString());
   const cachedFeed = await feedCache.match(feedCacheKey);
   if (cachedFeed) {
     return c.json(await cachedFeed.json());
