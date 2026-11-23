@@ -58,6 +58,7 @@ type WeaponData = {
 
 type WeaponResponse = {
   authenticated: boolean;
+  canManageVault?: boolean;
   source?: string;
   weapons: WeaponData[];
 };
@@ -363,6 +364,10 @@ function WeaponVault({
     useState("");
 
 
+  const [canManageVault, setCanManageVault] = useState(false);
+  const [adminRank, setAdminRank] = useState(0);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminError, setAdminError] = useState('');
   const [selectedWeapon, setSelectedWeapon] =
     useState<VisibleWeapon | null>(null);
 
@@ -424,6 +429,7 @@ function WeaponVault({
           );
         }
 
+        setCanManageVault(weaponResult.canManageVault === true);
         if (
           Array.isArray(
             weaponResult.weapons,
@@ -606,8 +612,10 @@ function WeaponVault({
   }
 
   async function selectWeaponForMasterwork(weapon: VisibleWeapon) {
-    if (!weapon.owned) return;
+    if (!weapon.owned && !canManageVault) return;
 
+    setAdminRank(weapon.masterwork);
+    setAdminError('');
     setSelectedWeapon(weapon);
     setRequestedRanks(1);
     setMasterworkError("");
@@ -616,6 +624,29 @@ function WeaponVault({
 
   }
 
+  async function adminSetWeapon(weapon: VisibleWeapon, rank: number) {
+    if (!canManageVault || adminBusy) return;
+    setAdminBusy(true); setAdminError("");
+    try {
+      const response = await fetch("/api/game/vault/admin-weapon", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weaponName: weapon.name, masterwork: rank }),
+      });
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Vault edit failed.");
+      setWeapons(previous => previous.map(entry => {
+        if (entry.name.toLowerCase() !== weapon.catalogName.toLowerCase()) return entry;
+        const special = weapon.name !== weapon.catalogName;
+        return { ...entry, [special ? "adept" : "normal"]: { owned: true, masterwork: rank } };
+      }));
+      setSelectedWeapon(previous => previous ? { ...previous, owned: true, masterwork: rank } : previous);
+      setAdminRank(rank);
+      invalidateProfileSnapshot();
+      window.dispatchEvent(new Event("discordiny:weapon-masterworked"));
+    } catch (error) { setAdminError(error instanceof Error ? error.message : "Vault edit failed."); }
+    finally { setAdminBusy(false); }
+  }
   function navigate(
     path: string,
   ) {
@@ -759,16 +790,16 @@ function WeaponVault({
                           className={itemClass}
                           style={{ "--collection-mw-progress": `${weapon.owned ? Math.min(100, Math.max(0, weapon.masterwork / MAX_MASTERWORK * 100)) : 0}%` } as React.CSSProperties}
                           data-weapon-name={weapon.name}
-                          role={weapon.owned ? "button" : undefined}
-                          tabIndex={weapon.owned ? 0 : -1}
+                          role={weapon.owned || canManageVault ? "button" : undefined}
+                          tabIndex={weapon.owned || canManageVault ? 0 : -1}
                           onClick={() => {
-                            if (weapon.owned) {
+                            if (weapon.owned || canManageVault) {
                               void selectWeaponForMasterwork(weapon);
                             }
                           }}
                           onKeyDown={(event) => {
                             if (
-                              weapon.owned &&
+                              (weapon.owned || canManageVault) &&
                               (event.key === "Enter" || event.key === " ")
                             ) {
                               event.preventDefault();
@@ -882,6 +913,23 @@ function WeaponVault({
                       />
                     </div>
 
+                    {canManageVault && (
+                      <div className="weapon-masterwork-admin">
+                        <strong>ACCOUNT 1 · VAULT CONTROLS</strong>
+                        {!selectedWeapon.owned && <button type="button" disabled={adminBusy}
+                          onClick={() => void adminSetWeapon(selectedWeapon, 0)}>GIVE MYSELF WEAPON</button>}
+                        <label htmlFor="vault-admin-rank">Set masterwork rank (0–77)</label>
+                        <div className="weapon-masterwork-admin-row">
+                          <input id="vault-admin-rank" type="number" min={0} max={77} value={adminRank}
+                            onChange={event => setAdminRank(Math.min(77, Math.max(0, Number(event.target.value) || 0)))} />
+                          <button type="button" disabled={adminBusy}
+                            onClick={() => void adminSetWeapon(selectedWeapon, adminRank)}>
+                            {adminBusy ? "SAVING..." : "SET MASTERWORK"}
+                          </button>
+                        </div>
+                        {adminError && <p role="alert">{adminError}</p>}
+                      </div>
+                    )}
                     {selectedWeapon.masterwork >= MAX_MASTERWORK ? (
                       <div className="weapon-masterwork-complete">
                         MAXIMUM MASTERWORK ACHIEVED
