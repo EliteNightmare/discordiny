@@ -28,6 +28,9 @@ export default function BetaAccessGate({ children }: { children: ReactNode }) {
   const previewRegular = admin && isPreviewEnabled(PREVIEW_REGULAR);
   void previewTick;
   const adminPanelPath = window.location.pathname === "/command/8b6f9e2c4a71d05f3b8c92a6e14d7f0c";
+  const accountPath = window.location.pathname === "/account" || window.location.pathname === "/account/";
+  // Allow uninvited users to reach Account while beta is open; gameplay stays gated.
+  if (!loading && status?.betaEnvironment && status.active && accountPath && !previewClosed && !previewRegular) return <>{children}</>;
   // Keep owner-only beta administration reachable even during a shutdown.
   if (!loading && admin && adminPanelPath) return <>{children}</>;
   if (!loading && status?.betaEnvironment && status.active && !previewClosed && ((admin && !previewRegular) || (!previewRegular && status.hasAccess))) {
