@@ -3023,7 +3023,7 @@ export default function Activities() {
 
                               <div>
                                 <span>
-                                  {event.activityType === "masterwork" ? "MAXIMUM MASTERWORK · 77/77" : "WEAPON DROP"}
+                                  {event.activityType !== "masterwork" && "WEAPON DROP"}
                                 </span>
 
                                 <strong>
