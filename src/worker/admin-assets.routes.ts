@@ -1,6 +1,6 @@
 import type { Hono } from "hono";
 
-type AdminBindings = { DB: D1Database; ASSETS_BUCKET: R2Bucket };
+type AdminBindings = { DB: D1Database; ASSETS_BUCKET: R2Bucket; DISCORDINY_ENV?: string };
 type AuthUser = { id: number } | null;
 const ALLOWED = new Map([
   ["image/png", "png"], ["image/jpeg", "jpg"],
@@ -52,6 +52,7 @@ export function registerAdminAssetRoutes<T extends AdminBindings>(
     return c.json({ assets: rows.results ?? [] });
   });
   app.post("/api/admin/assets", async c => {
+    if (c.env.DISCORDINY_ENV === "beta") return c.json({ error: "Shared production assets are read-only in beta" }, 403);
     if (!(await isAdmin(c))) return c.json({ error: "Forbidden" }, 403);
     const contentType = c.req.header("content-type") ?? "";
     if (!contentType.toLowerCase().includes("multipart/form-data"))
@@ -84,6 +85,7 @@ export function registerAdminAssetRoutes<T extends AdminBindings>(
     return c.json({ success: true, asset: { path, url, mime_type: file.type, byte_size: file.size } }, 201);
   });
   app.delete("/api/admin/assets", async c => {
+    if (c.env.DISCORDINY_ENV === "beta") return c.json({ error: "Shared production assets are read-only in beta" }, 403);
     if (!(await isAdmin(c))) return c.json({ error: "Forbidden" }, 403);
     const body = await c.req.json().catch(() => null);
     const path = String(body?.path ?? "");

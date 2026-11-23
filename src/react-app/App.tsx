@@ -26,6 +26,7 @@ import SiteGate, {
 } from "./components/SiteGate";
 
 import SivaBoot from "./components/SivaBoot";
+import BetaAccessGate from "./components/BetaAccessGate";
 
 function RootUnauthorized() {
   return (
@@ -165,7 +166,7 @@ function RootUnauthorized() {
   );
 }
 
-function App() {
+function DiscordinyRoutes() {
   const hostname =
     window.location.hostname;
 
@@ -212,8 +213,7 @@ function App() {
    * TERMINAL SUBDOMAIN
    */
   if (
-    hostname ===
-    "terminal.discordiny.com"
+    (hostname === "terminal.discordiny.com" || hostname === "beta.terminal.discordiny.com")
   ) {
     return <Terminal />;
   }
@@ -227,8 +227,7 @@ function App() {
    * as an unauthorized endpoint.
    */
   if (
-    hostname ===
-    "root.discordiny.com"
+    (hostname === "root.discordiny.com" || hostname === "beta.root.discordiny.com")
   ) {
     if (
       path ===
@@ -353,6 +352,12 @@ function App() {
   if (path === "/patchnotes" || path.startsWith("/patchnotes/")) return <Patchnotes />;
 
   return <Home />;
+}
+
+function App() {
+  const beta = window.location.hostname.startsWith("beta.");
+  const routes = <DiscordinyRoutes />;
+  return beta ? <BetaAccessGate>{routes}</BetaAccessGate> : routes;
 }
 
 export default App;

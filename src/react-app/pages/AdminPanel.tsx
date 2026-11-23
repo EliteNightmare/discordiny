@@ -3,14 +3,77 @@ import { useEffect, useState, type FormEvent } from "react";
 import TopBar from "../components/TopBar";
 import ArticleManagement from "./ArticleManagement";
 import "./AdminPanel.css";
+import { PREVIEW_CLOSED, PREVIEW_REGULAR, setPreviewEnabled } from "../components/betaPreview";
 
 type Asset = { path: string; url: string; mime_type: string; byte_size: number; created_at: string };
+const betaHost = window.location.hostname.startsWith("beta.");
+const subdomain = (name: string) => `https://${betaHost ? "beta." : ""}${name}.discordiny.com`;
 const links = [
-  { name: "Terminal", description: "Manage terminal files and discoveries", url: "https://terminal.discordiny.com/" },
-  { name: "Root", description: "Manage the Root filesystem", url: "https://root.discordiny.com/5dfg46df4gs4gs6" },
+  { name: "Terminal", description: "Manage terminal files and discoveries", url: subdomain("terminal") + "/" },
+  { name: "Root", description: "Manage the Root filesystem", url: subdomain("root") + "/5dfg46df4gs4gs6" },
   { name: "Events", description: "View current operations", url: "/events" },
 ];
 
+
+type BetaMember = { discord_id: string; username: string | null; global_name: string | null; redeemed_at: string; code_id: string };
+type BetaCode = { code: string | null; code_id: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null; used: boolean };
+function BetaAdministration() {
+  const [codes, setCodes] = useState<BetaCode[]>([]);
+  const [members, setMembers] = useState<BetaMember[]>([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [message, setMessage] = useState("");
+  const [filter, setFilter] = useState<"all" | "used" | "unused">("all");
+  const [active, setActive] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [newCode, setNewCode] = useState("");
+  const [error, setError] = useState("");
+  async function refresh() {
+    const [listResponse, statusResponse, membersResponse] = await Promise.all([
+      fetch("/api/beta/admin/codes", { credentials: "include" }),
+      fetch("/api/beta/status", { credentials: "include" }),
+      fetch("/api/beta/admin/members", { credentials: "include" }),
+    ]);
+    if (!listResponse.ok || !statusResponse.ok || !membersResponse.ok) throw new Error("Unable to load beta administration");
+    const [list, status, memberList] = await Promise.all([listResponse.json(), statusResponse.json(), membersResponse.json()]);
+    setMembers(memberList.members ?? []);
+    setCodes(list.codes ?? []);
+    setActive(status.active === true);
+  }
+  useEffect(() => { void refresh().catch(e => setError(String(e))); }, []);
+  async function action(path: string, body: object) {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const response = await fetch(path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Request failed");
+      if (data.code) setNewCode(data.code);
+      if (data.success) setMessage("Change saved successfully.");
+      await refresh();
+    } catch (e) { setError(e instanceof Error ? e.message : "Request failed"); }
+    finally { setBusy(false); }
+  }
+  const visible = codes.filter(code => filter === "all" || (filter === "used" ? code.used : !code.used));
+  return <section className="dc-admin-panel">
+    <h2>Beta Access Management</h2>
+    <p>Access is controlled by production account #1. Invitations are stored in the production access registry and remain available after beta resets.</p>
+    <p>Beta status: <strong>{active ? "Open to invited testers" : "Closed (admin panel remains available)"}</strong></p>
+    <div className="dc-admin-form" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+      <button disabled={busy} onClick={() => void action("/api/beta/admin/generate", {})}>Generate invitation code</button>
+      <button disabled={busy} onClick={() => void action("/api/beta/admin/toggle", { enabled: !active })}>{active ? "Close beta" : "Open beta"}</button>
+      <button disabled={busy} onClick={() => void refresh().catch(e => setError(String(e)))}>Refresh list</button>
+      {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_REGULAR, false); setPreviewEnabled(PREVIEW_CLOSED, true); window.location.href = "/"; }}>Preview closed beta (no actual shutdown)</button>}
+      {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_CLOSED, false); setPreviewEnabled(PREVIEW_REGULAR, true); window.location.href = "/"; }}>Preview regular account (no code)</button>}
+    </div>
+    {newCode && <p role="status">New invitation code: <strong>{newCode}</strong> <button onClick={() => void navigator.clipboard.writeText(newCode)}>Copy</button><br/><small>New codes are now retained in the administrator-only invitation list.</small></p>}
+    <div className="dc-admin-list-head"><h2>Invitations ({codes.length})</h2><label>Show <select aria-label="Filter beta invitations" value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="used">Used</option><option value="unused">Unused</option></select></label></div>
+    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Invitation code</th><th>Status</th><th>Created</th><th>Redeemed by Discord ID</th><th>Redeemed</th><th>Actions</th></tr></thead><tbody>{visible.map(code => <tr key={code.code_id}><td>{code.code ? <><code>{code.code}</code> <button type="button" onClick={() => void navigator.clipboard.writeText(code.code!)}>Copy</button></> : <span title={`Legacy hash reference: ${code.code_id}`}>Legacy code — unavailable</span>}</td><td>{code.used ? "Used" : "Unused"}</td><td>{code.created_at}</td><td>{code.redeemed_by_discord_id ?? "—"}</td><td>{code.redeemed_at ?? "—"}</td><td><button type="button" disabled={busy} onClick={() => { if (window.confirm(code.used ? "Delete this used invitation and revoke the account’s beta access?" : "Permanently delete this unused invitation?")) void action("/api/beta/admin/delete-code", { code_id: code.code_id }); }}>Delete</button></td></tr>)}</tbody></table>{visible.length === 0 && <p>No matching invitations.</p>}</div>
+    <div className="dc-admin-list-head"><h2>Beta Accounts ({members.length})</h2><input aria-label="Search beta accounts" placeholder="Search name or Discord ID" value={memberSearch} onChange={e => setMemberSearch(e.target.value)} /></div>
+    <p>Accounts listed here have redeemed an invitation. Revoking access removes their permission to enter beta, but does not delete their Discordiny account or game data.</p>
+    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Account</th><th>Discord ID</th><th>Joined</th><th>Actions</th></tr></thead><tbody>{members.filter(m => [m.username, m.global_name, m.discord_id].some(v => v?.toLowerCase().includes(memberSearch.toLowerCase()))).map(member => <tr key={member.discord_id}><td>{member.global_name || member.username || "Unknown account"}</td><td><code>{member.discord_id}</code></td><td>{member.redeemed_at}</td><td><button type="button" disabled={busy} onClick={() => { if (window.confirm(`Revoke beta access for ${member.global_name || member.username || member.discord_id}? They will lose access immediately on their next API request.`)) void action("/api/beta/admin/revoke", { discord_id: member.discord_id }); }}>Revoke access</button></td></tr>)}</tbody></table>{members.length === 0 && <p>No accounts have redeemed invitations yet.</p>}</div>
+    {message && <p role="status">{message}</p>}
+    {error && <p role="alert">{error}</p>}
+  </section>;
+}
 
 /** Convert supported still images to real WebP bytes before uploading. */
 async function convertToWebP(source: File): Promise<File> {
@@ -48,7 +111,7 @@ export default function AdminPanel() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("");
-  const [active, setActive] = useState<"overview" | "articles" | "assets" | "players" | "events" | "audit">("overview");
+  const [active, setActive] = useState<"overview" | "articles" | "assets" | "players" | "events" | "audit" | "beta">("overview");
   async function loadAssets() {
     const res = await fetch("/api/admin/assets", { credentials: "include" });
     const data = await res.json().catch(() => ({}));
@@ -57,12 +120,12 @@ export default function AdminPanel() {
   }
   useEffect(() => {
     let alive = true;
-    fetch("/api/admin/status", { credentials: "include" })
+    fetch(betaHost ? "/api/beta/status" : "/api/admin/status", { credentials: "include" })
       .then(async r => { const d = await r.json(); if (alive) setAuthorized(r.ok && d.isAdmin === true); })
       .catch(() => { if (alive) setAuthorized(false); });
     return () => { alive = false; };
   }, []);
-  useEffect(() => { if (authorized) void loadAssets().catch(e => setMessage(String(e))); }, [authorized]);
+  useEffect(() => { if (authorized && !betaHost) void loadAssets().catch(e => setMessage(String(e))); }, [authorized]);
   async function upload(e: FormEvent) {
     e.preventDefault();
     if (!file || uploading) return;
@@ -97,10 +160,11 @@ export default function AdminPanel() {
   }
   if (authorized === null) return <><TopBar/><main className="dc-admin"><p>Verifying administrator session…</p></main></>;
   if (!authorized) return <><TopBar/><main className="dc-admin"><h1>Access denied</h1><p>This section is restricted to the Discordiny administrator.</p><a href="/">Return home</a></main></>;
+  if (betaHost) return <><TopBar/><main className="dc-admin"><div className="dc-admin-wrap"><header className="dc-admin-head"><div><span>DISCORDINY // BETA</span><h1>BETA ADMIN COMMAND CENTER</h1><p>Production administrator identity verified</p></div></header><BetaAdministration/></div></main></>;
   return <><TopBar/><main className="dc-admin"><div className="dc-admin-wrap">
     <header className="dc-admin-head"><div><span>DISCORDINY // RESTRICTED</span><h1>ADMIN COMMAND CENTER</h1><p>Central administration · Account #1</p></div><b>◆</b></header>
-    <nav className="dc-admin-tabs"><button className={active === "overview" ? "selected" : ""} onClick={() => setActive("overview")}>Overview</button><button className={active === "articles" ? "selected" : ""} onClick={() => setActive("articles")}>Articles</button><button className={active === "assets" ? "selected" : ""} onClick={() => setActive("assets")}>Assets ({assets.length})</button><button className={active === "players" ? "selected" : ""} onClick={() => setActive("players")}>Player Accounts</button><button className={active === "events" ? "selected" : ""} onClick={() => setActive("events")}>Events</button><button className={active === "audit" ? "selected" : ""} onClick={() => setActive("audit")}>Audit Log</button></nav>
-    {active === "articles" ? <ArticleManagement/> : active === "players" ? <PlayerManagement/> : active === "events" ? <EventManagement/> : active === "audit" ? <AuditManagement/> : active === "overview" ? <><section className="dc-admin-grid">
+    <nav className="dc-admin-tabs"><button className={active === "overview" ? "selected" : ""} onClick={() => setActive("overview")}>Overview</button><button className={active === "articles" ? "selected" : ""} onClick={() => setActive("articles")}>Articles</button><button className={active === "assets" ? "selected" : ""} onClick={() => setActive("assets")}>Assets ({assets.length})</button><button className={active === "players" ? "selected" : ""} onClick={() => setActive("players")}>Player Accounts</button><button className={active === "events" ? "selected" : ""} onClick={() => setActive("events")}>Events</button><button className={active === "audit" ? "selected" : ""} onClick={() => setActive("audit")}>Audit Log</button><button className={active === "beta" ? "selected" : ""} onClick={() => setActive("beta")}>Beta Access</button></nav>
+    {active === "beta" ? <BetaAdministration/> : active === "articles" ? <ArticleManagement/> : active === "players" ? <PlayerManagement/> : active === "events" ? <EventManagement/> : active === "audit" ? <AuditManagement/> : active === "overview" ? <><section className="dc-admin-grid">
       {links.map(link => <a className="dc-admin-card" href={link.url} key={link.name}><span>ADMIN MODULE</span><h2>{link.name} ↗</h2><p>{link.description}</p></a>)}
       <button className="dc-admin-card" onClick={() => setActive("articles")}><span>EDITORIAL MANAGEMENT</span><h2>Articles ↗</h2><p>Create, edit and publish news inside the Command Center</p></button><button className="dc-admin-card" onClick={() => setActive("players")}><span>PLAYER MANAGEMENT</span><h2>Account Access ↗</h2><p>Search players and grant items</p></button><button className="dc-admin-card" onClick={() => setActive("events")}><span>EVENT MANAGEMENT</span><h2>Create Events ↗</h2><p>Publish new community events</p></button><button className="dc-admin-card" onClick={() => setActive("assets")}><span>ASSET MANAGEMENT</span><h2>Assets ↗</h2><p>Upload images to your custom asset domain</p></button>
     </section><p className="dc-admin-note">Create and manage articles directly in the Articles tab. Root and Terminal remain linked to their existing tools.</p></> : <>

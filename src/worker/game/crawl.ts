@@ -48,8 +48,9 @@ export const CRAWL_COOLDOWN_SECONDS = 120;
 export const CRAWL_SECRET_CHANCE = 1.00;
 
 export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
+export const CRAWL_CONTEST_TIMEOUT_SECONDS = 45;
 
-export const CRAWL_NETHER_TIMEOUT_SECONDS = 15;
+export const CRAWL_NETHER_TIMEOUT_SECONDS = 20;
 
 export const CRAWL_XP = 25000;
 
@@ -107,9 +108,9 @@ export const CRAWL_CONTEST_PIECES = [
    NETHER SECRET
 ========================================================= */
 
-export const CRAWL_NETHER_MIN_EYES = 12;
+export const CRAWL_NETHER_MIN_EYES = 7;
 
-export const CRAWL_NETHER_MAX_EYES = 15;
+export const CRAWL_NETHER_MAX_EYES = 7;
 
 /*
  * Eye positions are percentages of the playable
@@ -995,8 +996,7 @@ export function validateNetherSecret(
    * The player has to click every generated eye.
    */
   if (
-    selectedEyes.length
-    !== challenge.eyeCount
+    selectedEyes.length !== 5
   ) {
     return false;
   }
@@ -1039,22 +1039,6 @@ export function validateNetherSecret(
     !== challenge.eyeCount
   ) {
     return false;
-  }
-
-  /*
-   * Every expected eye must have been clicked.
-   */
-  for (
-    const eyeId
-    of expected
-  ) {
-    if (
-      !submitted.has(
-        eyeId,
-      )
-    ) {
-      return false;
-    }
   }
 
   /*
@@ -1114,6 +1098,8 @@ export function getCrawlSecretTimeoutSeconds(
   ) {
     return CRAWL_NETHER_TIMEOUT_SECONDS;
   }
+
+  if (challenge?.type === "contest") return CRAWL_CONTEST_TIMEOUT_SECONDS;
 
   return CRAWL_SECRET_TIMEOUT_SECONDS;
 }

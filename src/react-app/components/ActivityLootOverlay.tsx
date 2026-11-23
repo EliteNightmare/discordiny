@@ -12,6 +12,26 @@ const norm = (s:string) => s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^
 const asset = (images:Record<string,string>,name:string) => Object.entries(images).find(([path])=>norm(path.split("/").pop()?.replace(/\.png$/i,"") ?? "")===norm(name))?.[1];
 const weaponIcon = (name:string) => asset(weaponImages,name) ?? (/\(Adept\)/i.test(name) ? asset(weaponImages,name.replace(/\s*\(Adept\)\s*$/i,"")) : undefined);
 const fmt = (n:number) => Math.max(0,Math.round(n)).toLocaleString();
+function CountingAmount({amount}:{amount:number}) {
+  const [display,setDisplay]=useState(amount);
+  const previous=useRef(amount);
+  useEffect(()=>{
+    const from=previous.current;
+    previous.current=amount;
+    if(from===amount) return;
+    const started=performance.now();
+    let frame=0;
+    const animate=(now:number)=>{
+      const progress=Math.min(1,(now-started)/500);
+      setDisplay(Math.round(from+(amount-from)*(1-Math.pow(1-progress,3))));
+      if(progress<1) frame=requestAnimationFrame(animate);
+    };
+    frame=requestAnimationFrame(animate);
+    return ()=>cancelAnimationFrame(frame);
+  },[amount]);
+  return <span>+{fmt(display)}</span>;
+}
+
 let root:Root|null = null;
 let publish:((e:Entry)=>void)|null = null;
 const pending:Entry[] = [];
@@ -38,8 +58,26 @@ export default function ActivityLootOverlay({loot,before,onDone,durationMs=9500}
 function LootManager() {
   const [entries,setEntries]=useState<Entry[]>([]);
   useEffect(()=>{
-    publish=e=>setEntries(items=>[e,...items]);
-    if(pending.length){setEntries(items=>[...pending.reverse(),...items]);pending.length=0;}
+    publish=e=>setEntries(items=>{
+      // Merge matching currencies into the existing visible notification,
+      // preserving its first appearance and adding newly acquired amounts.
+      const incoming={...e.loot.materials};
+      const updated=items.map(item=>{
+        const materials={...item.loot.materials};
+        for(const [name,amount] of Object.entries(incoming)){
+          if(amount>0 && materials[name]!==undefined){
+            materials[name]+=amount;
+            delete incoming[name];
+          }
+        }
+        return {...item,loot:{...item.loot,materials}};
+      });
+      const remainder={...e,loot:{...e.loot,materials:incoming}};
+      const hasNewLoot=e.loot.weapons.some(w=>w.dropped)||Object.values(incoming).some(n=>n>0)||e.loot.xp>0;
+      if (!hasNewLoot) queueMicrotask(e.onDone);
+      return hasNewLoot?[remainder,...updated]:updated;
+    });
+    if(pending.length){const waiting=[...pending];pending.length=0;waiting.forEach(e=>publish?.(e));}
     return ()=>{publish=null;};
   },[]);
   return <div className="activity-loot-hud" aria-live="polite">
@@ -64,7 +102,7 @@ function LootBatch({entry,expire}:{entry:Entry;expire:()=>void}) {
       <div className="activity-loot-weapon-details"><span>{w.adept?"ADEPT WEAPON ACQUIRED":"WEAPON ACQUIRED"}</span><strong>{w.name}</strong><small>{w.rarity??"LEGENDARY"}</small></div>
     </div>)}
     {materials.map(([name,amount],i)=><div className="activity-loot-material" key={name} style={{animationDelay:`${(weapons.length+i)*90}ms`}}>
-      {asset(materialImages,name)&&<img src={asset(materialImages,name)} alt=""/>}<div><strong>{name}</strong><span>+{fmt(amount)}</span></div>
+      {asset(materialImages,name)&&<img src={asset(materialImages,name)} alt=""/>}<div><strong>{name}</strong><CountingAmount amount={amount}/></div>
     </div>)}
   </div>;
 }

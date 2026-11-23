@@ -348,8 +348,8 @@
 .vault-screen .collections-favorite-slot{position:relative;isolation:isolate;overflow:hidden;background:#141b21!important}
 /* Favourites are plain icon shortcuts; progression belongs to collection cards. */
 .vault-screen .collections-favorite-slot img{display:block;width:100%;height:100%;object-fit:contain;object-position:center;padding:2px;box-sizing:border-box}
-.vault-screen .collections-recent-viewport{overflow:hidden;min-width:0;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
-.vault-screen .collections-recent-slots{display:flex!important;grid-template-columns:none!important;gap:7px;width:max-content;animation:vault-recent-marquee var(--recent-duration,60s) linear infinite;will-change:transform}
+.vault-screen .collections-recent-viewport{overflow-x:auto;overflow-y:hidden;touch-action:pan-x;scrollbar-width:none;min-width:0;mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.vault-screen .collections-recent-slots{display:flex!important;grid-template-columns:none!important;gap:7px;width:max-content;animation:none;will-change:auto}
 .vault-screen .collections-recent-viewport:hover .collections-recent-slots,.vault-screen .collections-recent-viewport:focus-within .collections-recent-slots{animation-play-state:paused}
 .vault-screen .collections-recent-tile{flex:0 0 190px;width:190px;min-width:190px}
 .vault-screen .collections-recent-tile:nth-child(n){display:flex!important}

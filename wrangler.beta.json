@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "discordiny-beta",
+  "main": "./src/worker/index.ts",
+  "compatibility_date": "2025-10-08",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "vars": {
+    "VITE_ARCHONS_FORGE_ARENA_URL": "https://assets.discordiny.com/archons-forge/arena.glb",
+    "DISCORDINY_ENV": "beta"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "beta-discordiny",
+      "database_id": "2ae57a83-48bd-4338-8896-a2b3bb0bae0d"
+    },
+    {
+      "binding": "ACCESS_DB",
+      "database_name": "discordiny",
+      "database_id": "dd9fba3b-076f-475a-8641-e29db68b9505"
+    }
+  ],
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api/*"
+    ]
+  },
+  "r2_buckets": [
+    {
+      "binding": "ASSETS_BUCKET",
+      "bucket_name": "discordiny-assets"
+    }
+  ]
+}

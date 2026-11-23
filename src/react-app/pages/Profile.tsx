@@ -26,6 +26,12 @@ const DESTINATIONS = [
   ["Pale Heart","pale_heart"],["Plaguelands","plaguelands"]
 ] as const;
 const CURRENCY_ICONS: Record<string,string> = {"Glimmer":glimmerIcon,"Lumia Leaves":lumiaLeavesIcon,"Armor Plating":armorPlatingIcon,"Synthweave":synthweaveIcon,"Spoils of Conquest":spoilsIcon};
+const currencyIconFiles = import.meta.glob("../assets/icons/currencies/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+const pinnacleCipherIcon = Object.entries(currencyIconFiles).find(([path]) =>
+  path.toLowerCase().replace(/[^a-z0-9]/g, "").includes("pinnaclecipher")
+)?.[1];
+if (pinnacleCipherIcon) CURRENCY_ICONS["Pinnacle Cipher"] = pinnacleCipherIcon;
+
 // Discover existing upgrade-material icons at build time; no extra assets required.
 const upgradeMaterialIconFiles = import.meta.glob("../assets/icons/upgrade-materials/*.{png,jpg,jpeg,webp,svg}", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
 const normalizeMaterialName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -188,7 +194,7 @@ function Profile(){
         {feedError&&<p className="profile-help">Feed temporarily unavailable. Retrying automatically.</p>}
         {(isMobileFeed?feed.slice(0,5):feed).length>0?(
           <div className="global-activity-feed-events">
-            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`} key={event.id}>
+            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className={`global-activity-event${event.activityType === "exotic_achievement" ? " global-activity-event-exotic" : event.activityType === "legendary_achievement" ? " global-activity-event-legendary" : event.activityType === "masterwork" ? " global-activity-event-achievement" : event.weapon?.adept ? " global-activity-event-adept" : ""}`} key={event.id}>
               <div className="global-activity-event-top">
                 <div className="global-activity-event-player-row">
                   {event.avatarUrl&&<img className="global-activity-event-avatar" src={event.avatarUrl} alt="" aria-hidden="true"/>}
@@ -196,11 +202,11 @@ function Profile(){
                 </div>
                 <span className="global-activity-event-time">{formatFeedTime(event.createdAt,feedClock)}</span>
               </div>
-              <span className="global-activity-event-activity">{event.activity}</span>
-              <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.result}</span>
+              <span className="global-activity-event-activity">{event.activityType === "masterwork" ? "✦ ACHIEVEMENT ✦" : event.activityType === "legendary_achievement" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activityType === "exotic_achievement" ? "✦ EXOTIC ACHIEVEMENT ✦" : event.activity}</span>
+              <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.activityType === "legendary_achievement" ? `SOURCE COMPLETED · ${event.activity}` : event.activityType === "exotic_achievement" ? `CATEGORY COMPLETED · ${event.activity}` : event.result}</span>
               {event.weapon&&<div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
                 {getWeaponImage(event.weapon.name)&&<img className="global-activity-event-weapon-icon" src={getWeaponImage(event.weapon.name)} alt="" aria-hidden="true"/>}
-                <div><span>WEAPON DROP</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
+                <div><span>{event.activityType !== "masterwork" && "WEAPON DROP"}</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
               </div>}
             </article>)}
           </div>

@@ -81,6 +81,7 @@ type ActivitiesResponse = {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
     };
 
@@ -107,12 +108,14 @@ type ActivitiesResponse = {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
 
       dailyRaid: {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
     };
   };
@@ -173,6 +176,7 @@ type ActivityCardProps = {
   charges?: {
     remaining: number;
     max: number;
+    nextChargeAt?: number;
   };
 
   onClick?: () => void;
@@ -826,6 +830,11 @@ function ActivityCard({
               }{" "}
               CHARGES
             </strong>
+            {charges.remaining < charges.max && charges.nextChargeAt ? (
+              <span style={{fontSize:'.72rem',color:'#b6d6e5'}}>
+                NEXT CHARGE IN {Math.floor(Math.max(0,charges.nextChargeAt-Math.floor(Date.now()/1000))/60)}:{String(Math.max(0,charges.nextChargeAt-Math.floor(Date.now()/1000))%60).padStart(2,'0')}
+              </span>
+            ) : null}
           </div>
         )}
 
@@ -858,7 +867,7 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
   onFinished: (loot: ActivityLootPayload | null) => void;
   onProgress: (progress: { remaining: number; percentage: number; checkpoints: number; total: number }) => void;
 }) {
-  const duration = activity.type === "raid" ? 180 : 90;
+  const duration = activity.type === "raid" ? 60 : 30;
   const [remaining, setRemaining] = useState(duration);
   const [failure, setFailure] = useState("");
   useEffect(() => {
@@ -877,14 +886,15 @@ function EndgameProgressBar({ activity, onFinished, onProgress }: {
         const seconds = start.remainingSeconds ?? start.durationSeconds ?? duration;
         // The server uses integer seconds. Add a small grace period so a
         // browser clock cannot attempt to finish before the Worker permits it.
-        const finishAt = Date.now() + (seconds + 1.25) * 1000;
+        const finishAt = Date.now() + seconds * 1000;
+        const serverFinishAt = finishAt + 1250;
         setRemaining(seconds);
         await new Promise<void>(resolve => {
           interval = window.setInterval(() => {
             if (cancelled) { window.clearInterval(interval); resolve(); return; }
             const left = Math.max(0, Math.ceil((finishAt - Date.now()) / 1000));
             setRemaining(left);
-            if (left === 0) { window.clearInterval(interval); resolve(); }
+            if (Date.now() >= serverFinishAt) { window.clearInterval(interval); resolve(); }
           }, 200);
         });
         if (cancelled) return;
@@ -964,6 +974,9 @@ export default function Activities() {
     exploreElapsed,
     setExploreElapsed,
   ] = useState(0);
+  const [claimTimerHours, setClaimTimerHours] = useState(0);
+  const [savingClaimTimer, setSavingClaimTimer] = useState(false);
+  const [claimTimerError, setClaimTimerError] = useState('');
 
   const [
     travelOpen,
@@ -1015,7 +1028,7 @@ export default function Activities() {
     try {
       const saved = JSON.parse(localStorage.getItem(timedStorageKey) || "[]") as Array<{id:string; expires:number}>;
       const filtered = saved.filter(entry => entry.id !== String(activity.id) && entry.expires > Date.now() - 300000);
-      filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 180 : 90) * 1000});
+      filtered.push({id: String(activity.id), expires: Date.now() + (activity.type === "raid" ? 60 : 30) * 1000});
       localStorage.setItem(timedStorageKey, JSON.stringify(filtered));
     } catch { /* optional browser persistence */ }
     void fetchProfileSnapshot<{ level?: LevelProgress }>()
@@ -1154,6 +1167,7 @@ export default function Activities() {
             ),
           );
 
+          setClaimTimerHours(result.player.explore.elapsedSeconds / 3600);
           setClock(0);
           setError("");
         } catch (err) {
@@ -1230,6 +1244,14 @@ export default function Activities() {
     void loadActivities(
       true,
     );
+  }, [loadActivities]);
+
+  // Keep daily charge pips in sync as one charge regenerates each minute.
+  useEffect(() => {
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadActivities();
+    }, 15000);
+    return () => window.clearInterval(refresh);
   }, [loadActivities]);
 
   useEffect(() => {
@@ -1830,6 +1852,41 @@ export default function Activities() {
       .explore
       .maxSeconds;
 
+  async function saveClaimTimer() {
+    if (!data?.canSetExplorationTimer || savingClaimTimer) return;
+    setSavingClaimTimer(true);
+    setClaimTimerError("");
+    try {
+      const elapsedSeconds = Math.round(claimTimerHours * 3600);
+      const response = await fetch("/api/game/explore/set-max-timer", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ elapsedSeconds }),
+      });
+      const result = await response.json() as { success?: boolean; elapsedSeconds?: number; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Unable to update timer.");
+      const saved = result.elapsedSeconds ?? elapsedSeconds;
+      loadedAtRef.current = Date.now();
+      setClock(0);
+      setExploreElapsed(saved);
+      setData(previous => previous ? {
+        ...previous,
+        player: { ...previous.player, explore: {
+          ...previous.player.explore,
+          elapsedSeconds: saved,
+          lastClaim: Math.floor(Date.now() / 1000) - saved,
+          percentage: saved / 86400 * 100,
+          capped: saved >= 86400,
+        } },
+      } : previous);
+    } catch (error) {
+      setClaimTimerError(error instanceof Error ? error.message : "Unable to update timer.");
+    } finally {
+      setSavingClaimTimer(false);
+    }
+  }
+
   const explorePercentage =
     Math.min(
       100,
@@ -1949,7 +2006,7 @@ export default function Activities() {
     );
 
   const weaponDropEvents = globalActivityEvents.filter(
-    (event) => Boolean(event.weapon?.name?.trim()),
+    (event) => Boolean(event.weapon?.name?.trim()) || event.activityType === "legendary_achievement" || event.activityType === "exotic_achievement",
   );
 
   const visibleGlobalActivityEvents =
@@ -2033,6 +2090,7 @@ export default function Activities() {
                       max:
                         dailyShowdownCharges
                           .maxCharges,
+                      nextChargeAt: dailyShowdownCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyShowdownCharges
@@ -2081,6 +2139,7 @@ export default function Activities() {
                       max:
                         dailyDungeonCharges
                           .maxCharges,
+                      nextChargeAt: dailyDungeonCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyDungeonCharges
@@ -2129,6 +2188,7 @@ export default function Activities() {
                       max:
                         dailyRaidCharges
                           .maxCharges,
+                      nextChargeAt: dailyRaidCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyRaidCharges
@@ -2348,6 +2408,25 @@ export default function Activities() {
                   </div>
                 </div>
 
+                {data.canSetExplorationTimer && (
+                  <div className="exploration-admin-timer">
+                    <label htmlFor="exploration-claim-timer-slider">
+                      CLAIM TIMER CONTROL <strong>{claimTimerHours.toFixed(2)}h / 24h</strong>
+                    </label>
+                    <input id="exploration-claim-timer-slider" type="range"
+                      min={0} max={24} step={0.25} value={claimTimerHours}
+                      disabled={savingClaimTimer}
+                      onChange={event => setClaimTimerHours(Number(event.target.value))} />
+                    <div className="exploration-admin-timer-actions">
+                      <span>0h</span>
+                      <button type="button" onClick={() => void saveClaimTimer()} disabled={savingClaimTimer}>
+                        {savingClaimTimer ? "SAVING..." : "SET CLAIM TIMER"}
+                      </button>
+                      <span>24h</span>
+                    </div>
+                    {claimTimerError && <p role="alert">{claimTimerError}</p>}
+                  </div>
+                )}
                 <div className="exploration-progress">
                   <div
                     className="exploration-progress-fill"
@@ -2873,7 +2952,7 @@ export default function Activities() {
                         event,
                       ) => (
                         <article
-                          className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`}
+                          className={`global-activity-event${event.activityType === "exotic_achievement" ? " global-activity-event-exotic" : event.activityType === "legendary_achievement" ? " global-activity-event-legendary" : event.activityType === "masterwork" ? " global-activity-event-achievement" : event.weapon?.adept ? " global-activity-event-adept" : ""}`}
                           key={
                             event.id
                           }
@@ -2907,9 +2986,7 @@ export default function Activities() {
                           </div>
 
                           <span className="global-activity-event-activity">
-                            {
-                              event.activity
-                            }
+                            {event.activityType === "masterwork" ? "✦ ACHIEVEMENT ✦" : event.activityType === "legendary_achievement" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activityType === "exotic_achievement" ? "✦ EXOTIC ACHIEVEMENT ✦" : event.activity}
                           </span>
 
                           <span
@@ -2922,9 +2999,7 @@ export default function Activities() {
                               " ",
                             )}
                           >
-                            {
-                              event.result
-                            }
+                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.activityType === "legendary_achievement" ? `SOURCE COMPLETED · ${event.activity}` : event.activityType === "exotic_achievement" ? `CATEGORY COMPLETED · ${event.activity}` : event.result}
                           </span>
 
                           {event.weapon && (
@@ -2948,7 +3023,7 @@ export default function Activities() {
 
                               <div>
                                 <span>
-                                  WEAPON DROP
+                                  {event.activityType !== "masterwork" && "WEAPON DROP"}
                                 </span>
 
                                 <strong>
@@ -3007,7 +3082,7 @@ export default function Activities() {
           key={`encounter-${drop.id}`}
           loot={drop.loot}
           before={null}
-          durationMs={2400}
+          durationMs={9500}
           onDone={() => setEncounterDrops(current => current.filter(item => item.id !== drop.id))}
         />
       ))}

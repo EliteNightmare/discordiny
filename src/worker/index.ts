@@ -3,6 +3,8 @@ declare global {
     DISCORD_CLIENT_SECRET: string;
     BUNGIE_API_KEY: string;
     DB: D1Database;
+    ACCESS_DB?: D1Database;
+    DISCORDINY_ENV?: string;
     ASSETS_BUCKET: R2Bucket;
   }
 }
@@ -10,6 +12,7 @@ declare global {
 import { Hono } from "hono";
 import { registerArticleRoutes } from "./articles.routes";
 import { registerAdminAssetRoutes } from "./admin-assets.routes";
+import { registerBetaRoutes } from "./beta.routes";
 import { registerAdminManagementRoutes } from "./admin-management.routes";
 import {
   deleteCookie,
@@ -89,16 +92,64 @@ type ArtifactRow = {
 
 const app = new Hono<{ Bindings: Env }>();
 
+// Beta gameplay is isolated. Access is checked against the production invitation
+// registry; beta account IDs must never confer administrator privileges.
+app.use("/api/*", async (c, next) => {
+  if (c.env.DISCORDINY_ENV !== "beta") return next();
+  const path = c.req.path;
+  if (path.startsWith("/api/bungie/")) return c.json({ error: "Bungie linking is not yet supported on beta" }, 403);
+  if (path === "/api/auth/login" || path === "/api/auth/callback" ||
+      path === "/api/auth/logout" || path === "/api/auth/me" ||
+      path === "/api/beta/status" || path === "/api/beta/redeem") return next();
+  // The beta shutdown switch applies to every account, including the owner.
+  // Management endpoints independently verify the production owner identity.
+  // The frontend hides every beta page while closed; production can reopen it.
+  if (path.startsWith("/api/beta/admin/")) return next();
+  // Existing administrative endpoints trust local user ID 1; never expose
+  // them in beta until converted to production Discord-identity checks.
+  if (path.startsWith("/api/admin/")) return c.json({ error: "Beta admin endpoint disabled" }, 403);
+  const session = await getTerminalUser(c);
+  if (!session) return c.json({ error: "Beta login required" }, 401);
+  const accessDb = c.env.ACCESS_DB;
+  if (!accessDb) return c.json({ error: "Beta access registry not configured" }, 503);
+  const setting = await accessDb.prepare("SELECT enabled FROM beta_settings WHERE id = 1")
+    .first<{ enabled: number }>();
+  const owner = await accessDb.prepare("SELECT discord_id FROM users WHERE id = 1")
+    .first<{ discord_id: string }>();
+  if (setting?.enabled !== 1) return c.json({ error: "Beta is currently closed" }, 403);
+  if (owner?.discord_id === session.discord_id) return next();
+  const invited = await accessDb.prepare(
+    "SELECT 1 AS allowed FROM beta_invites WHERE redeemed_by_discord_id = ? LIMIT 1"
+  ).bind(session.discord_id).first();
+  if (!invited) return c.json({ error: "A beta invitation is required" }, 403);
+  return next();
+});
+
 const DISCORD_CLIENT_ID = "1529513718176813166";
 
 const DISCORD_REDIRECT_URI =
   "https://discordiny.com/api/auth/callback";
+const DISCORD_PREVIEW_REDIRECT_URI =
+  "https://game-updates-vite-react-template.darko-kennedy12.workers.dev/api/auth/callback";
+
+function discordRedirectUri(requestUrl: string): string {
+  const host = new URL(requestUrl).hostname.toLowerCase();
+  if (host === "game-updates-vite-react-template.darko-kennedy12.workers.dev") return DISCORD_PREVIEW_REDIRECT_URI;
+  if (host === "beta.discordiny.com" || host === "beta.api.discordiny.com") return "https://beta.discordiny.com/api/auth/callback";
+  return DISCORD_REDIRECT_URI;
+}
 
 const BUNGIE_CLIENT_ID =
   "55059";
 
 const BUNGIE_REDIRECT_URI =
   "https://discordiny.com/api/bungie/callback";
+
+function bungieRedirectUri(_requestUrl: string): string {
+  // Bungie supports a single registered redirect URI per application.
+  // Beta linking is disabled until a secure production callback broker exists.
+  return BUNGIE_REDIRECT_URI;
+}
 
 const SESSION_COOKIE =
   "__Host-discordiny_session";
@@ -1611,7 +1662,7 @@ app.get("/api/auth/login", (c) => {
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     response_type: "code",
-    redirect_uri: DISCORD_REDIRECT_URI,
+    redirect_uri: discordRedirectUri(c.req.url),
     scope: "identify",
   });
 
@@ -1653,7 +1704,7 @@ app.get("/api/auth/callback", async (c) => {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: DISCORD_REDIRECT_URI,
+        redirect_uri: discordRedirectUri(c.req.url),
       }),
     }
   );
@@ -2024,7 +2075,7 @@ app.get("/api/bungie/link", async (c) => {
     client_id: BUNGIE_CLIENT_ID,
     response_type: "code",
     state,
-    redirect_uri: BUNGIE_REDIRECT_URI,
+    redirect_uri: bungieRedirectUri(c.req.url),
   });
 
   return c.redirect(
@@ -2146,7 +2197,7 @@ app.get("/api/bungie/callback", async (c) => {
         code,
 
         redirect_uri:
-          BUNGIE_REDIRECT_URI,
+          bungieRedirectUri(c.req.url),
       }),
     }
   );
@@ -2570,6 +2621,128 @@ app.post("/api/bungie/unlink", async (c) => {
 ========================================================= */
 
 const VAULT_MAX_MASTERWORK = 77;
+const VAULT_ACHIEVEMENT_GROUPS: Record<string, string[]> = {
+  Destinations: ["cosmodrome","edz","nessus","dreaming city","moon","europa","throne world","neomuna","pale heart","plaguelands"],
+  Daily: ["cos","sos","eow","sotw","eq","vog","kf","ce","udp"],
+  Vanguard: ["strike","nf","gm"],
+  Pinnacle: ["bgs","emph","nigh","seraph","elivagar","lucent","coil","contest","nether"],
+  Endgame: ["goa","wr","dual","st","poh","vh","sd","gotd","proph","scourge","levi","lw","gos","dsc","vow","ron","se"],
+  Fishing: ["fishing"],
+};
+const VAULT_SOURCE_NAMES: Record<string, string> = {
+  "cosmodrome": "Cosmodrome",
+  "edz": "European Dead Zone",
+  "nessus": "Nessus",
+  "dreaming city": "Dreaming City",
+  "moon": "Moon",
+  "europa": "Europa",
+  "throne world": "Throne World",
+  "neomuna": "Neomuna",
+  "pale heart": "The Pale Heart",
+  "plaguelands": "Plaguelands",
+  "cos": "Crown of Sorrow",
+  "sos": "Spire of Stars",
+  "eow": "Eater of Worlds",
+  "sotw": "Spire of the Watcher",
+  "eq": "Equilibrium",
+  "vog": "Vault of Glass",
+  "kf": "King's Fall",
+  "ce": "Crota's End",
+  "udp": "Ultimate DP",
+  "strike": "Strikes",
+  "nf": "Nightfalls",
+  "gm": "Grandmasters",
+  "bgs": "Battlegrounds",
+  "emph": "Empire Hunt",
+  "nigh": "Nightmare Hunt",
+  "seraph": "Exo Challenge",
+  "elivagar": "Great Hunt",
+  "lucent": "Lucent Fireteam",
+  "coil": "The Coil",
+  "contest": "Kells Contest",
+  "nether": "The Nether",
+  "goa": "Grasp of Avarice",
+  "wr": "Warlord's Ruin",
+  "dual": "Duality",
+  "st": "Shattered Throne",
+  "poh": "Pit of Heresy",
+  "vh": "Vesper's Host",
+  "sd": "Sundered Doctrine",
+  "gotd": "Ghosts of the Deep",
+  "proph": "Prophecy",
+  "scourge": "Scourge of the Past",
+  "levi": "Leviathan",
+  "lw": "Last Wish",
+  "gos": "Garden of Salvation",
+  "dsc": "Deepstone Crypt",
+  "vow": "Vow of the Disciple",
+  "ron": "Root of Nightmares",
+  "se": "Salvation's Edge",
+  "fishing": "Fishing",
+};
+async function resetVaultAchievementCycle(db: D1Database, userId: number, weaponName: string) {
+  const row = await db.prepare("SELECT source FROM weapons WHERE lower(name) = lower(?) OR lower(name) = lower(?) LIMIT 1")
+    .bind(weaponName, getVaultBaseWeaponName(weaponName)).first<{source:string|null}>();
+  const source = row?.source?.trim().toLowerCase();
+  if (!source) return;
+  const names = [VAULT_SOURCE_NAMES[source] ?? source.toUpperCase()];
+  for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS))
+    if (sources.includes(source)) names.push(category);
+  for (const name of names) {
+    await db.prepare(`INSERT INTO global_activity_feed (user_id,activity_name,activity_type,result,weapon_name,weapon_adept)
+      VALUES (?,?,'achievement_reset','RESET',NULL,0)`).bind(userId,name).run();
+  }
+}
+
+async function publishVaultAchievements(db: D1Database, userId: number, weaponName: string, includeWeapon: boolean, sourceOverride?: string) {
+  const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
+  const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
+  const levels = new Map((owned.results ?? []).map(row => [row.weapon_name.trim().toLowerCase(), Number(row.masterwork)]));
+  // Use the exact same two-tier family model as the Vault overview.
+  // Catalogs may contain only the base weapon row; the Vault still
+  // displays its Adept counterpart, so both must count toward completion.
+  const families = new Map<string, Map<string, "Adept" | "Timelost" | "Harrowed">>();
+  for (const row of catalog.results ?? []) {
+    const source = row.source.trim().toLowerCase();
+    const base = getVaultBaseWeaponName(row.name).trim().toLowerCase();
+    if (!families.has(source)) families.set(source, new Map());
+    const variants = families.get(source)!;
+    variants.set(base, getVaultVariantSuffix(row.name) ?? variants.get(base) ?? "Adept");
+  }
+  const complete = (source: string) => {
+    const group = families.get(source);
+    return !!group?.size && [...group].every(([base, suffix]) =>
+      (levels.get(base) ?? -1) >= VAULT_MAX_MASTERWORK &&
+      (levels.get(`${base} (${suffix.toLowerCase()})`) ?? -1) >= VAULT_MAX_MASTERWORK
+    );
+  };
+  const announce = async (activityName: string, activityType: string, result: string, name: string | null) => {
+    // Individual weapon achievements are repeatable on every new 77/77.
+    // Source/category achievements are repeatable only after a reset.
+    await db.prepare(`INSERT INTO global_activity_feed (user_id,activity_name,activity_type,result,weapon_name,weapon_adept)
+      SELECT ?,?,?,?, ?,0 WHERE ? = 'masterwork' OR NOT EXISTS (
+        SELECT 1 FROM global_activity_feed earned
+        WHERE earned.user_id = ? AND earned.activity_type = ? AND earned.activity_name = ?
+          AND earned.id > COALESCE((
+            SELECT MAX(reset.id) FROM global_activity_feed reset
+            WHERE reset.user_id = ? AND reset.activity_type = 'achievement_reset'
+              AND reset.activity_name = ?
+          ), 0)
+      )`).bind(userId,activityName,activityType,result,name,activityType,userId,activityType,activityName,userId,activityName).run();
+  };
+  if (includeWeapon) {
+    await announce(weaponName, "masterwork", "ACHIEVEMENT", weaponName);
+  }
+  const source = sourceOverride?.trim().toLowerCase() ?? (catalog.results ?? []).find(row => row.name.trim().toLowerCase() === weaponName.trim().toLowerCase())?.source?.trim().toLowerCase() ?? (catalog.results ?? []).find(row => getVaultBaseWeaponName(row.name).toLowerCase() === getVaultBaseWeaponName(weaponName).toLowerCase())?.source?.trim().toLowerCase();
+  if (!source || !complete(source)) return;
+  await announce(VAULT_SOURCE_NAMES[source] ?? source.toUpperCase(), "legendary_achievement", "LEGENDARY ACHIEVEMENT", null);
+  for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS)) {
+    if (sources.includes(source) && sources.length > 0 && sources.every(complete)) {
+      await announce(category, "exotic_achievement", "EXOTIC ACHIEVEMENT", null);
+    }
+  }
+}
+
 
 const VAULT_SPECIAL_VARIANT_SUFFIX =
   /\s*\((Adept|Timelost|Harrowed)\)\s*$/i;
@@ -2774,6 +2947,36 @@ app.get("/api/game/vault/index", async (c) => {
     },
     sources,
   });
+});
+
+// Private vault editing: only account ID 1 can grant or adjust a catalog weapon.
+app.post("/api/game/vault/admin-weapon", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+  const session = await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ? LIMIT 1")
+    .bind(sessionId, new Date().toISOString()).first<{user_id:number}>();
+  if (!session) return c.json({ authenticated: false }, 401);
+  if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json().catch(() => null) as {weaponName?:unknown;masterwork?:unknown} | null;
+  const weaponName = typeof body?.weaponName === "string" ? body.weaponName.trim() : "";
+  const level = body?.masterwork;
+  if (!weaponName || typeof level !== "number" || !Number.isInteger(level) || level < 0 || level > VAULT_MAX_MASTERWORK)
+    return c.json({ error: "Invalid weapon or masterwork rank (0–77)." }, 400);
+  const base = getVaultBaseWeaponName(weaponName);
+  const variant = getVaultVariantSuffix(weaponName);
+  const catalog = await c.env.DB.prepare("SELECT name FROM weapons WHERE lower(name) = lower(?) OR lower(name) = lower(?) LIMIT 1")
+    .bind(weaponName, base).first<{name:string}>();
+  if (!catalog) return c.json({ error: "Weapon not in catalog." }, 404);
+  const prior = await c.env.DB.prepare("SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1")
+    .bind(session.user_id, weaponName).first<{masterwork:number}>();
+  await c.env.DB.prepare(`INSERT INTO player_weapons (user_id,weapon_name,masterwork)
+    VALUES (?,?,?) ON CONFLICT(user_id,weapon_name) DO UPDATE SET masterwork = excluded.masterwork`)
+    .bind(session.user_id, variant ? base + " (" + variant + ")" : base, level).run();
+  if ((prior?.masterwork ?? -1) >= VAULT_MAX_MASTERWORK && level < VAULT_MAX_MASTERWORK)
+    await resetVaultAchievementCycle(c.env.DB, session.user_id, weaponName);
+  if ((prior?.masterwork ?? -1) < VAULT_MAX_MASTERWORK && level === VAULT_MAX_MASTERWORK)
+    await publishVaultAchievements(c.env.DB, session.user_id, weaponName, true);
+  return c.json({ success: true, weaponName, masterwork: level });
 });
 
 app.get("/api/game/weapons/masterwork", async (c) => {
@@ -3087,6 +3290,10 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     );
   }
 
+  if (currentMasterwork < VAULT_MAX_MASTERWORK && updated.masterwork === VAULT_MAX_MASTERWORK) {
+    await publishVaultAchievements(c.env.DB, session.user_id, weaponName, true);
+  }
+
   return c.json({
     success: true,
     weaponName,
@@ -3395,8 +3602,26 @@ app.get("/api/game/weapons", async (c) => {
     }
   );
 
+  // Compare against the displayed normal + special rows, not only
+  // literal catalog entries (which may omit the special variant).
+  const missingMasterworks = weapons.flatMap(weapon => [
+    ...(weapon.normal.masterwork < VAULT_MAX_MASTERWORK ? [weapon.name] : []),
+    ...(weapon.adept.masterwork < VAULT_MAX_MASTERWORK ? [`${weapon.name} (${weapon.variantSuffix})`] : []),
+  ]);
+  const sourceFullyMasterworked = weapons.length > 0 && missingMasterworks.length === 0;
+  if (sourceFullyMasterworked) {
+    await publishVaultAchievements(c.env.DB, session.user_id, weapons[0].name, false, source);
+  }
+  const legendaryName = VAULT_SOURCE_NAMES[source.trim().toLowerCase()] ?? source.trim().toUpperCase();
+  const legendaryEvent = await c.env.DB.prepare(`SELECT id, created_at FROM global_activity_feed
+    WHERE user_id = ? AND activity_type = 'legendary_achievement' AND activity_name = ?
+    ORDER BY id DESC LIMIT 1`).bind(session.user_id, legendaryName).first<{id:number;created_at:string}>();
+
+
   return c.json({
     authenticated: true,
+    canManageVault: Number(session.user_id) === 1,
+    legendaryAchievement: { complete: sourceFullyMasterworked, missing: missingMasterworks, announced: Boolean(legendaryEvent), lastAnnouncedAt: legendaryEvent?.created_at ?? null },
     source,
     weapons,
   });
@@ -3894,24 +4119,32 @@ app.post("/api/game/activities/reset-daily-charges", async (c) => {
   return c.json({ success: true });
 });
 
+// Account ID 1 only: set the elapsed exploration claim timer (0–24 hours).
 app.post("/api/game/explore/set-max-timer", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
   const session = await c.env.DB
-    .prepare("SELECT user_id FROM sessions WHERE id = ? LIMIT 1")
-    .bind(sessionId)
+    .prepare("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ? LIMIT 1")
+    .bind(sessionId, new Date().toISOString())
     .first<{ user_id: number }>();
   if (!session) return c.json({ authenticated: false }, 401);
   if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
 
+  const body = await c.req.json().catch(() => null) as { elapsedSeconds?: unknown } | null;
+  const elapsedSeconds = body?.elapsedSeconds;
+  if (typeof elapsedSeconds !== "number" || !Number.isInteger(elapsedSeconds) ||
+      elapsedSeconds < 0 || elapsedSeconds > EXPLORE_MAX_SECONDS) {
+    return c.json({ error: "Timer must be between 0 and 24 hours." }, 400);
+  }
+
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const timestamp = nowSeconds - EXPLORE_MAX_SECONDS;
+  const timestamp = nowSeconds - elapsedSeconds;
   await c.env.DB.prepare(
     `INSERT INTO player_cooldowns (user_id, activity, timestamp)
      VALUES (?, 'explore', ?)
-     ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+     ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`
   ).bind(session.user_id, timestamp).run();
-  return c.json({ success: true, elapsedSeconds: EXPLORE_MAX_SECONDS });
+  return c.json({ success: true, elapsedSeconds });
 });
 
 app.post("/api/game/explore/claim", async (c) => {
@@ -5887,6 +6120,29 @@ const CRAWL_COOLDOWN_SECONDS = 90;
 const ENDGAME_DUNGEON_COOLDOWN_SECONDS = 45;
 const ENDGAME_RAID_COOLDOWN_SECONDS = 90;
 const ENDGAME_DAILY_MAX_CHARGES = 3;
+const DAILY_CHARGE_REGEN_SECONDS = 60;
+// Beta encodes recharge anchor (seconds) * 10 + used charges in the existing
+// timestamp column; counter-only legacy rows (0..3) remain compatible.
+function dailyChargeState(raw: number, now: number, max: number, beta: boolean) {
+  const stored = Math.max(0, Math.trunc(Number(raw) || 0));
+  if (!beta) {
+    const used = Math.min(max, stored);
+    return { used, remaining: max - used, nextChargeAt: 0, encoded: used };
+  }
+  const encoded = stored >= 10000000000;
+  const count = Math.min(max, encoded ? stored % 10 : stored);
+  const anchor = encoded ? Math.floor(stored / 10) : now;
+  const restored = Math.min(count, Math.max(0, Math.floor((now - anchor) / DAILY_CHARGE_REGEN_SECONDS)));
+  const used = count - restored;
+  const nextAnchor = used ? anchor + restored * DAILY_CHARGE_REGEN_SECONDS : now;
+  return { used, remaining: max - used, nextChargeAt: used ? nextAnchor + DAILY_CHARGE_REGEN_SECONDS : 0, encoded: used ? nextAnchor * 10 + used : 0 };
+}
+function spendDailyCharge(raw: number, now: number, max: number, beta: boolean) {
+  if (!beta) return Math.min(max, Math.max(0, Math.trunc(raw || 0)) + 1);
+  const state = dailyChargeState(raw, now, max, true);
+  const anchor = state.used ? Math.floor(state.encoded / 10) : now;
+  return anchor * 10 + Math.min(max, state.used + 1);
+}
 
 const ENDGAME_DUNGEON_COOLDOWN_KEY =
   "__endgame_dungeon";
@@ -6392,27 +6648,10 @@ app.get("/api/game/activities", async (c) => {
       ENDGAME_RAID_COOLDOWN_KEY,
     ) ?? 0;
 
-  const dailyDungeonUsed =
-    Math.max(
-      0,
-      Math.min(
-        ENDGAME_DAILY_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyDungeonChargeKey,
-        ) ?? 0,
-      ),
-    );
-
-  const dailyRaidUsed =
-    Math.max(
-      0,
-      Math.min(
-        ENDGAME_DAILY_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyRaidChargeKey,
-        ) ?? 0,
-      ),
-    );
+  const dailyDungeonChargeState = dailyChargeState(endgameCooldownMap.get(dailyDungeonChargeKey) ?? 0, nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyRaidChargeState = dailyChargeState(endgameCooldownMap.get(dailyRaidChargeKey) ?? 0, nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyDungeonUsed = dailyDungeonChargeState.used;
+  const dailyRaidUsed = dailyRaidChargeState.used;
 
   const vanguardStrikeReadyAt = endgameCooldownMap.get(VANGUARD_STRIKE_COOLDOWN_KEY) ?? 0;
   const vanguardNightfallReadyAt = endgameCooldownMap.get(VANGUARD_NIGHTFALL_COOLDOWN_KEY) ?? 0;
@@ -6429,16 +6668,37 @@ app.get("/api/game/activities", async (c) => {
       CRAWL_COOLDOWN_KEY,
     ) ?? 0;
   
-  const dailyShowdownUsed =
-    Math.max(
-      0,
-      Math.min(
-        DAILY_SHOWDOWN_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyShowdownChargeKey,
-        ) ?? 0,
-      ),
-    );
+  const dailyShowdownChargeState = dailyChargeState(endgameCooldownMap.get(dailyShowdownChargeKey) ?? 0, nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyShowdownUsed = dailyShowdownChargeState.used;
+
+  // Persist regenerated charges, rather than only reporting a calculated
+  // balance. Also migrate legacy counter-only rows onto a recharge clock.
+  // The compare-and-swap predicate prevents overwriting a concurrent spend.
+  if (c.env.DISCORDINY_ENV === "beta") {
+    const rechargeUpdates: D1PreparedStatement[] = [];
+    for (const [key, max] of [
+      [dailyDungeonChargeKey, ENDGAME_DAILY_MAX_CHARGES],
+      [dailyRaidChargeKey, ENDGAME_DAILY_MAX_CHARGES],
+      [dailyShowdownChargeKey, DAILY_SHOWDOWN_MAX_CHARGES],
+    ] as const) {
+      const raw = endgameCooldownMap.get(key);
+      if (raw === undefined) continue;
+      const state = dailyChargeState(raw, nowSeconds, max, true);
+      // A legacy row had no timestamp; begin its first minute now.
+      const next = raw < 10000000000 && state.used > 0
+        ? nowSeconds * 10 + state.used
+        : state.encoded;
+      if (next !== raw) {
+        rechargeUpdates.push(
+          c.env.DB.prepare(
+            "UPDATE player_cooldowns SET timestamp = ? WHERE user_id = ? AND activity = ? AND timestamp = ?"
+          ).bind(next, session.user_id, key, raw)
+        );
+      }
+    }
+    if (rechargeUpdates.length) await c.env.DB.batch(rechargeUpdates);
+  }
+
 
   /* =======================================================
      RESPONSE
@@ -6475,17 +6735,17 @@ app.get("/api/game/activities", async (c) => {
 
       vanguard: {
         strike: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.strike,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.strike),
           remainingSeconds: Math.max(0, vanguardStrikeReadyAt - nowSeconds),
           readyAt: vanguardStrikeReadyAt,
         },
         nightfall: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.nightfall,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.nightfall),
           remainingSeconds: Math.max(0, vanguardNightfallReadyAt - nowSeconds),
           readyAt: vanguardNightfallReadyAt,
         },
         gm: {
-          cooldownSeconds: VANGUARD_COOLDOWNS.gm,
+          cooldownSeconds: (c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS.gm),
           remainingSeconds: Math.max(0, vanguardGmReadyAt - nowSeconds),
           readyAt: vanguardGmReadyAt,
           minLevel: GM_MIN_LEVEL,
@@ -6494,7 +6754,7 @@ app.get("/api/game/activities", async (c) => {
 
       infiltration: {
         cooldownSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
       
         remainingSeconds:
           Math.max(
@@ -6508,7 +6768,7 @@ app.get("/api/game/activities", async (c) => {
 
       showdown: {
         cooldownSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         remainingSeconds:
           Math.max(
@@ -6529,12 +6789,13 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             DAILY_SHOWDOWN_MAX_CHARGES -
             dailyShowdownUsed,
+          nextChargeAt: dailyShowdownChargeState.nextChargeAt,
         },
       },
 
       crawl: {
         cooldownSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         remainingSeconds:
           Math.max(
@@ -6549,7 +6810,7 @@ app.get("/api/game/activities", async (c) => {
       endgame: {
         dungeon: {
           cooldownSeconds:
-            ENDGAME_DUNGEON_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS),
 
           remainingSeconds:
             Math.max(
@@ -6563,7 +6824,7 @@ app.get("/api/game/activities", async (c) => {
 
         raid: {
           cooldownSeconds:
-            ENDGAME_RAID_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS),
 
           remainingSeconds:
             Math.max(
@@ -6585,6 +6846,7 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             ENDGAME_DAILY_MAX_CHARGES -
             dailyDungeonUsed,
+          nextChargeAt: dailyDungeonChargeState.nextChargeAt,
         },
 
         dailyRaid: {
@@ -6597,6 +6859,7 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             ENDGAME_DAILY_MAX_CHARGES -
             dailyRaidUsed,
+          nextChargeAt: dailyRaidChargeState.nextChargeAt,
         },
       },
     },
@@ -7599,7 +7862,7 @@ app.post("/api/game/activity/run", async (c) => {
         readyAt - nowSeconds,
       );
 
-    if (remainingSeconds > 0) {
+    if (c.env.DISCORDINY_ENV !== "beta" && remainingSeconds > 0) {
       return c.json(
         {
           authenticated: true,
@@ -7613,7 +7876,7 @@ app.post("/api/game/activity/run", async (c) => {
               "cooldown" as const,
 
             cooldownSeconds:
-              INFILTRATION_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
             remainingSeconds,
 
@@ -7822,7 +8085,7 @@ app.post("/api/game/activity/run", async (c) => {
 
     const nextReadyAt =
       nowSeconds +
-      INFILTRATION_COOLDOWN_SECONDS;
+      (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS);
 
     writes.push(
       c.env.DB
@@ -8108,10 +8371,10 @@ app.post("/api/game/activity/run", async (c) => {
           "cooldown" as const,
 
         cooldownSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          INFILTRATION_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : INFILTRATION_COOLDOWN_SECONDS),
 
         readyAt:
           nextReadyAt,
@@ -8186,14 +8449,14 @@ app.post("/api/game/activity/run", async (c) => {
       : vanguardActivity.type === "nightfall"
         ? VANGUARD_NIGHTFALL_COOLDOWN_KEY
         : VANGUARD_GM_COOLDOWN_KEY;
-    const cooldownSeconds = VANGUARD_COOLDOWNS[vanguardActivity.type];
+    const cooldownSeconds = c.env.DISCORDINY_ENV === "beta" ? 0 : VANGUARD_COOLDOWNS[vanguardActivity.type];
 
     const cooldownRow = await c.env.DB.prepare(
       `SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ? LIMIT 1`,
     ).bind(session.user_id, cooldownKey).first<{ timestamp: number }>();
     const readyAt = Math.max(0, Number(cooldownRow?.timestamp ?? 0));
 
-    if (nowSeconds < readyAt) {
+    if (c.env.DISCORDINY_ENV !== "beta" && nowSeconds < readyAt) {
       return c.json({
         error: "Activity cooldown is still active.",
         limit: { kind: "cooldown", cooldownSeconds, remainingSeconds: readyAt - nowSeconds, readyAt },
@@ -8425,16 +8688,7 @@ app.post("/api/game/activity/run", async (c) => {
             timestamp: number;
           }>();
 
-      const usedCharges =
-        Math.max(
-          0,
-          Math.min(
-            DAILY_SHOWDOWN_MAX_CHARGES,
-            Number(
-              chargeRow?.timestamp ?? 0,
-            ) || 0,
-          ),
-        );
+      const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
       if (
         usedCharges >=
@@ -8489,7 +8743,7 @@ app.post("/api/game/activity/run", async (c) => {
           ) || 0,
         );
 
-      if (readyAt > nowSeconds) {
+      if (c.env.DISCORDINY_ENV !== "beta" && readyAt > nowSeconds) {
         return c.json(
           {
             authenticated: true,
@@ -8503,7 +8757,7 @@ app.post("/api/game/activity/run", async (c) => {
                 "cooldown" as const,
 
               cooldownSeconds:
-                SHOWDOWN_COOLDOWN_SECONDS,
+                (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
               remainingSeconds:
                 readyAt - nowSeconds,
@@ -8695,15 +8949,14 @@ app.post("/api/game/activity/run", async (c) => {
                 activity,
                 timestamp
               )
-             VALUES (?, ?, 1)
+             VALUES (?, ?, ?)
              ON CONFLICT(user_id, activity)
-             DO UPDATE SET
-               timestamp =
-                 player_cooldowns.timestamp + 1`,
+             DO UPDATE SET timestamp = excluded.timestamp`,
           )
           .bind(
             session.user_id,
             chargeKey,
+            spendDailyCharge(Number((await c.env.DB.prepare("SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ?").bind(session.user_id, chargeKey).first<{ timestamp: number }>())?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta"),
           ),
       );
     } else {
@@ -8727,7 +8980,7 @@ app.post("/api/game/activity/run", async (c) => {
             SHOWDOWN_COOLDOWN_KEY,
 
             nowSeconds +
-              SHOWDOWN_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
           ),
       );
     }
@@ -8988,17 +9241,7 @@ app.post("/api/game/activity/run", async (c) => {
             timestamp: number;
           }>();
 
-      const usedCharges =
-        Math.max(
-          0,
-          Math.min(
-            DAILY_SHOWDOWN_MAX_CHARGES,
-
-            Number(
-              chargeRow?.timestamp ?? 0,
-            ) || 0,
-          ),
-        );
+      const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
       showdownLimit = {
         kind: "charges",
@@ -9019,16 +9262,16 @@ app.post("/api/game/activity/run", async (c) => {
     } else {
       const readyAt =
         nowSeconds +
-        SHOWDOWN_COOLDOWN_SECONDS;
+        (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS);
 
       showdownLimit = {
         kind: "cooldown",
 
         cooldownSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          SHOWDOWN_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : SHOWDOWN_COOLDOWN_SECONDS),
 
         readyAt,
       };
@@ -9198,7 +9441,8 @@ app.post("/api/game/activity/run", async (c) => {
 
     if (
       Number.isFinite(readyAt) &&
-      readyAt > nowSeconds
+      readyAt > nowSeconds &&
+      c.env.DISCORDINY_ENV !== "beta"
     ) {
       return c.json(
         {
@@ -9210,7 +9454,7 @@ app.post("/api/game/activity/run", async (c) => {
               "cooldown" as const,
 
             cooldownSeconds:
-              CRAWL_COOLDOWN_SECONDS,
+              (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
             remainingSeconds:
               Math.max(
@@ -9251,7 +9495,7 @@ app.post("/api/game/activity/run", async (c) => {
 
     const nextReadyAt =
       nowSeconds +
-      CRAWL_COOLDOWN_SECONDS;
+      (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS);
 
     const cooldownWrite =
       c.env.DB
@@ -9293,7 +9537,8 @@ app.post("/api/game/activity/run", async (c) => {
 
       const expiresAt =
         nowSeconds +
-        initialRun.secret.timeoutSeconds;
+        initialRun.secret.timeoutSeconds +
+        (crawlSource === "coil" || crawlSource === "contest" ? 12 : 0);
 
       await c.env.DB.batch([
         cooldownWrite,
@@ -9356,10 +9601,10 @@ app.post("/api/game/activity/run", async (c) => {
             "cooldown" as const,
 
           cooldownSeconds:
-            CRAWL_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
           remainingSeconds:
-            CRAWL_COOLDOWN_SECONDS,
+            (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
           readyAt:
             nextReadyAt,
@@ -9460,10 +9705,10 @@ app.post("/api/game/activity/run", async (c) => {
           "cooldown" as const,
 
         cooldownSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         remainingSeconds:
-          CRAWL_COOLDOWN_SECONDS,
+          (c.env.DISCORDINY_ENV === "beta" ? 0 : CRAWL_COOLDOWN_SECONDS),
 
         readyAt:
           nextReadyAt,
@@ -9675,13 +9920,7 @@ app.post("/api/game/activity/run", async (c) => {
           timestamp: number;
         }>();
 
-    const usedCharges =
-      Math.max(
-        0,
-        Number(
-          chargeRow?.timestamp ?? 0,
-        ) || 0,
-      );
+    const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
     if (
       usedCharges >=
@@ -9715,21 +9954,20 @@ app.post("/api/game/activity/run", async (c) => {
               activity,
               timestamp
             )
-           VALUES (?, ?, 1)
+           VALUES (?, ?, ?)
            ON CONFLICT(user_id, activity)
-           DO UPDATE SET
-             timestamp =
-               player_cooldowns.timestamp + 1`,
+           DO UPDATE SET timestamp = excluded.timestamp`,
         )
         .bind(
           session.user_id,
           chargeKey,
+          spendDailyCharge(Number(chargeRow?.timestamp ?? 0), nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta"),
         );
   } else {
     const cooldownSeconds =
       activity.type === "raid"
-        ? ENDGAME_RAID_COOLDOWN_SECONDS
-        : ENDGAME_DUNGEON_COOLDOWN_SECONDS;
+        ? (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS)
+        : (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS);
 
     const cooldownKey =
       activity.type === "raid"
@@ -10309,8 +10547,8 @@ app.post("/api/game/activity/run", async (c) => {
             kind: "cooldown" as const,
             cooldownSeconds:
               activity.type === "raid"
-                ? ENDGAME_RAID_COOLDOWN_SECONDS
-                : ENDGAME_DUNGEON_COOLDOWN_SECONDS,
+                ? (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_RAID_COOLDOWN_SECONDS)
+                : (c.env.DISCORDINY_ENV === "beta" ? 0 : ENDGAME_DUNGEON_COOLDOWN_SECONDS),
           },
 
     result,
@@ -10370,7 +10608,7 @@ app.get("/api/game/activity/feed", async (c) => {
   // Workers Cache API is per data center; it prevents repeated D1 reads within
   // a colo without sharing private profile/session information.
   const feedCache = caches.default;
-  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v1", c.req.url).toString());
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v5", c.req.url).toString());
   const cachedFeed = await feedCache.match(feedCacheKey);
   if (cachedFeed) {
     return c.json(await cachedFeed.json());
@@ -10400,8 +10638,8 @@ app.get("/api/game/activity/feed", async (c) => {
            ON users.id =
               global_activity_feed.user_id
 
-         WHERE global_activity_feed.weapon_name IS NOT NULL
-           AND TRIM(global_activity_feed.weapon_name) <> ''
+         WHERE (global_activity_feed.activity_type IN ('legendary_achievement','exotic_achievement')
+           OR (global_activity_feed.weapon_name IS NOT NULL AND TRIM(global_activity_feed.weapon_name) <> ''))
            AND global_activity_feed.created_at >= date('now')
            AND global_activity_feed.created_at < date('now', '+1 day')
 
@@ -10494,6 +10732,11 @@ app.get("/api/game/activity/feed", async (c) => {
 });
 
 /* Articles: reuse the existing, expiry-checked Discord session resolver. */
+registerBetaRoutes(app, async (c) => {
+  const user = await getTerminalUser(c);
+  return user ? { discord_id: user.discord_id } : null;
+});
+
 registerArticleRoutes(app, async (c) => {
   const user = await getTerminalUser(c);
   return user ? { id: user.user_id } : null;

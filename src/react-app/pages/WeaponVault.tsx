@@ -58,6 +58,7 @@ type WeaponData = {
 
 type WeaponResponse = {
   authenticated: boolean;
+  canManageVault?: boolean;
   source?: string;
   weapons: WeaponData[];
 };
@@ -363,6 +364,10 @@ function WeaponVault({
     useState("");
 
 
+  const [canManageVault, setCanManageVault] = useState(false);
+  const [adminRank, setAdminRank] = useState(0);
+  const [adminBusy, setAdminBusy] = useState(false);
+  const [adminError, setAdminError] = useState('');
   const [selectedWeapon, setSelectedWeapon] =
     useState<VisibleWeapon | null>(null);
 
@@ -374,14 +379,15 @@ function WeaponVault({
 
 
   const [requestedRanks, setRequestedRanks] = useState(1);
+  const remainingRanks = selectedWeapon ? MAX_MASTERWORK - selectedWeapon.masterwork : 0;
+  const safeRanks = Math.min(Math.max(1, requestedRanks), Math.max(1, remainingRanks));
+  const selectedPreview = useMemo(() => selectedWeapon && profile
+    ? getMasterworkPreview(selectedWeapon, safeRanks, profile.currencies ?? {}, profile.upgradeMaterials ?? {})
+    : null, [selectedWeapon, profile, safeRanks]);
   const affordablePreview = useMemo(() => selectedWeapon && profile
     ? getMasterworkPreview(selectedWeapon, "max", profile.currencies ?? {}, profile.upgradeMaterials ?? {})
     : null, [selectedWeapon, profile]);
   const maxAffordableRanks = affordablePreview?.ranks ?? 0;
-  const safeRanks = Math.min(Math.max(1, requestedRanks), Math.max(1, maxAffordableRanks));
-  const selectedPreview = useMemo(() => selectedWeapon && profile && maxAffordableRanks > 0
-    ? getMasterworkPreview(selectedWeapon, safeRanks, profile.currencies ?? {}, profile.upgradeMaterials ?? {})
-    : null, [selectedWeapon, profile, safeRanks, maxAffordableRanks]);
 
   useEffect(() => {
     if (!weaponSource) {
@@ -424,6 +430,7 @@ function WeaponVault({
           );
         }
 
+        setCanManageVault(weaponResult.canManageVault === true);
         if (
           Array.isArray(
             weaponResult.weapons,
@@ -606,8 +613,10 @@ function WeaponVault({
   }
 
   async function selectWeaponForMasterwork(weapon: VisibleWeapon) {
-    if (!weapon.owned) return;
+    if (!weapon.owned && !canManageVault) return;
 
+    setAdminRank(weapon.masterwork);
+    setAdminError('');
     setSelectedWeapon(weapon);
     setRequestedRanks(1);
     setMasterworkError("");
@@ -616,6 +625,29 @@ function WeaponVault({
 
   }
 
+  async function adminSetWeapon(weapon: VisibleWeapon, rank: number) {
+    if (!canManageVault || adminBusy) return;
+    setAdminBusy(true); setAdminError("");
+    try {
+      const response = await fetch("/api/game/vault/admin-weapon", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weaponName: weapon.name, masterwork: rank }),
+      });
+      const result = await response.json() as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error || "Vault edit failed.");
+      setWeapons(previous => previous.map(entry => {
+        if (entry.name.toLowerCase() !== weapon.catalogName.toLowerCase()) return entry;
+        const special = weapon.name !== weapon.catalogName;
+        return { ...entry, [special ? "adept" : "normal"]: { owned: true, masterwork: rank } };
+      }));
+      setSelectedWeapon(previous => previous ? { ...previous, owned: true, masterwork: rank } : previous);
+      setAdminRank(rank);
+      invalidateProfileSnapshot();
+      window.dispatchEvent(new Event("discordiny:weapon-masterworked"));
+    } catch (error) { setAdminError(error instanceof Error ? error.message : "Vault edit failed."); }
+    finally { setAdminBusy(false); }
+  }
   function navigate(
     path: string,
   ) {
@@ -759,16 +791,16 @@ function WeaponVault({
                           className={itemClass}
                           style={{ "--collection-mw-progress": `${weapon.owned ? Math.min(100, Math.max(0, weapon.masterwork / MAX_MASTERWORK * 100)) : 0}%` } as React.CSSProperties}
                           data-weapon-name={weapon.name}
-                          role={weapon.owned ? "button" : undefined}
-                          tabIndex={weapon.owned ? 0 : -1}
+                          role={weapon.owned || canManageVault ? "button" : undefined}
+                          tabIndex={weapon.owned || canManageVault ? 0 : -1}
                           onClick={() => {
-                            if (weapon.owned) {
+                            if (weapon.owned || canManageVault) {
                               void selectWeaponForMasterwork(weapon);
                             }
                           }}
                           onKeyDown={(event) => {
                             if (
-                              weapon.owned &&
+                              (weapon.owned || canManageVault) &&
                               (event.key === "Enter" || event.key === " ")
                             ) {
                               event.preventDefault();
@@ -882,6 +914,23 @@ function WeaponVault({
                       />
                     </div>
 
+                    {canManageVault && (
+                      <div className="weapon-masterwork-admin">
+                        <strong>ACCOUNT 1 · VAULT CONTROLS</strong>
+                        {!selectedWeapon.owned && <button type="button" disabled={adminBusy}
+                          onClick={() => void adminSetWeapon(selectedWeapon, 0)}>GIVE MYSELF WEAPON</button>}
+                        <label htmlFor="vault-admin-rank">Set masterwork rank (0–77)</label>
+                        <div className="weapon-masterwork-admin-row">
+                          <input id="vault-admin-rank" type="number" min={0} max={77} value={adminRank}
+                            onChange={event => setAdminRank(Math.min(77, Math.max(0, Number(event.target.value) || 0)))} />
+                          <button type="button" disabled={adminBusy}
+                            onClick={() => void adminSetWeapon(selectedWeapon, adminRank)}>
+                            {adminBusy ? "SAVING..." : "SET MASTERWORK"}
+                          </button>
+                        </div>
+                        {adminError && <p role="alert">{adminError}</p>}
+                      </div>
+                    )}
                     {selectedWeapon.masterwork >= MAX_MASTERWORK ? (
                       <div className="weapon-masterwork-complete">
                         MAXIMUM MASTERWORK ACHIEVED
@@ -891,28 +940,38 @@ function WeaponVault({
                         <div className="vault-rank-picker">
                           <label htmlFor="vault-rank-input">Ranks to masterwork</label>
                           <div className="vault-rank-picker-row">
-                            <input aria-label="Masterwork ranks slider" type="range" min={1} max={Math.max(1, maxAffordableRanks)}
-                              value={safeRanks} disabled={masterworking || maxAffordableRanks === 0}
+                            <input aria-label="Masterwork ranks slider" type="range" min={1} max={remainingRanks}
+                              value={safeRanks} disabled={masterworking}
                               onChange={event => setRequestedRanks(Number(event.target.value))} />
                             <input id="vault-rank-input" aria-label="Masterwork ranks amount" type="number" inputMode="numeric"
-                              min={1} max={Math.max(1, maxAffordableRanks)} value={safeRanks}
-                              disabled={masterworking || maxAffordableRanks === 0}
-                              onChange={event => setRequestedRanks(Math.min(Math.max(1, Number(event.target.value) || 1), Math.max(1, maxAffordableRanks)))} />
+                              min={1} max={remainingRanks} value={safeRanks}
+                              disabled={masterworking}
+                              onChange={event => setRequestedRanks(Math.min(Math.max(1, Number(event.target.value) || 1), remainingRanks))} />
                           </div>
                           <p>Maximum affordable: <strong>{maxAffordableRanks}</strong> ranks · Target: <strong>{Math.min(MAX_MASTERWORK, selectedWeapon.masterwork + safeRanks)}/{MAX_MASTERWORK}</strong></p>
                         </div>
-                        <div className="vault-rank-cost-list">
-                          {Object.entries(selectedPreview?.cost ?? {}).map(([name, amount]) => {
-                            const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
-                            return <div key={name} className="vault-rank-cost-row">
-                              {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
-                              <span>{name}</span><strong>{amount.toLocaleString()} / {available.toLocaleString()}</strong>
-                            </div>;
-                          })}
-                          {maxAffordableRanks === 0 && <p className="weapon-masterwork-unaffordable">Not enough materials for another rank.</p>}
+                        <div className="weapon-masterwork-next-cost">
+                          <div className="weapon-masterwork-next-heading">
+                            <span>MASTERWORK COSTS</span>
+                            <strong>+{safeRanks} RANK{safeRanks === 1 ? "" : "S"}</strong>
+                          </div>
+                          <div className="weapon-masterwork-next-materials" role="list" aria-label="Masterwork material costs">
+                            {["Glimmer", "Enhancement Core", "Enhancement Prism", "Ascendant Shard", "Ascendant Alloy"].map(name => {
+                              const amount = selectedPreview?.cost[name] ?? 0;
+                              const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
+                              return <div className="vault-rank-cost-row" role="listitem" key={name}>
+                                {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
+                                <span>{name}</span>
+                                <strong className={available < amount ? "weapon-masterwork-insufficient" : ""}>
+                                  {available.toLocaleString()} / {amount.toLocaleString()}
+                                </strong>
+                              </div>;
+                            })}
+                          </div>
+                          {!selectedPreview?.affordable && <p className="weapon-masterwork-unaffordable">Not enough materials for the selected ranks.</p>}
                         </div>
                         <button type="button" className="weapon-masterwork-upgrade vault-rank-confirm"
-                          disabled={masterworking || maxAffordableRanks === 0 || !selectedPreview?.affordable}
+                          disabled={masterworking || !selectedPreview?.affordable}
                           onClick={() => void masterworkWeapon(safeRanks)}>
                           {masterworking ? "UPGRADING..." : `MASTERWORK +${safeRanks}`}
                         </button>
