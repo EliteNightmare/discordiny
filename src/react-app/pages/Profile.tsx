@@ -194,7 +194,7 @@ function Profile(){
         {feedError&&<p className="profile-help">Feed temporarily unavailable. Retrying automatically.</p>}
         {(isMobileFeed?feed.slice(0,5):feed).length>0?(
           <div className="global-activity-feed-events">
-            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`} key={event.id}>
+            {(isMobileFeed?feed.slice(0,5):feed).map(event=><article className={`global-activity-event${event.activityType === "masterwork" ? " global-activity-event-masterwork" : event.weapon?.adept ? " global-activity-event-adept" : ""}`} key={event.id}>
               <div className="global-activity-event-top">
                 <div className="global-activity-event-player-row">
                   {event.avatarUrl&&<img className="global-activity-event-avatar" src={event.avatarUrl} alt="" aria-hidden="true"/>}
@@ -202,11 +202,11 @@ function Profile(){
                 </div>
                 <span className="global-activity-event-time">{formatFeedTime(event.createdAt,feedClock)}</span>
               </div>
-              <span className="global-activity-event-activity">{event.activity}</span>
-              <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.result}</span>
+              <span className="global-activity-event-activity">{event.activityType === "masterwork" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activity}</span>
+              <span className={`global-activity-event-result ${event.result.toLowerCase()}`}>{event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.result}</span>
               {event.weapon&&<div className={`global-activity-event-weapon${event.weapon.adept ? " global-activity-event-weapon-adept" : ""}`}>
                 {getWeaponImage(event.weapon.name)&&<img className="global-activity-event-weapon-icon" src={getWeaponImage(event.weapon.name)} alt="" aria-hidden="true"/>}
-                <div><span>WEAPON DROP</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
+                <div><span>{event.activityType === "masterwork" ? "MAXIMUM MASTERWORK · 77/77" : "WEAPON DROP"}</span><strong>{event.weapon.name}{event.weapon.adept&&!event.weapon.name.toLowerCase().includes("(adept)")?" (Adept)":""}</strong></div>
               </div>}
             </article>)}
           </div>
