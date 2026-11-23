@@ -25,7 +25,6 @@ export default function Account() {
   const [betaMessage, setBetaMessage] = useState("");
   const [betaStatus, setBetaStatus] = useState<{ active: boolean; hasAccess: boolean; isAdmin: boolean } | null>(null);
   const [betaBusy, setBetaBusy] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState("");
   useEffect(() => {
     fetch("/api/beta/status", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
@@ -40,12 +39,10 @@ export default function Account() {
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Request failed");
-      if (path.endsWith("/generate")) setGeneratedCode(data.code);
       if (path.endsWith("/redeem")) {
         setBetaCode("");
         setBetaMessage("Beta access activated.");
       }
-      if (path.endsWith("/toggle")) setBetaMessage(data.active ? "Beta enabled." : "Beta disabled.");
       const status = await fetch("/api/beta/status", { credentials: "include" });
       if (status.ok) setBetaStatus(await status.json());
     } catch (error) {
@@ -255,26 +252,6 @@ export default function Account() {
           backgroundImage: `url(${background})`,
         }}
       >
-        <section className="account-card" style={{ marginBottom: 20 }}>
-          <h2>Discordiny Beta</h2>
-          <p>{betaStatus?.hasAccess ? "Your Discord account has beta access." : "Enter your 15-digit invitation code to join the beta."}</p>
-          {betaStatus?.hasAccess && betaStatus.active && <a href="https://beta.discordiny.com/">Enter Beta</a>}
-          {!betaStatus?.hasAccess && <form onSubmit={e => { e.preventDefault(); void betaAction("/api/beta/redeem", { code: betaCode }); }}>
-            <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15}
-              pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode}
-              onChange={e => setBetaCode(e.target.value.replace(/\D/g, "").slice(0, 15))} />
-            <button type="submit" disabled={betaBusy || betaCode.length !== 15}>Redeem code</button>
-          </form>}
-          {betaStatus?.isAdmin && <div style={{ marginTop: 16 }}>
-            <h3>Beta administration</h3>
-            <button disabled={betaBusy} onClick={() => void betaAction("/api/beta/admin/generate", {})}>Generate 15-digit code</button>
-            {generatedCode && <p>New code: <strong>{generatedCode}</strong></p>}
-            <button disabled={betaBusy} onClick={() => void betaAction("/api/beta/admin/toggle", { enabled: !betaStatus.active })}>
-              {betaStatus.active ? "Disable Beta" : "Enable Beta"}
-            </button>
-          </div>}
-          {betaMessage && <p role="status">{betaMessage}</p>}
-        </section>
         <section className="account-card">
           <div className="account-header">
             <img
@@ -372,6 +349,17 @@ export default function Account() {
                 Link
               </button>
             </div>
+          </div>
+          <div className="account-divider" />
+          <div className="account-beta-access">
+            <h2>Beta Access</h2>
+            <p>{betaStatus?.isAdmin ? "Administrator access is enabled for your Discord account." : betaStatus?.hasAccess ? "Your Discord account has beta access." : "Enter a 15-digit invitation code to join the beta."}</p>
+            {(betaStatus?.isAdmin || (betaStatus?.hasAccess && betaStatus.active)) && <a href="https://beta.discordiny.com/">Enter Beta</a>}
+            {!betaStatus?.isAdmin && !betaStatus?.hasAccess && <form onSubmit={e => { e.preventDefault(); void betaAction("/api/beta/redeem", { code: betaCode }); }}>
+              <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15} pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode} onChange={e => setBetaCode(e.target.value.replace(/\\D/g, "").slice(0, 15))} />
+              <button type="submit" disabled={betaBusy || betaCode.length !== 15}>Redeem code</button>
+            </form>}
+            {betaMessage && <p role="status">{betaMessage}</p>}
           </div>
         </section>
       </main>
