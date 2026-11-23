@@ -3138,6 +3138,16 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     );
   }
 
+  // Announce only the first successful transition to the maximum rank.
+  // Use the existing global feed table so no database migration is needed.
+  if (currentMasterwork < VAULT_MAX_MASTERWORK && updated.masterwork === VAULT_MAX_MASTERWORK) {
+    await c.env.DB.prepare(
+      `INSERT INTO global_activity_feed
+        (user_id, activity_name, activity_type, result, weapon_name, weapon_adept)
+       VALUES (?, 'Weapon Masterwork', 'masterwork', 'MASTERWORKED', ?, ?)`
+    ).bind(session.user_id, weaponName, /\\(Adept\\)/i.test(weaponName) ? 1 : 0).run();
+  }
+
   return c.json({
     success: true,
     weaponName,
@@ -10426,7 +10436,7 @@ app.get("/api/game/activity/feed", async (c) => {
   // Workers Cache API is per data center; it prevents repeated D1 reads within
   // a colo without sharing private profile/session information.
   const feedCache = caches.default;
-  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v1", c.req.url).toString());
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v2", c.req.url).toString());
   const cachedFeed = await feedCache.match(feedCacheKey);
   if (cachedFeed) {
     return c.json(await cachedFeed.json());
