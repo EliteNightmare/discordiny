@@ -5938,6 +5938,29 @@ const CRAWL_COOLDOWN_SECONDS = 90;
 const ENDGAME_DUNGEON_COOLDOWN_SECONDS = 45;
 const ENDGAME_RAID_COOLDOWN_SECONDS = 90;
 const ENDGAME_DAILY_MAX_CHARGES = 3;
+const DAILY_CHARGE_REGEN_SECONDS = 60;
+// Beta encodes recharge anchor (seconds) * 10 + used charges in the existing
+// timestamp column; counter-only legacy rows (0..3) remain compatible.
+function dailyChargeState(raw: number, now: number, max: number, beta: boolean) {
+  const stored = Math.max(0, Math.trunc(Number(raw) || 0));
+  if (!beta) {
+    const used = Math.min(max, stored);
+    return { used, remaining: max - used, nextChargeAt: 0, encoded: used };
+  }
+  const encoded = stored >= 10000000000;
+  const count = Math.min(max, encoded ? stored % 10 : stored);
+  const anchor = encoded ? Math.floor(stored / 10) : now;
+  const restored = Math.min(count, Math.max(0, Math.floor((now - anchor) / DAILY_CHARGE_REGEN_SECONDS)));
+  const used = count - restored;
+  const nextAnchor = used ? anchor + restored * DAILY_CHARGE_REGEN_SECONDS : now;
+  return { used, remaining: max - used, nextChargeAt: used ? nextAnchor + DAILY_CHARGE_REGEN_SECONDS : 0, encoded: used ? nextAnchor * 10 + used : 0 };
+}
+function spendDailyCharge(raw: number, now: number, max: number, beta: boolean) {
+  if (!beta) return Math.min(max, Math.max(0, Math.trunc(raw || 0)) + 1);
+  const state = dailyChargeState(raw, now, max, true);
+  const anchor = state.used ? Math.floor(state.encoded / 10) : now;
+  return anchor * 10 + Math.min(max, state.used + 1);
+}
 
 const ENDGAME_DUNGEON_COOLDOWN_KEY =
   "__endgame_dungeon";
@@ -6443,27 +6466,10 @@ app.get("/api/game/activities", async (c) => {
       ENDGAME_RAID_COOLDOWN_KEY,
     ) ?? 0;
 
-  const dailyDungeonUsed =
-    Math.max(
-      0,
-      Math.min(
-        ENDGAME_DAILY_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyDungeonChargeKey,
-        ) ?? 0,
-      ),
-    );
-
-  const dailyRaidUsed =
-    Math.max(
-      0,
-      Math.min(
-        ENDGAME_DAILY_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyRaidChargeKey,
-        ) ?? 0,
-      ),
-    );
+  const dailyDungeonChargeState = dailyChargeState(endgameCooldownMap.get(dailyDungeonChargeKey) ?? 0, nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyRaidChargeState = dailyChargeState(endgameCooldownMap.get(dailyRaidChargeKey) ?? 0, nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyDungeonUsed = dailyDungeonChargeState.used;
+  const dailyRaidUsed = dailyRaidChargeState.used;
 
   const vanguardStrikeReadyAt = endgameCooldownMap.get(VANGUARD_STRIKE_COOLDOWN_KEY) ?? 0;
   const vanguardNightfallReadyAt = endgameCooldownMap.get(VANGUARD_NIGHTFALL_COOLDOWN_KEY) ?? 0;
@@ -6480,16 +6486,8 @@ app.get("/api/game/activities", async (c) => {
       CRAWL_COOLDOWN_KEY,
     ) ?? 0;
   
-  const dailyShowdownUsed =
-    Math.max(
-      0,
-      Math.min(
-        DAILY_SHOWDOWN_MAX_CHARGES,
-        endgameCooldownMap.get(
-          dailyShowdownChargeKey,
-        ) ?? 0,
-      ),
-    );
+  const dailyShowdownChargeState = dailyChargeState(endgameCooldownMap.get(dailyShowdownChargeKey) ?? 0, nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta");
+  const dailyShowdownUsed = dailyShowdownChargeState.used;
 
   /* =======================================================
      RESPONSE
@@ -8476,16 +8474,7 @@ app.post("/api/game/activity/run", async (c) => {
             timestamp: number;
           }>();
 
-      const usedCharges =
-        Math.max(
-          0,
-          Math.min(
-            DAILY_SHOWDOWN_MAX_CHARGES,
-            Number(
-              chargeRow?.timestamp ?? 0,
-            ) || 0,
-          ),
-        );
+      const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
       if (
         usedCharges >=
@@ -8746,15 +8735,14 @@ app.post("/api/game/activity/run", async (c) => {
                 activity,
                 timestamp
               )
-             VALUES (?, ?, 1)
+             VALUES (?, ?, ?)
              ON CONFLICT(user_id, activity)
-             DO UPDATE SET
-               timestamp =
-                 player_cooldowns.timestamp + 1`,
+             DO UPDATE SET timestamp = excluded.timestamp`,
           )
           .bind(
             session.user_id,
             chargeKey,
+            spendDailyCharge(Number((await c.env.DB.prepare("SELECT timestamp FROM player_cooldowns WHERE user_id = ? AND activity = ?").bind(session.user_id, chargeKey).first<{ timestamp: number }>())?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta"),
           ),
       );
     } else {
@@ -9039,17 +9027,7 @@ app.post("/api/game/activity/run", async (c) => {
             timestamp: number;
           }>();
 
-      const usedCharges =
-        Math.max(
-          0,
-          Math.min(
-            DAILY_SHOWDOWN_MAX_CHARGES,
-
-            Number(
-              chargeRow?.timestamp ?? 0,
-            ) || 0,
-          ),
-        );
+      const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, DAILY_SHOWDOWN_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
       showdownLimit = {
         kind: "charges",
@@ -9728,13 +9706,7 @@ app.post("/api/game/activity/run", async (c) => {
           timestamp: number;
         }>();
 
-    const usedCharges =
-      Math.max(
-        0,
-        Number(
-          chargeRow?.timestamp ?? 0,
-        ) || 0,
-      );
+    const usedCharges = dailyChargeState(Number(chargeRow?.timestamp ?? 0), nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta").used;
 
     if (
       usedCharges >=
@@ -9768,15 +9740,14 @@ app.post("/api/game/activity/run", async (c) => {
               activity,
               timestamp
             )
-           VALUES (?, ?, 1)
+           VALUES (?, ?, ?)
            ON CONFLICT(user_id, activity)
-           DO UPDATE SET
-             timestamp =
-               player_cooldowns.timestamp + 1`,
+           DO UPDATE SET timestamp = excluded.timestamp`,
         )
         .bind(
           session.user_id,
           chargeKey,
+          spendDailyCharge(Number(chargeRow?.timestamp ?? 0), nowSeconds, ENDGAME_DAILY_MAX_CHARGES, c.env.DISCORDINY_ENV === "beta"),
         );
   } else {
     const cooldownSeconds =
