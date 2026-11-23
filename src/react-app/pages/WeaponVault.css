@@ -1141,3 +1141,40 @@
 .weapon-masterwork-next-materials { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 3px 12px; }
 .weapon-masterwork-next-materials .vault-rank-cost-row { min-width: 0; }
 @media (max-width: 450px) { .weapon-masterwork-next-materials { grid-template-columns: 1fr; } }
+
+
+/* Account ID 1: private vault controls inside the existing masterwork dialog. */
+.weapon-masterwork-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid rgba(137,174,221,.35);
+  border-radius: 9px;
+  background: rgba(40,62,90,.19);
+}
+.weapon-masterwork-admin > strong { color: #a9c8ed; font-size: 10px; letter-spacing: .12em; }
+.weapon-masterwork-admin label { color: #d2d8e3; font-size: 10px; }
+.weapon-masterwork-admin-row { display: flex; gap: 9px; }
+.weapon-masterwork-admin input {
+  width: 75px;
+  min-width: 0;
+  padding: 8px;
+  color: #f1f4ff;
+  border: 1px solid rgba(153,184,217,.4);
+  border-radius: 6px;
+  background: rgba(0,0,0,.25);
+}
+.weapon-masterwork-admin button {
+  padding: 9px 12px;
+  border: 1px solid #789fc8;
+  border-radius: 6px;
+  background: #294a6e;
+  color: #f1f6ff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.weapon-masterwork-admin button:disabled { opacity: .55; cursor: wait; }
+.weapon-masterwork-admin p[role="alert"] { color: #ffaaa9; }
