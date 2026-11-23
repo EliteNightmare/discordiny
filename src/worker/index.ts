@@ -2711,7 +2711,7 @@ async function publishVaultAchievements(db: D1Database, userId: number, weaponNa
   if (!source || !complete(source)) return;
   await announce(VAULT_SOURCE_NAMES[source] ?? source.toUpperCase(), "legendary_achievement", "LEGENDARY ACHIEVEMENT", null);
   for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS)) {
-    if (sources.includes(source) && sources.some(s => families.has(s)) && sources.filter(s => families.has(s)).every(complete)) {
+    if (sources.includes(source) && sources.length > 0 && sources.every(complete)) {
       await announce(category, "exotic_achievement", "EXOTIC ACHIEVEMENT", null);
     }
   }
