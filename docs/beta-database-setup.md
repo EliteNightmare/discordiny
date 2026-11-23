@@ -51,3 +51,7 @@ Expected production beta setting: `enabled = 0` (closed by default).
 - The beta reset operation and full site gate are not implemented yet; do not enable public beta.
 - Bungie linking is not beta-ready; the registered production-only callback must not be replaced.
 - Remove the temporary `beta-schema.sql` export from your working directory after import; do not commit it without review.
+
+## Automatic beta deployment
+
+The dedicated `discordiny-beta` Cloudflare Worker uses GitHub branch `game-updates`, build command `npm run build`, and deploy command `npx wrangler deploy --config wrangler.beta.json`. Its Cloudflare **Production** environment is the primary environment of the *beta Worker*, not the live `discordiny` Worker. A new commit to `game-updates` should trigger a build when GitHub integration is enabled. Verify that deployment logs name `discordiny-beta` before attaching beta domains. Do not merge the branch into `main` just to deploy beta.
