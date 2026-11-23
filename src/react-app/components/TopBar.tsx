@@ -20,6 +20,8 @@ type User = {
 export default function TopBar() {
   const [user, setUser] =
     useState<User | null>(null);
+  const [betaAdmin, setBetaAdmin] = useState(false);
+  const isBetaHost = window.location.hostname.startsWith("beta.");
 
   const [
     mobileMenuOpen,
@@ -96,6 +98,10 @@ export default function TopBar() {
 
         if (data.authenticated) {
           setUser(data.user);
+          if (isBetaHost) {
+            const status = await fetch("/api/beta/status", { credentials: "include" }).then(r => r.ok ? r.json() : null).catch(() => null);
+            setBetaAdmin(status?.isAdmin === true);
+          }
         } else {
           setUser(null);
         }
@@ -776,7 +782,7 @@ export default function TopBar() {
                 Account
               </button>
 
-              {user.id === 1 && (
+              {(isBetaHost ? betaAdmin : user.id === 1) && (
                 <button type="button" className="account-menu-profile" onClick={() => {
                   setAccountMenuOpen(false);
                   goTo("/command/8b6f9e2c4a71d05f3b8c92a6e14d7f0c");
