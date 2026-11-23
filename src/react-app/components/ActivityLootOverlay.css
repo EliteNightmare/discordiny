@@ -212,3 +212,24 @@
     bottom: calc(100% + 6px);
   }
 }
+
+/* Notifications stay visible for the full stacking window; previously the
+   material keyframe faded out at 4.7s despite the notification lasting 9.5s. */
+#discordiny-loot-hud-root .activity-loot-material {
+  animation: loot-material-enter 300ms ease-out both;
+}
+#discordiny-loot-hud-root .activity-loot-weapon {
+  animation: loot-weapon-enter 350ms ease-out both;
+}
+@keyframes loot-material-enter {
+  from { opacity: 0; transform: translateX(45px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes loot-weapon-enter {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #discordiny-loot-hud-root .activity-loot-material,
+  #discordiny-loot-hud-root .activity-loot-weapon { animation: none; }
+}
