@@ -100,7 +100,10 @@ app.use("/api/*", async (c, next) => {
   if (path.startsWith("/api/bungie/")) return c.json({ error: "Bungie linking is not yet supported on beta" }, 403);
   if (path === "/api/auth/login" || path === "/api/auth/callback" ||
       path === "/api/auth/logout" || path === "/api/auth/me" ||
-      path === "/api/beta/status" || path.startsWith("/api/beta/admin/")) return next();
+      path === "/api/beta/status") return next();
+  // The beta shutdown switch applies to every account, including the owner.
+  // Management stays available on production, which can reopen beta.
+  if (path.startsWith("/api/beta/admin/")) return c.json({ error: "Manage beta from the production admin panel" }, 403);
   // Existing administrative endpoints trust local user ID 1; never expose
   // them in beta until converted to production Discord-identity checks.
   if (path.startsWith("/api/admin/")) return c.json({ error: "Beta admin endpoint disabled" }, 403);
@@ -112,8 +115,8 @@ app.use("/api/*", async (c, next) => {
     .first<{ enabled: number }>();
   const owner = await accessDb.prepare("SELECT discord_id FROM users WHERE id = 1")
     .first<{ discord_id: string }>();
-  if (owner?.discord_id === session.discord_id) return next();
   if (setting?.enabled !== 1) return c.json({ error: "Beta is currently closed" }, 403);
+  if (owner?.discord_id === session.discord_id) return next();
   const invited = await accessDb.prepare(
     "SELECT 1 AS allowed FROM beta_invites WHERE redeemed_by_discord_id = ? LIMIT 1"
   ).bind(session.discord_id).first();
