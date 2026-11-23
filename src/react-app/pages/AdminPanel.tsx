@@ -15,7 +15,7 @@ const links = [
 ];
 
 
-type BetaCode = { code_id: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null; used: boolean };
+type BetaCode = { code: string | null; code_id: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null; used: boolean };
 function BetaAdministration() {
   const [codes, setCodes] = useState<BetaCode[]>([]);
   const [filter, setFilter] = useState<"all" | "used" | "unused">("all");
@@ -57,9 +57,9 @@ function BetaAdministration() {
       {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_REGULAR, false); setPreviewEnabled(PREVIEW_CLOSED, true); window.location.href = "/"; }}>Preview closed beta (no actual shutdown)</button>}
       {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_CLOSED, false); setPreviewEnabled(PREVIEW_REGULAR, true); window.location.href = "/"; }}>Preview regular account (no code)</button>}
     </div>
-    {newCode && <p role="status">New invitation code: <strong>{newCode}</strong> <button onClick={() => void navigator.clipboard.writeText(newCode)}>Copy</button><br/><small>Save this code now. Only its SHA-256 hash is stored; the full code cannot be retrieved later.</small></p>}
+    {newCode && <p role="status">New invitation code: <strong>{newCode}</strong> <button onClick={() => void navigator.clipboard.writeText(newCode)}>Copy</button><br/><small>New codes are now retained in the administrator-only invitation list.</small></p>}
     <div className="dc-admin-list-head"><h2>Invitations ({codes.length})</h2><label>Show <select aria-label="Filter beta invitations" value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="used">Used</option><option value="unused">Unused</option></select></label></div>
-    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Code reference</th><th>Status</th><th>Created</th><th>Redeemed by Discord ID</th><th>Redeemed</th></tr></thead><tbody>{visible.map(code => <tr key={code.code_id}><td><code>{code.code_id}</code></td><td>{code.used ? "Used" : "Unused"}</td><td>{code.created_at}</td><td>{code.redeemed_by_discord_id ?? "—"}</td><td>{code.redeemed_at ?? "—"}</td></tr>)}</tbody></table>{visible.length === 0 && <p>No matching invitations.</p>}</div>
+    <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", borderSpacing: "0 12px" }}><thead><tr><th>Invitation code</th><th>Status</th><th>Created</th><th>Redeemed by Discord ID</th><th>Redeemed</th></tr></thead><tbody>{visible.map(code => <tr key={code.code_id}><td>{code.code ? <><code>{code.code}</code> <button type="button" onClick={() => void navigator.clipboard.writeText(code.code!)}>Copy</button></> : <span title={`Legacy hash reference: ${code.code_id}`}>Legacy code — unavailable</span>}</td><td>{code.used ? "Used" : "Unused"}</td><td>{code.created_at}</td><td>{code.redeemed_by_discord_id ?? "—"}</td><td>{code.redeemed_at ?? "—"}</td></tr>)}</tbody></table>{visible.length === 0 && <p>No matching invitations.</p>}</div>
     {error && <p role="alert">{error}</p>}
   </section>;
 }
