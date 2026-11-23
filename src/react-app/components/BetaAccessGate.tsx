@@ -27,7 +27,7 @@ export default function BetaAccessGate({ children }: { children: ReactNode }) {
   const previewClosed = admin && isPreviewEnabled(PREVIEW_CLOSED);
   const previewRegular = admin && isPreviewEnabled(PREVIEW_REGULAR);
   void previewTick;
-  if (!loading && status?.betaEnvironment && status.active && !previewClosed && ((admin && !previewRegular) || (previewRegular ? status.hasAccess : status.hasAccess))) {
+  if (!loading && status?.betaEnvironment && status.active && !previewClosed && ((admin && !previewRegular) || (!previewRegular && status.hasAccess))) {
     return <>{children}</>;
   }
 
