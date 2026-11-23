@@ -3955,24 +3955,32 @@ app.post("/api/game/activities/reset-daily-charges", async (c) => {
   return c.json({ success: true });
 });
 
+// Account ID 1 only: set the elapsed exploration claim timer (0–24 hours).
 app.post("/api/game/explore/set-max-timer", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
   const session = await c.env.DB
-    .prepare("SELECT user_id FROM sessions WHERE id = ? LIMIT 1")
-    .bind(sessionId)
+    .prepare("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ? LIMIT 1")
+    .bind(sessionId, new Date().toISOString())
     .first<{ user_id: number }>();
   if (!session) return c.json({ authenticated: false }, 401);
   if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
 
+  const body = await c.req.json().catch(() => null) as { elapsedSeconds?: unknown } | null;
+  const elapsedSeconds = body?.elapsedSeconds;
+  if (typeof elapsedSeconds !== "number" || !Number.isInteger(elapsedSeconds) ||
+      elapsedSeconds < 0 || elapsedSeconds > EXPLORE_MAX_SECONDS) {
+    return c.json({ error: "Timer must be between 0 and 24 hours." }, 400);
+  }
+
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const timestamp = nowSeconds - EXPLORE_MAX_SECONDS;
+  const timestamp = nowSeconds - elapsedSeconds;
   await c.env.DB.prepare(
     `INSERT INTO player_cooldowns (user_id, activity, timestamp)
      VALUES (?, 'explore', ?)
-     ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`,
+     ON CONFLICT(user_id, activity) DO UPDATE SET timestamp = excluded.timestamp`
   ).bind(session.user_id, timestamp).run();
-  return c.json({ success: true, elapsedSeconds: EXPLORE_MAX_SECONDS });
+  return c.json({ success: true, elapsedSeconds });
 });
 
 app.post("/api/game/explore/claim", async (c) => {
