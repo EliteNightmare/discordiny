@@ -52,6 +52,15 @@ export function registerBetaRoutes<T extends Bindings>(
     return c.json({ success: true });
   });
 
+  app.get("/api/beta/admin/codes", async c => {
+    const identity = await getIdentity(c);
+    if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    const result = await registry(c).prepare(
+      "SELECT code_hash, created_at, created_by_discord_id, redeemed_by_discord_id, redeemed_at FROM beta_invites ORDER BY created_at DESC, code_hash DESC LIMIT 1000"
+    ).all<{ code_hash: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
+    return c.json({ codes: result.results.map(row => ({ ...row, code_id: row.code_hash.slice(0, 12), used: !!row.redeemed_by_discord_id, code_hash: undefined })) });
+  });
+
   app.post("/api/beta/admin/generate", async c => {
     const identity = await getIdentity(c);
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
