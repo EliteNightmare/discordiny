@@ -100,7 +100,7 @@ app.use("/api/*", async (c, next) => {
   if (path.startsWith("/api/bungie/")) return c.json({ error: "Bungie linking is not yet supported on beta" }, 403);
   if (path === "/api/auth/login" || path === "/api/auth/callback" ||
       path === "/api/auth/logout" || path === "/api/auth/me" ||
-      path === "/api/beta/status") return next();
+      path === "/api/beta/status" || path === "/api/beta/redeem") return next();
   // The beta shutdown switch applies to every account, including the owner.
   // Management endpoints independently verify the production owner identity.
   // The frontend hides every beta page while closed; production can reopen it.
