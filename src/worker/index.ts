@@ -9249,7 +9249,8 @@ app.post("/api/game/activity/run", async (c) => {
 
     if (
       Number.isFinite(readyAt) &&
-      readyAt > nowSeconds
+      readyAt > nowSeconds &&
+      c.env.DISCORDINY_ENV !== "beta"
     ) {
       return c.json(
         {
