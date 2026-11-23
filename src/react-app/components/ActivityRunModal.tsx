@@ -559,7 +559,9 @@ export default function ActivityRunModal({
           }, {});
       onFinished?.({
         weapons: (completed.weapons?.length ? completed.weapons : [completed.weapon]).filter((weapon) => weapon?.dropped && Boolean(weapon.name)),
-        materials: totals,
+        // Encounter materials were already announced as they dropped. Do not
+        // replay the run totals as a second notification at completion.
+        materials: lastRewardedEncounterRef.current >= 0 ? {} : totals,
         xp: completed.xp ?? 0,
       });
     }
@@ -1558,7 +1560,7 @@ export default function ActivityRunModal({
                     )}
 
                     <div className="activity-run-coil-bubble">
-                      {result.secret.challenge.prompt}
+                      Recall the hidden signal from your encounters.
                     </div>
                   </div>
 
