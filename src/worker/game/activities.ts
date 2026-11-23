@@ -266,8 +266,8 @@ export const ACTIVITIES = {
       "reward_table": "pinnacle",
       "encounters": [
         "Empire Hunt: The Warrior",
-        "Empire Hunt: The Priestess",
-        "Empire Hunt: The Technocrat"
+        "Empire Hunt: The Technocrat",
+        "Empire Hunt: The Dark Priestess"
       ]
     },
     "nightmarehunts": {
