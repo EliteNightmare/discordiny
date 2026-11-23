@@ -6382,16 +6382,6 @@ app.get("/api/game/activities", async (c) => {
     );
   }
 
-  const dungeonReadyAt =
-    endgameCooldownMap.get(
-      ENDGAME_DUNGEON_COOLDOWN_KEY,
-    ) ?? 0;
-
-  const raidReadyAt =
-    endgameCooldownMap.get(
-      ENDGAME_RAID_COOLDOWN_KEY,
-    ) ?? 0;
-
   const dailyDungeonUsed =
     Math.max(
       0,
