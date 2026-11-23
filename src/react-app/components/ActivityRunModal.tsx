@@ -453,6 +453,7 @@ export default function ActivityRunModal({
 
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
+  const [netherExpired, setNetherExpired] = useState(false);
 
   const [resolvingSecret, setResolvingSecret] =
     useState(false);
@@ -958,6 +959,8 @@ export default function ActivityRunModal({
           );
         }
 
+        setNetherExpired(false);
+        setClickedEyes([]);
         setPhase("secret");
         return;
       }
@@ -1077,6 +1080,7 @@ export default function ActivityRunModal({
       return;
     }
 
+    setNetherExpired(true);
     void resolveCrawlSecret(
       clickedEyes,
     );
@@ -1687,7 +1691,7 @@ export default function ActivityRunModal({
                     </strong>
                   </div>
 
-                  <div className="activity-run-nether-field">
+                  <div className="activity-run-nether-field" style={{ position: "absolute", inset: 0, zIndex: 8, pointerEvents: "none" }}>
                     {result.secret.challenge.eyes.map(
                       (eye) => {
                         const clicked =
@@ -1704,9 +1708,10 @@ export default function ActivityRunModal({
                             key={eye.id}
                             type="button"
                             className="activity-run-nether-eye"
-                            disabled={resolvingSecret}
+                            disabled={resolvingSecret || netherExpired || crawlSecondsLeft <= 0}
                             aria-label="Destroy eye"
                             style={{
+                              pointerEvents: "auto",
                               left: `${eye.x}%`,
                               top: `${eye.y}%`,
                               transform:
