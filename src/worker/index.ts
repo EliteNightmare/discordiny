@@ -2621,6 +2621,56 @@ app.post("/api/bungie/unlink", async (c) => {
 ========================================================= */
 
 const VAULT_MAX_MASTERWORK = 77;
+const VAULT_ACHIEVEMENT_GROUPS: Record<string, string[]> = {
+  Destinations: ["cosmodrome","edz","nessus","dreaming city","moon","europa","throne world","neomuna","pale heart","plaguelands"],
+  Daily: ["cos","sos","eow","sotw","eq","vog","kf","ce","udp"],
+  Vanguard: ["strike","nf","gm"],
+  Pinnacle: ["bgs","emph","nigh","seraph","elivagar","lucent","coil","contest","nether"],
+  Endgame: ["goa","wr","dual","st","poh","vh","sd","gotd","proph","scourge","levi","lw","gos","dsc","vow","ron","se"],
+  Fishing: ["fishing"],
+};
+const VAULT_SOURCE_NAMES: Record<string, string> = {
+  cosmodrome:"Cosmodrome", edz:"European Dead Zone", nessus:"Nessus",
+  "dreaming city":"Dreaming City", moon:"Moon", europa:"Europa", "throne world":"Throne World",
+  neomuna:"Neomuna", "pale heart":"The Pale Heart", plaguelands:"Plaguelands",
+};
+async function publishVaultAchievements(db: D1Database, userId: number, weaponName: string, includeWeapon: boolean) {
+  const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
+  const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
+  const levels = new Map((owned.results ?? []).map(row => [row.weapon_name.trim().toLowerCase(), Number(row.masterwork)]));
+  const families = new Map<string, Set<string>>();
+  for (const row of catalog.results ?? []) {
+    const source = row.source.trim().toLowerCase();
+    const base = getVaultBaseWeaponName(row.name).toLowerCase();
+    if (!families.has(source)) families.set(source, new Set());
+    families.get(source)!.add(base);
+  }
+  const complete = (source: string) => {
+    const names = families.get(source);
+    return !!names?.size && [...names].every(name =>
+      (levels.get(name) ?? 0) >= VAULT_MAX_MASTERWORK &&
+      ["adept","timelost","harrowed"].some(suffix => (levels.get(name + " (" + suffix + ")") ?? 0) >= VAULT_MAX_MASTERWORK)
+    );
+  };
+  const announce = async (activityName: string, activityType: string, result: string, name: string | null) => {
+    await db.prepare(`INSERT INTO global_activity_feed (user_id,activity_name,activity_type,result,weapon_name,weapon_adept)
+      SELECT ?,?,?,?, ?,0 WHERE NOT EXISTS (
+        SELECT 1 FROM global_activity_feed WHERE user_id = ? AND activity_type = ? AND activity_name = ? AND result = ?
+      )`).bind(userId,activityName,activityType,result,name,userId,activityType,activityName,result).run();
+  };
+  if (includeWeapon) {
+    await announce(weaponName, "masterwork", "ACHIEVEMENT", weaponName);
+  }
+  const source = (catalog.results ?? []).find(row => getVaultBaseWeaponName(row.name).toLowerCase() === getVaultBaseWeaponName(weaponName).toLowerCase())?.source?.trim().toLowerCase();
+  if (!source || !complete(source)) return;
+  await announce(VAULT_SOURCE_NAMES[source] ?? source.toUpperCase(), "legendary_achievement", "LEGENDARY ACHIEVEMENT", null);
+  for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS)) {
+    if (sources.includes(source) && sources.some(s => families.has(s)) && sources.filter(s => families.has(s)).every(complete)) {
+      await announce(category, "exotic_achievement", "EXOTIC ACHIEVEMENT", null);
+    }
+  }
+}
+
 
 const VAULT_SPECIAL_VARIANT_SUFFIX =
   /\s*\((Adept|Timelost|Harrowed)\)\s*$/i;
@@ -3138,14 +3188,8 @@ app.post("/api/game/weapons/masterwork", async (c) => {
     );
   }
 
-  // Announce only the first successful transition to the maximum rank.
-  // Use the existing global feed table so no database migration is needed.
   if (currentMasterwork < VAULT_MAX_MASTERWORK && updated.masterwork === VAULT_MAX_MASTERWORK) {
-    await c.env.DB.prepare(
-      `INSERT INTO global_activity_feed
-        (user_id, activity_name, activity_type, result, weapon_name, weapon_adept)
-       VALUES (?, 'Weapon Masterwork', 'masterwork', 'MASTERWORKED', ?, ?)`
-    ).bind(session.user_id, weaponName, weaponName.toLowerCase().includes('(adept)') ? 1 : 0).run();
+    await publishVaultAchievements(c.env.DB, session.user_id, weaponName, true);
   }
 
   return c.json({
@@ -10444,7 +10488,7 @@ app.get("/api/game/activity/feed", async (c) => {
   // Workers Cache API is per data center; it prevents repeated D1 reads within
   // a colo without sharing private profile/session information.
   const feedCache = caches.default;
-  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v2", c.req.url).toString());
+  const feedCacheKey = new Request(new URL("/__discordiny_cache/global_weapon_feed_v3", c.req.url).toString());
   const cachedFeed = await feedCache.match(feedCacheKey);
   if (cachedFeed) {
     return c.json(await cachedFeed.json());
@@ -10474,8 +10518,8 @@ app.get("/api/game/activity/feed", async (c) => {
            ON users.id =
               global_activity_feed.user_id
 
-         WHERE global_activity_feed.weapon_name IS NOT NULL
-           AND TRIM(global_activity_feed.weapon_name) <> ''
+         WHERE (global_activity_feed.activity_type IN ('legendary_achievement','exotic_achievement')
+           OR (global_activity_feed.weapon_name IS NOT NULL AND TRIM(global_activity_feed.weapon_name) <> ''))
            AND global_activity_feed.created_at >= date('now')
            AND global_activity_feed.created_at < date('now', '+1 day')
 
