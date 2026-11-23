@@ -49,7 +49,7 @@ export const CRAWL_SECRET_CHANCE = 1.00;
 
 export const CRAWL_SECRET_TIMEOUT_SECONDS = 15;
 
-export const CRAWL_NETHER_TIMEOUT_SECONDS = 3;
+export const CRAWL_NETHER_TIMEOUT_SECONDS = 20;
 
 export const CRAWL_XP = 25000;
 
@@ -107,7 +107,7 @@ export const CRAWL_CONTEST_PIECES = [
    NETHER SECRET
 ========================================================= */
 
-export const CRAWL_NETHER_MIN_EYES = 4;
+export const CRAWL_NETHER_MIN_EYES = 7;
 
 export const CRAWL_NETHER_MAX_EYES = 7;
 
@@ -995,7 +995,7 @@ export function validateNetherSecret(
    * The player has to click every generated eye.
    */
   if (
-    selectedEyes.length < Math.max(0, challenge.eyeCount - 2) || selectedEyes.length > challenge.eyeCount
+    selectedEyes.length !== 5
   ) {
     return false;
   }
