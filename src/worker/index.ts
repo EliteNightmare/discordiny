@@ -2877,6 +2877,34 @@ app.get("/api/game/vault/index", async (c) => {
   });
 });
 
+// Private vault editing: only account ID 1 can grant or adjust a catalog weapon.
+app.post("/api/game/vault/admin-weapon", async (c) => {
+  const sessionId = getCookie(c, SESSION_COOKIE, "host");
+  if (!sessionId) return c.json({ authenticated: false }, 401);
+  const session = await c.env.DB.prepare("SELECT user_id FROM sessions WHERE id = ? AND expires_at > ? LIMIT 1")
+    .bind(sessionId, new Date().toISOString()).first<{user_id:number}>();
+  if (!session) return c.json({ authenticated: false }, 401);
+  if (Number(session.user_id) !== 1) return c.json({ error: "Forbidden" }, 403);
+  const body = await c.req.json().catch(() => null) as {weaponName?:unknown;masterwork?:unknown} | null;
+  const weaponName = typeof body?.weaponName === "string" ? body.weaponName.trim() : "";
+  const level = body?.masterwork;
+  if (!weaponName || typeof level !== "number" || !Number.isInteger(level) || level < 0 || level > VAULT_MAX_MASTERWORK)
+    return c.json({ error: "Invalid weapon or masterwork rank (0–77)." }, 400);
+  const base = getVaultBaseWeaponName(weaponName);
+  const variant = getVaultVariantSuffix(weaponName);
+  const catalog = await c.env.DB.prepare("SELECT name FROM weapons WHERE lower(name) = lower(?) OR lower(name) = lower(?) LIMIT 1")
+    .bind(weaponName, base).first<{name:string}>();
+  if (!catalog) return c.json({ error: "Weapon not in catalog." }, 404);
+  const prior = await c.env.DB.prepare("SELECT masterwork FROM player_weapons WHERE user_id = ? AND lower(weapon_name) = lower(?) LIMIT 1")
+    .bind(session.user_id, weaponName).first<{masterwork:number}>();
+  await c.env.DB.prepare(`INSERT INTO player_weapons (user_id,weapon_name,masterwork)
+    VALUES (?,?,?) ON CONFLICT(user_id,weapon_name) DO UPDATE SET masterwork = excluded.masterwork`)
+    .bind(session.user_id, variant ? base + " (" + variant + ")" : base, level).run();
+  if ((prior?.masterwork ?? -1) < VAULT_MAX_MASTERWORK && level === VAULT_MAX_MASTERWORK)
+    await publishVaultAchievements(c.env.DB, session.user_id, weaponName, true);
+  return c.json({ success: true, weaponName, masterwork: level });
+});
+
 app.get("/api/game/weapons/masterwork", async (c) => {
   const sessionId = getCookie(c, SESSION_COOKIE, "host");
   if (!sessionId) return c.json({ authenticated: false }, 401);
@@ -3502,6 +3530,7 @@ app.get("/api/game/weapons", async (c) => {
 
   return c.json({
     authenticated: true,
+    canManageVault: Number(session.user_id) === 1,
     source,
     weapons,
   });
