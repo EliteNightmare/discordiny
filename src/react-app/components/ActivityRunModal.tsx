@@ -424,6 +424,8 @@ export default function ActivityRunModal({
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
   const [netherExpired, setNetherExpired] = useState(false);
+  const [netherSpawned, setNetherSpawned] = useState(0);
+  const netherResolvingRef = useRef(false);
 
   const [resolvingSecret, setResolvingSecret] =
     useState(false);
@@ -635,6 +637,15 @@ export default function ActivityRunModal({
     phase,
     crawlExpiresAt,
   ]);
+
+  // Spawn seven total eyes in waves of one or two during encounters.
+  useEffect(() => {
+    if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "nether") return;
+    const timeouts = [1, 3, 5, 7].map((count, index) =>
+      window.setTimeout(() => setNetherSpawned(count), index * ENCOUNTER_MS)
+    );
+    return () => timeouts.forEach(window.clearTimeout);
+  }, [phase, crawlRunId, result?.secret?.challenge?.type]);
 
   useEffect(() => {
     if (phase !== "encounters" || visible <= 0 || !result || !onEncounterLoot) return;
@@ -937,6 +948,8 @@ export default function ActivityRunModal({
 
         setNetherExpired(false);
         setClickedEyes([]);
+        setNetherSpawned(0);
+        netherResolvingRef.current = false;
         crawlPending.current = true;
         delayedCrawlSecret.current = data.result.secret.challenge.type === "coil";
         setPhase("encounters");
@@ -1009,7 +1022,8 @@ export default function ActivityRunModal({
         );
       }
 
-      clearTimers();
+      // Preserve encounter animation on inline secret resolution.
+      if (delayedCrawlSecret.current || crawlRevealDone.current) clearTimers();
       completedResultRef.current = data.result;
       setPayload(data);
       setCrawlRunId(null);
@@ -1556,14 +1570,13 @@ export default function ActivityRunModal({
                     <strong>
                       {Math.max(
                         0,
-                        result.secret.challenge.eyeCount -
-                          clickedEyes.length,
+                        5 - clickedEyes.length,
                       )}
                     </strong>
                   </div>
 
                   <div className="activity-run-nether-field" style={{ position: "absolute", inset: 0, zIndex: 8, pointerEvents: "none" }}>
-                    {result.secret.challenge.eyes.map(
+                    {result.secret.challenge.eyes.slice(0, netherSpawned).map(
                       (eye) => {
                         const clicked =
                           clickedEyes.includes(
@@ -1579,7 +1592,7 @@ export default function ActivityRunModal({
                             key={eye.id}
                             type="button"
                             className="activity-run-nether-eye"
-                            disabled={resolvingSecret || netherExpired || crawlSecondsLeft <= 0}
+                            disabled={resolvingSecret || netherResolvingRef.current || netherExpired || crawlSecondsLeft <= 0}
                             aria-label="Destroy eye"
                             style={{
                               pointerEvents: "auto",
@@ -1589,27 +1602,12 @@ export default function ActivityRunModal({
                                 `translate(-50%, -50%) rotate(${eye.rotation}deg)`,
                             }}
                             onClick={() => {
-                              const next = [
-                                ...clickedEyes,
-                                eye.id,
-                              ];
-
-                              setClickedEyes(
-                                next,
-                              );
-
-                              if (
-                                result.secret
-                                  ?.challenge?.type ===
-                                  "nether" &&
-                                next.length ===
-                                  result.secret
-                                    .challenge
-                                    .eyeCount
-                              ) {
-                                void resolveCrawlSecret(
-                                  next,
-                                );
+                              if (netherResolvingRef.current || clickedEyes.includes(eye.id)) return;
+                              const next = [...clickedEyes, eye.id];
+                              setClickedEyes(next);
+                              if (next.length >= 5) {
+                                netherResolvingRef.current = true;
+                                void resolveCrawlSecret(next.slice(0, 5));
                               }
                             }}
                           >
