@@ -356,7 +356,7 @@ export default function Account() {
             <p>{betaStatus?.isAdmin ? "Administrator access is enabled for your Discord account." : betaStatus?.hasAccess ? "Your Discord account has beta access." : "Enter a 15-digit invitation code to join the beta."}</p>
             {(betaStatus?.isAdmin || (betaStatus?.hasAccess && betaStatus.active)) && <a href="https://beta.discordiny.com/">Enter Beta</a>}
             {!betaStatus?.isAdmin && !betaStatus?.hasAccess && <form onSubmit={e => { e.preventDefault(); void betaAction("/api/beta/redeem", { code: betaCode }); }}>
-              <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15} pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode} onChange={e => setBetaCode(e.target.value.replace(/\\D/g, "").slice(0, 15))} />
+              <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15} pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode} onChange={e => setBetaCode(e.target.value.replace(/\D/g, "").slice(0, 15))} />
               <button type="submit" disabled={betaBusy || betaCode.length !== 15}>Redeem code</button>
             </form>}
             {betaMessage && <p role="status">{betaMessage}</p>}
