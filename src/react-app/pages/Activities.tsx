@@ -1233,6 +1233,14 @@ export default function Activities() {
     );
   }, [loadActivities]);
 
+  // Keep daily charge pips in sync as one charge regenerates each minute.
+  useEffect(() => {
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === "visible") void loadActivities();
+    }, 15000);
+    return () => window.clearInterval(refresh);
+  }, [loadActivities]);
+
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
@@ -3008,7 +3016,7 @@ export default function Activities() {
           key={`encounter-${drop.id}`}
           loot={drop.loot}
           before={null}
-          durationMs={2400}
+          durationMs={9500}
           onDone={() => setEncounterDrops(current => current.filter(item => item.id !== drop.id))}
         />
       ))}
