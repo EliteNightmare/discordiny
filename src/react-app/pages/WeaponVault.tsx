@@ -955,14 +955,15 @@ function WeaponVault({
                             <span>MASTERWORK COSTS</span>
                             <strong>+{safeRanks} RANK{safeRanks === 1 ? "" : "S"}</strong>
                           </div>
-                          <div className="weapon-masterwork-next-materials">
-                            {Object.entries(selectedPreview?.cost ?? {}).map(([name, amount]) => {
+                          <div className="weapon-masterwork-next-materials" role="list" aria-label="Masterwork material costs">
+                            {["Glimmer", "Enhancement Core", "Enhancement Prism", "Ascendant Shard", "Ascendant Alloy"].map(name => {
+                              const amount = selectedPreview?.cost[name] ?? 0;
                               const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
-                              return <div className="vault-rank-cost-row" key={name}>
+                              return <div className="vault-rank-cost-row" role="listitem" key={name}>
                                 {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
                                 <span>{name}</span>
                                 <strong className={available < amount ? "weapon-masterwork-insufficient" : ""}>
-                                  {amount.toLocaleString()} / {available.toLocaleString()}
+                                  {available.toLocaleString()} / {amount.toLocaleString()}
                                 </strong>
                               </div>;
                             })}
