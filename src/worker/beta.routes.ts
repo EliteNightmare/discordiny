@@ -60,16 +60,18 @@ export function registerBetaRoutes<T extends Bindings>(
   });
 
   app.post("/api/beta/redeem", async c => {
-    if (isBeta(c)) return c.json({ error: "Redeem codes on discordiny.com/account" }, 403);
     const identity = await getIdentity(c);
     if (!identity) return c.json({ error: "Log in first" }, 401);
     const body = await c.req.json().catch(() => ({}));
     const code = String(body.code ?? "");
     if (!/^\d{15}$/.test(code)) return c.json({ error: "Enter a 15-digit code" }, 400);
-    const result = await registry(c).prepare(
+    const db = registry(c);
+    const existing = await db.prepare("SELECT code_hash FROM beta_invites WHERE redeemed_by_discord_id = ? LIMIT 1").bind(identity.discord_id).first();
+    if (existing) return c.json({ error: "This Discord account already has beta access" }, 409);
+    const result = await db.prepare(
       "UPDATE beta_invites SET redeemed_by_discord_id = ?, redeemed_at = CURRENT_TIMESTAMP WHERE code_hash = ? AND redeemed_by_discord_id IS NULL"
-    ).bind(identity.discord_id, await digest(code)).run().catch(() => null);
-    if (!result?.meta?.changes) return c.json({ error: "Code invalid, used, or account already enrolled" }, 409);
+    ).bind(identity.discord_id, await digest(code)).run();
+    if (!result.meta.changes) return c.json({ error: "Invitation code is invalid or already used" }, 409);
     return c.json({ success: true });
   });
 
@@ -106,6 +108,51 @@ export function registerBetaRoutes<T extends Bindings>(
       }
     }
     return c.json({ error: "Could not generate unique code" }, 500);
+  });
+
+
+  // All membership operations use the shared production registry and verified Discord identity.
+  app.get("/api/beta/admin/members", async c => {
+    const identity = await getIdentity(c);
+    if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    const result = await registry(c).prepare(
+      "SELECT i.code_hash, i.redeemed_by_discord_id AS discord_id, i.redeemed_at, u.username, u.global_name FROM beta_invites i LEFT JOIN users u ON u.discord_id = i.redeemed_by_discord_id WHERE i.redeemed_by_discord_id IS NOT NULL ORDER BY i.redeemed_at DESC LIMIT 1000"
+    ).all<{ code_hash: string; discord_id: string; redeemed_at: string; username: string | null; global_name: string | null }>();
+    c.header("Cache-Control", "no-store");
+    return c.json({ members: result.results.map(row => ({
+      discord_id: row.discord_id, username: row.username, global_name: row.global_name,
+      redeemed_at: row.redeemed_at, code_id: row.code_hash.slice(0, 12),
+    })) });
+  });
+
+  app.post("/api/beta/admin/revoke", async c => {
+    const identity = await getIdentity(c);
+    if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    const body = await c.req.json().catch(() => ({}));
+    const discordId = String(body.discord_id ?? "");
+    if (!/^\\d{15,22}$/.test(discordId)) return c.json({ error: "Invalid Discord ID" }, 400);
+    if (discordId === identity!.discord_id) return c.json({ error: "Cannot revoke the administrator" }, 403);
+    const result = await registry(c).prepare(
+      "UPDATE beta_invites SET redeemed_by_discord_id = NULL, redeemed_at = NULL WHERE redeemed_by_discord_id = ?"
+    ).bind(discordId).run();
+    if (!result.meta.changes) return c.json({ error: "Account has no active beta invitation" }, 404);
+    return c.json({ success: true });
+  });
+
+  app.post("/api/beta/admin/delete-code", async c => {
+    const identity = await getIdentity(c);
+    if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    const body = await c.req.json().catch(() => ({}));
+    const codeId = String(body.code_id ?? "");
+    if (!/^[a-f0-9]{12}$/.test(codeId)) return c.json({ error: "Invalid invitation reference" }, 400);
+    const matches = await registry(c).prepare(
+      "SELECT code_hash, redeemed_by_discord_id FROM beta_invites WHERE substr(code_hash, 1, 12) = ? LIMIT 2"
+    ).bind(codeId).all<{ code_hash: string; redeemed_by_discord_id: string | null }>();
+    if (matches.results.length !== 1) return c.json({ error: "Invitation not found or reference ambiguous" }, 404);
+    const invite = matches.results[0];
+    if (invite.redeemed_by_discord_id === identity!.discord_id) return c.json({ error: "Cannot delete administrator's invitation" }, 403);
+    await registry(c).prepare("DELETE FROM beta_invites WHERE code_hash = ?").bind(invite.code_hash).run();
+    return c.json({ success: true });
   });
 
   app.post("/api/beta/admin/toggle", async c => {
