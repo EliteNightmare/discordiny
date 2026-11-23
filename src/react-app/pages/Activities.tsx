@@ -2006,7 +2006,7 @@ export default function Activities() {
     );
 
   const weaponDropEvents = globalActivityEvents.filter(
-    (event) => Boolean(event.weapon?.name?.trim()),
+    (event) => Boolean(event.weapon?.name?.trim()) || event.activityType === "legendary_achievement" || event.activityType === "exotic_achievement",
   );
 
   const visibleGlobalActivityEvents =
@@ -2999,7 +2999,7 @@ export default function Activities() {
                               " ",
                             )}
                           >
-                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.activityType === "legendary_achievement" ? "SOURCE COMPLETED · 77/77" : event.activityType === "exotic_achievement" ? "CATEGORY COMPLETED · 77/77" : event.result}
+                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.activityType === "legendary_achievement" ? `SOURCE COMPLETED · ${event.activity}` : event.activityType === "exotic_achievement" ? `CATEGORY COMPLETED · ${event.activity}` : event.result}
                           </span>
 
                           {event.weapon && (
