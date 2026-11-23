@@ -49,7 +49,7 @@ function BetaAdministration() {
   return <section className="dc-admin-panel">
     <h2>Beta Access Management</h2>
     <p>Access is controlled by production account #1. Invitations are stored in the production access registry and remain available after beta resets.</p>
-    <p>Beta status: <strong>{active ? "Open to invited testers" : "Closed (administrator only)"}</strong></p>
+    <p>Beta status: <strong>{active ? "Open to invited testers" : "Closed (admin panel remains available)"}</strong></p>
     <div className="dc-admin-form" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
       <button disabled={busy} onClick={() => void action("/api/beta/admin/generate", {})}>Generate invitation code</button>
       <button disabled={busy} onClick={() => void action("/api/beta/admin/toggle", { enabled: !active })}>{active ? "Close beta" : "Open beta"}</button>
