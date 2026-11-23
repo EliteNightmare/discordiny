@@ -17,6 +17,10 @@ async function digest(code: string): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("");
 }
+async function ensureCodeStore(c: any): Promise<void> {
+  // Separate admin-only lookup: legacy invitation hashes remain valid but unrecoverable.
+  await registry(c).prepare("CREATE TABLE IF NOT EXISTS beta_invite_codes (code_hash TEXT PRIMARY KEY, code TEXT NOT NULL UNIQUE)").run();
+}
 function newCode(): string {
   const digits = new Uint32Array(15);
   crypto.getRandomValues(digits);
@@ -55,21 +59,27 @@ export function registerBetaRoutes<T extends Bindings>(
   app.get("/api/beta/admin/codes", async c => {
     const identity = await getIdentity(c);
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    await ensureCodeStore(c);
     const result = await registry(c).prepare(
-      "SELECT code_hash, created_at, created_by_discord_id, redeemed_by_discord_id, redeemed_at FROM beta_invites ORDER BY created_at DESC, code_hash DESC LIMIT 1000"
-    ).all<{ code_hash: string; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
-    return c.json({ codes: result.results.map(row => ({ ...row, code_id: row.code_hash.slice(0, 12), used: !!row.redeemed_by_discord_id, code_hash: undefined })) });
+      "SELECT i.code_hash, k.code, i.created_at, i.created_by_discord_id, i.redeemed_by_discord_id, i.redeemed_at FROM beta_invites i LEFT JOIN beta_invite_codes k ON k.code_hash = i.code_hash ORDER BY i.created_at DESC, i.code_hash DESC LIMIT 1000"
+    ).all<{ code_hash: string; code: string | null; created_at: string; created_by_discord_id: string; redeemed_by_discord_id: string | null; redeemed_at: string | null }>();
+    return c.json({ codes: result.results.map(row => ({ code: row.code, code_id: row.code_hash.slice(0, 12), created_at: row.created_at, created_by_discord_id: row.created_by_discord_id, redeemed_by_discord_id: row.redeemed_by_discord_id, redeemed_at: row.redeemed_at, used: !!row.redeemed_by_discord_id })) });
   });
 
   app.post("/api/beta/admin/generate", async c => {
     const identity = await getIdentity(c);
     if (!(await admin(c, identity))) return c.json({ error: "Forbidden" }, 403);
+    await ensureCodeStore(c);
     for (let attempt = 0; attempt < 5; attempt++) {
       const code = newCode();
+      const hash = await digest(code);
       const result = await registry(c).prepare(
         "INSERT OR IGNORE INTO beta_invites (code_hash, created_by_discord_id) VALUES (?, ?)"
-      ).bind(await digest(code), identity!.discord_id).run();
-      if (result.meta.changes) return c.json({ code });
+      ).bind(hash, identity!.discord_id).run();
+      if (result.meta.changes) {
+        await registry(c).prepare("INSERT INTO beta_invite_codes (code_hash, code) VALUES (?, ?)").bind(hash, code).run();
+        return c.json({ code });
+      }
     }
     return c.json({ error: "Could not generate unique code" }, 500);
   });
