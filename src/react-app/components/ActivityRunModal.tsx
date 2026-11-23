@@ -693,6 +693,7 @@ export default function ActivityRunModal({
           () => {
             crawlRevealDone.current = true;
             if (!crawlPending.current) { setPhase("complete"); finish(); }
+            else if (delayedCrawlSecret.current) setPhase("secret");
           },
           duration,
         ),
