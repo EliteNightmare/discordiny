@@ -1215,3 +1215,33 @@
 .vault-rank-picker input[type="range"]:active::-moz-range-thumb { cursor: grabbing; }
 .vault-rank-picker input[type="range"]:focus-visible { outline: 2px solid #ffe18a; outline-offset: 6px; }
 .weapon-masterwork-next-cost .weapon-masterwork-unaffordable { margin: 10px 0 0; }
+
+/* A readable five-row material list, rather than a two-column cost box. */
+.weapon-masterwork-next-cost {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.weapon-masterwork-next-materials {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.weapon-masterwork-next-materials .vault-rank-cost-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 9px 2px;
+  border-bottom: 1px solid rgba(255, 215, 125, .13);
+}
+.weapon-masterwork-next-materials .vault-rank-cost-row > span {
+  flex: 1;
+  min-width: 0;
+}
+.weapon-masterwork-next-materials .vault-rank-cost-row > strong {
+  flex: none;
+  text-align: right;
+  white-space: nowrap;
+}
