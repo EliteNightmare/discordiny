@@ -6548,31 +6548,15 @@ app.get("/api/game/activities", async (c) => {
 
       endgame: {
         dungeon: {
-          cooldownSeconds:
-            ENDGAME_DUNGEON_COOLDOWN_SECONDS,
-
-          remainingSeconds:
-            Math.max(
-              0,
-              dungeonReadyAt - nowSeconds,
-            ),
-
-          readyAt:
-            dungeonReadyAt,
+          cooldownSeconds: 0,
+          remainingSeconds: 0,
+          readyAt: 0,
         },
 
         raid: {
-          cooldownSeconds:
-            ENDGAME_RAID_COOLDOWN_SECONDS,
-
-          remainingSeconds:
-            Math.max(
-              0,
-              raidReadyAt - nowSeconds,
-            ),
-
-          readyAt:
-            raidReadyAt,
+          cooldownSeconds: 0,
+          remainingSeconds: 0,
+          readyAt: 0,
         },
 
         dailyDungeon: {
@@ -9605,7 +9589,8 @@ app.post("/api/game/activity/run", async (c) => {
 
   // Raid/dungeon timers are checked on the Worker, not just in React.
   // A pending run is tied to the authenticated player and activity.
-  const runDurationSeconds = activity.type === "raid" ? 60 : 30;
+  // Fold the former post-run cooldown into the active run timer.
+  const runDurationSeconds = activity.type === "raid" ? 60 + ENDGAME_RAID_COOLDOWN_SECONDS : 30 + ENDGAME_DUNGEON_COOLDOWN_SECONDS;
   const pendingRunKey = `__endgame_pending_${activity.id}`;
   if (body.phase === "start") {
     // Preserve a run that is already underway rather than restarting its clock.
@@ -9724,87 +9709,6 @@ app.post("/api/game/activity/run", async (c) => {
         .bind(
           session.user_id,
           chargeKey,
-        );
-  } else {
-    const cooldownSeconds =
-      activity.type === "raid"
-        ? ENDGAME_RAID_COOLDOWN_SECONDS
-        : ENDGAME_DUNGEON_COOLDOWN_SECONDS;
-
-    const cooldownKey =
-      activity.type === "raid"
-        ? ENDGAME_RAID_COOLDOWN_KEY
-        : ENDGAME_DUNGEON_COOLDOWN_KEY;
-
-    const cooldownRow =
-      await c.env.DB
-        .prepare(
-          `SELECT timestamp
-           FROM player_cooldowns
-           WHERE user_id = ?
-             AND activity = ?
-           LIMIT 1`,
-        )
-        .bind(
-          session.user_id,
-          cooldownKey,
-        )
-        .first<{
-          timestamp: number;
-        }>();
-
-    const readyAt =
-      Number(
-        cooldownRow?.timestamp ?? 0,
-      ) || 0;
-
-    const remainingSeconds =
-      Math.max(
-        0,
-        readyAt - nowSeconds,
-      );
-
-    if (remainingSeconds > 0) {
-      return c.json(
-        {
-          authenticated: true,
-          success: false,
-
-          error:
-            `${activity.type === "raid" ? "Raid" : "Dungeon"} is on cooldown.`,
-
-          limit: {
-            kind: "cooldown",
-            cooldownSeconds,
-            remainingSeconds,
-            readyAt,
-          },
-        },
-        429,
-      );
-    }
-
-    const nextReadyAt =
-      nowSeconds + cooldownSeconds;
-
-    endgameStateWrite =
-      c.env.DB
-        .prepare(
-          `INSERT INTO player_cooldowns
-            (
-              user_id,
-              activity,
-              timestamp
-            )
-           VALUES (?, ?, ?)
-           ON CONFLICT(user_id, activity)
-           DO UPDATE SET
-             timestamp = excluded.timestamp`,
-        )
-        .bind(
-          session.user_id,
-          cooldownKey,
-          nextReadyAt,
         );
   }
 
