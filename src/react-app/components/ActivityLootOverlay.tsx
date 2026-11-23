@@ -53,7 +53,9 @@ function LootManager() {
         return {...item,loot:{...item.loot,materials}};
       });
       const remainder={...e,loot:{...e.loot,materials:incoming}};
-      return [remainder,...updated];
+      const hasNewLoot=e.loot.weapons.some(w=>w.dropped)||Object.values(incoming).some(n=>n>0)||e.loot.xp>0;
+      if (!hasNewLoot) queueMicrotask(e.onDone);
+      return hasNewLoot?[remainder,...updated]:updated;
     });
     if(pending.length){const waiting=[...pending];pending.length=0;waiting.forEach(e=>publish?.(e));}
     return ()=>{publish=null;};
