@@ -81,6 +81,7 @@ type ActivitiesResponse = {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
     };
 
@@ -107,12 +108,14 @@ type ActivitiesResponse = {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
 
       dailyRaid: {
         maxCharges: number;
         usedCharges: number;
         remainingCharges: number;
+        nextChargeAt?: number;
       };
     };
   };
@@ -173,6 +176,7 @@ type ActivityCardProps = {
   charges?: {
     remaining: number;
     max: number;
+    nextChargeAt?: number;
   };
 
   onClick?: () => void;
@@ -826,6 +830,11 @@ function ActivityCard({
               }{" "}
               CHARGES
             </strong>
+            {charges.remaining < charges.max && charges.nextChargeAt ? (
+              <span style={{fontSize:'.72rem',color:'#b6d6e5'}}>
+                NEXT CHARGE IN {Math.floor(Math.max(0,charges.nextChargeAt-Math.floor(Date.now()/1000))/60)}:{String(Math.max(0,charges.nextChargeAt-Math.floor(Date.now()/1000))%60).padStart(2,'0')}
+              </span>
+            ) : null}
           </div>
         )}
 
@@ -2042,6 +2051,7 @@ export default function Activities() {
                       max:
                         dailyShowdownCharges
                           .maxCharges,
+                      nextChargeAt: dailyShowdownCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyShowdownCharges
@@ -2090,6 +2100,7 @@ export default function Activities() {
                       max:
                         dailyDungeonCharges
                           .maxCharges,
+                      nextChargeAt: dailyDungeonCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyDungeonCharges
@@ -2138,6 +2149,7 @@ export default function Activities() {
                       max:
                         dailyRaidCharges
                           .maxCharges,
+                      nextChargeAt: dailyRaidCharges.nextChargeAt,
                     }}
                     disabled={
                       dailyRaidCharges
