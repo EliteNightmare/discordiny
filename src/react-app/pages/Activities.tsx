@@ -2894,7 +2894,7 @@ export default function Activities() {
                         event,
                       ) => (
                         <article
-                          className={`global-activity-event${event.weapon?.adept ? " global-activity-event-adept" : ""}`}
+                          className={`global-activity-event${event.activityType === "masterwork" ? " global-activity-event-masterwork" : event.weapon?.adept ? " global-activity-event-adept" : ""}`}
                           key={
                             event.id
                           }
@@ -2928,9 +2928,7 @@ export default function Activities() {
                           </div>
 
                           <span className="global-activity-event-activity">
-                            {
-                              event.activity
-                            }
+                            {event.activityType === "masterwork" ? "✦ LEGENDARY ACHIEVEMENT ✦" : event.activity}
                           </span>
 
                           <span
@@ -2943,9 +2941,7 @@ export default function Activities() {
                               " ",
                             )}
                           >
-                            {
-                              event.result
-                            }
+                            {event.activityType === "masterwork" ? "✦ FULLY MASTERWORKED ✦" : event.result}
                           </span>
 
                           {event.weapon && (
@@ -2969,7 +2965,7 @@ export default function Activities() {
 
                               <div>
                                 <span>
-                                  WEAPON DROP
+                                  {event.activityType === "masterwork" ? "MAXIMUM MASTERWORK · 77/77" : "WEAPON DROP"}
                                 </span>
 
                                 <strong>
