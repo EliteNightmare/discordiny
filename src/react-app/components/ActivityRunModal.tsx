@@ -437,6 +437,8 @@ export default function ActivityRunModal({
   const completedResultRef = useRef<RunResult | null>(null);
   const lastRewardedEncounterRef = useRef(-1);
   const delayedCrawlSecret = useRef(false);
+  const crawlRevealDone = useRef(false);
+  const crawlPending = useRef(false);
 
   const result =
     payload?.result;
@@ -598,7 +600,7 @@ export default function ActivityRunModal({
 
   useEffect(() => {
     if (
-      phase !== "secret" ||
+      (phase !== "secret" && phase !== "encounters") ||
       !crawlExpiresAt
     ) {
       return;
@@ -658,6 +660,7 @@ export default function ActivityRunModal({
      * encounters and then the final weapon roll.
      */
     if (isCrawl) {
+      crawlRevealDone.current = false;
       if (!run.encounters.length) {
         setPhase("complete");
         finish();
@@ -688,8 +691,8 @@ export default function ActivityRunModal({
       timers.current.push(
         window.setTimeout(
           () => {
-            if (delayedCrawlSecret.current) setPhase("secret");
-            else { setPhase("complete"); finish(); }
+            crawlRevealDone.current = true;
+            if (!crawlPending.current) { setPhase("complete"); finish(); }
           },
           duration,
         ),
@@ -933,11 +936,10 @@ export default function ActivityRunModal({
 
         setNetherExpired(false);
         setClickedEyes([]);
-        delayedCrawlSecret.current = data.result.secret.challenge.type !== "nether";
-        if (delayedCrawlSecret.current) {
-          setPhase("encounters");
-          reveal(data.result);
-        } else setPhase("secret");
+        crawlPending.current = true;
+        delayedCrawlSecret.current = data.result.secret.challenge.type === "coil";
+        setPhase("encounters");
+        reveal(data.result);
         return;
       }
 
@@ -1012,13 +1014,11 @@ export default function ActivityRunModal({
       setCrawlRunId(null);
       setCrawlExpiresAt(null);
       setResolvingSecret(false);
-      if (delayedCrawlSecret.current) {
+      crawlPending.current = false;
+      if (crawlRevealDone.current) {
         delayedCrawlSecret.current = false;
         setPhase("complete");
         finish();
-      } else {
-        setPhase("encounters");
-        reveal(data.result);
       }
     } catch (err) {
       setResolvingSecret(false);
@@ -1033,7 +1033,7 @@ export default function ActivityRunModal({
 
   useEffect(() => {
     if (
-      phase !== "secret" ||
+      (phase !== "secret" && phase !== "encounters") ||
       crawlSecondsLeft > 0 ||
       !crawlRunId ||
       resolvingSecret
@@ -1506,17 +1506,134 @@ export default function ActivityRunModal({
             {[0,1,2,3,4].map((i) => <span key={i} style={{position:"absolute",left:`${10+(i*19)%75}%`,top:`${19+(i*17)%65}%`,opacity:0.18,fontSize:i%2?"0.7rem":"1rem",transform:`rotate(${i*11-20}deg)`,pointerEvents:"none",letterSpacing:".25em"}}>{result.secret?.challenge?.type === "coil" ? result.secret.challenge.prompt : ""}</span>)}
           </div>
         )}
-        {phase === "encounters" && delayedCrawlSecret.current && result?.secret?.challenge?.type === "contest" && (
-          <div className="activity-run-secret-clues" aria-label="Contest fragments">
-            {result.secret.challenge.pieces.map((piece,i)=><div key={piece.id} style={{position:"absolute",left:`${8+(i*23)%80}%`,top:`${15+(i*21)%68}%`,width:54,opacity:.55,pointerEvents:"none"}}>{contestImages[piece.id-1] && <img src={contestImages[piece.id-1]} alt="" style={{width:"100%"}}/>}</div>)}
+
+        {/* Secret objects are interactive during the activity itself. */}
+        {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "contest" && (
+          <div className="activity-run-inline-contest" style={{position:"relative",zIndex:12,maxWidth:420,margin:"12px auto",padding:12,background:"rgba(9,14,22,.94)"}}>
+            <strong>CONTEST FRAGMENTS · {crawlSecondsLeft}s</strong>
+              {true && (
+                <div className="activity-run-contest-secret">
+                  <p>
+                    Slide fragments into the empty space until they read 1, 2, 3, 4.
+                  </p>
+
+                  <div className="activity-run-contest-grid" style={{gridTemplateColumns:"repeat(3, minmax(0, 1fr))"}}>
+                    {contestPieces.map((piece,index) => piece ? (
+                      <button key={piece.id} type="button" disabled={resolvingSecret} aria-label={`Slide fragment ${piece.label}`}
+                        onClick={() => setContestPieces(current => {
+                          const blank=current.indexOf(null);
+                          const adjacent=(Math.abs(blank-index)===3)||(Math.abs(blank-index)===1&&Math.floor(blank/3)===Math.floor(index/3));
+                          if(!adjacent)return current;
+                          const next=[...current];
+                          [next[index],next[blank]]=[next[blank],next[index]];
+                          return next;
+                        })}>
+                        {contestImages[piece.id-1] && <img src={contestImages[piece.id-1]} alt={`Fragment ${piece.id}`} draggable={false}/>}
+                        <span>FRAGMENT {piece.id}</span>
+                      </button>
+                    ) : <div key="blank" aria-label="Empty slider space" style={{border:"1px dashed rgba(255,255,255,.3)",minHeight:90}} />)}
+                  </div>
+                  <div className="activity-run-contest-actions">
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => scrambleContestSlider(current.filter((piece): piece is CrawlContestPiece => piece !== null)))}>
+                      SHUFFLE
+                    </button>
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id))}>
+                      CONFIRM ORDER
+                    </button>
+                  </div>
+                </div>
+              )}
+
           </div>
         )}
+        {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "nether" && (
+          <div className="activity-run-inline-nether" style={{position:"absolute",inset:0,zIndex:12,pointerEvents:"none"}}>
+              {true && (
+                <div className="activity-run-nether-secret">
+                  <div className="activity-run-nether-counter">
+                    <span>EYES REMAINING</span>
+                    <strong>
+                      {Math.max(
+                        0,
+                        result.secret.challenge.eyeCount -
+                          clickedEyes.length,
+                      )}
+                    </strong>
+                  </div>
 
+                  <div className="activity-run-nether-field" style={{ position: "absolute", inset: 0, zIndex: 8, pointerEvents: "none" }}>
+                    {result.secret.challenge.eyes.map(
+                      (eye) => {
+                        const clicked =
+                          clickedEyes.includes(
+                            eye.id,
+                          );
+
+                        if (clicked) {
+                          return null;
+                        }
+
+                        return (
+                          <button
+                            key={eye.id}
+                            type="button"
+                            className="activity-run-nether-eye"
+                            disabled={resolvingSecret || netherExpired || crawlSecondsLeft <= 0}
+                            aria-label="Destroy eye"
+                            style={{
+                              pointerEvents: "auto",
+                              left: `${eye.x}%`,
+                              top: `${eye.y}%`,
+                              transform:
+                                `translate(-50%, -50%) rotate(${eye.rotation}deg)`,
+                            }}
+                            onClick={() => {
+                              const next = [
+                                ...clickedEyes,
+                                eye.id,
+                              ];
+
+                              setClickedEyes(
+                                next,
+                              );
+
+                              if (
+                                result.secret
+                                  ?.challenge?.type ===
+                                  "nether" &&
+                                next.length ===
+                                  result.secret
+                                    .challenge
+                                    .eyeCount
+                              ) {
+                                void resolveCrawlSecret(
+                                  next,
+                                );
+                              }
+                            }}
+                          >
+                            {netherEye && (
+                              <img
+                                src={netherEye}
+                                alt=""
+                                aria-hidden="true"
+                              />
+                            )}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              )}
+
+          </div>
+        )}
         {/* -------------------------------------------------------------- */}
         {/* CRAWL SECRET                                                   */}
         {/* -------------------------------------------------------------- */}
 
-        {phase === "secret" &&
+        {(phase === "secret" || (phase === "encounters" && result?.secret?.challenge?.type === "coil" && crawlRevealDone.current)) &&
           result?.secret?.challenge && (
             <div className="activity-run-crawl-secret">
               <div className="activity-run-crawl-secret-top">
@@ -1600,118 +1717,6 @@ export default function ActivityRunModal({
                       SUBMIT
                     </button>
                   </form>
-                </div>
-              )}
-
-              {result.secret.challenge.type === "contest" && (
-                <div className="activity-run-contest-secret">
-                  <p>
-                    Slide fragments into the empty space until they read 1, 2, 3, 4.
-                  </p>
-
-                  <div className="activity-run-contest-grid" style={{gridTemplateColumns:"repeat(3, minmax(0, 1fr))"}}>
-                    {contestPieces.map((piece,index) => piece ? (
-                      <button key={piece.id} type="button" disabled={resolvingSecret} aria-label={`Slide fragment ${piece.label}`}
-                        onClick={() => setContestPieces(current => {
-                          const blank=current.indexOf(null);
-                          const adjacent=(Math.abs(blank-index)===3)||(Math.abs(blank-index)===1&&Math.floor(blank/3)===Math.floor(index/3));
-                          if(!adjacent)return current;
-                          const next=[...current];
-                          [next[index],next[blank]]=[next[blank],next[index]];
-                          return next;
-                        })}>
-                        {contestImages[piece.id-1] && <img src={contestImages[piece.id-1]} alt={`Fragment ${piece.id}`} draggable={false}/>}
-                        <span>FRAGMENT {piece.id}</span>
-                      </button>
-                    ) : <div key="blank" aria-label="Empty slider space" style={{border:"1px dashed rgba(255,255,255,.3)",minHeight:90}} />)}
-                  </div>
-                  <div className="activity-run-contest-actions">
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => scrambleContestSlider(current.filter((piece): piece is CrawlContestPiece => piece !== null)))}>
-                      SHUFFLE
-                    </button>
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id))}>
-                      CONFIRM ORDER
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {result.secret.challenge.type === "nether" && (
-                <div className="activity-run-nether-secret">
-                  <div className="activity-run-nether-counter">
-                    <span>EYES REMAINING</span>
-                    <strong>
-                      {Math.max(
-                        0,
-                        result.secret.challenge.eyeCount -
-                          clickedEyes.length,
-                      )}
-                    </strong>
-                  </div>
-
-                  <div className="activity-run-nether-field" style={{ position: "absolute", inset: 0, zIndex: 8, pointerEvents: "none" }}>
-                    {result.secret.challenge.eyes.map(
-                      (eye) => {
-                        const clicked =
-                          clickedEyes.includes(
-                            eye.id,
-                          );
-
-                        if (clicked) {
-                          return null;
-                        }
-
-                        return (
-                          <button
-                            key={eye.id}
-                            type="button"
-                            className="activity-run-nether-eye"
-                            disabled={resolvingSecret || netherExpired || crawlSecondsLeft <= 0}
-                            aria-label="Destroy eye"
-                            style={{
-                              pointerEvents: "auto",
-                              left: `${eye.x}%`,
-                              top: `${eye.y}%`,
-                              transform:
-                                `translate(-50%, -50%) rotate(${eye.rotation}deg)`,
-                            }}
-                            onClick={() => {
-                              const next = [
-                                ...clickedEyes,
-                                eye.id,
-                              ];
-
-                              setClickedEyes(
-                                next,
-                              );
-
-                              if (
-                                result.secret
-                                  ?.challenge?.type ===
-                                  "nether" &&
-                                next.length ===
-                                  result.secret
-                                    .challenge
-                                    .eyeCount
-                              ) {
-                                void resolveCrawlSecret(
-                                  next,
-                                );
-                              }
-                            }}
-                          >
-                            {netherEye && (
-                              <img
-                                src={netherEye}
-                                alt=""
-                                aria-hidden="true"
-                              />
-                            )}
-                          </button>
-                        );
-                      },
-                    )}
-                  </div>
                 </div>
               )}
 
