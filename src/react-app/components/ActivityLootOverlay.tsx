@@ -38,8 +38,24 @@ export default function ActivityLootOverlay({loot,before,onDone,durationMs=9500}
 function LootManager() {
   const [entries,setEntries]=useState<Entry[]>([]);
   useEffect(()=>{
-    publish=e=>setEntries(items=>[e,...items]);
-    if(pending.length){setEntries(items=>[...pending.reverse(),...items]);pending.length=0;}
+    publish=e=>setEntries(items=>{
+      // Merge matching currencies into the existing visible notification,
+      // preserving its first appearance and adding newly acquired amounts.
+      const incoming={...e.loot.materials};
+      const updated=items.map(item=>{
+        const materials={...item.loot.materials};
+        for(const [name,amount] of Object.entries(incoming)){
+          if(amount>0 && materials[name]!==undefined){
+            materials[name]+=amount;
+            delete incoming[name];
+          }
+        }
+        return {...item,loot:{...item.loot,materials}};
+      });
+      const remainder={...e,loot:{...e.loot,materials:incoming}};
+      return [remainder,...updated];
+    });
+    if(pending.length){const waiting=[...pending];pending.length=0;waiting.forEach(e=>publish?.(e));}
     return ()=>{publish=null;};
   },[]);
   return <div className="activity-loot-hud" aria-live="polite">
