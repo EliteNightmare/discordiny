@@ -1,6 +1,7 @@
 import {
   useEffect,
   useRef,
+  type PointerEvent as ReactPointerEvent,
   useState,
 } from "react";
 
@@ -284,20 +285,75 @@ function number(
   );
 }
 
-function scrambleContestSlider(pieces: CrawlContestPiece[]): (CrawlContestPiece | null)[] {
-  const cells: (CrawlContestPiece | null)[] = [...pieces.sort((a,b)=>a.id-b.id), null];
-  let previous = -1;
-  for(let step=0;step<35;step++){
-    const blank=cells.indexOf(null);
-    const adjacent=[blank-1,blank+1,blank-3,blank+3].filter(i=>i>=0&&i<5&&(
-      (Math.abs(i-blank)===1&&Math.floor(i/3)===Math.floor(blank/3))||Math.abs(i-blank)===3
-    )&&i!==previous);
-    if(!adjacent.length)continue;
-    const chosen=adjacent[Math.floor(Math.random()*adjacent.length)];
-    [cells[blank],cells[chosen]]=[cells[chosen],cells[blank]];
-    previous=blank;
+function scrambleContestSlider(pieces: CrawlContestPiece[]): CrawlContestPiece[] {
+  const shuffled = [...pieces];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return cells;
+  if (shuffled.every((piece, index) => piece.id === index + 1)) {
+    [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+  }
+  return shuffled;
+}
+function ContestSlidePuzzle({ pieces, onChange, images, disabled }: {
+  pieces: CrawlContestPiece[];
+  onChange: (next: CrawlContestPiece[]) => void;
+  images: (string | undefined)[];
+  disabled: boolean;
+}) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ index: number; x: number; y: number } | null>(null);
+  const [drag, setDrag] = useState<{ index: number; dx: number; dy: number } | null>(null);
+  function start(event: ReactPointerEvent<HTMLButtonElement>, index: number) {
+    if (disabled) return;
+    dragRef.current = { index, x: event.clientX, y: event.clientY };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDrag({ index, dx: 0, dy: 0 });
+  }
+  function move(event: ReactPointerEvent<HTMLButtonElement>) {
+    const active = dragRef.current;
+    if (!active) return;
+    setDrag({ index: active.index, dx: event.clientX - active.x, dy: event.clientY - active.y });
+  }
+  function end(event: ReactPointerEvent<HTMLButtonElement>) {
+    const active = dragRef.current;
+    if (!active) return;
+    dragRef.current = null;
+    setDrag(null);
+    const board = boardRef.current?.getBoundingClientRect();
+    if (!board) return;
+    const x = event.clientX - board.left;
+    const y = event.clientY - board.top;
+    if (x < 0 || y < 0 || x >= board.width || y >= board.height) return;
+    const col = Math.min(1, Math.floor(x / (board.width / 2)));
+    const row = Math.min(1, Math.floor(y / (board.height / 2)));
+    const target = row * 2 + col;
+    if (target === active.index) return;
+    const next = [...pieces];
+    [next[active.index], next[target]] = [next[target], next[active.index]];
+    onChange(next);
+  }
+  return (
+    <div className="activity-run-contest-slide-board" ref={boardRef} aria-label="Reassemble the four image fragments">
+      {pieces.map((piece, index) => (
+        <button key={piece.id} type="button"
+          className={"activity-run-contest-slide-tile" + (drag?.index === index ? " dragging" : "")}
+          aria-label="Drag image fragment to another position"
+          disabled={disabled}
+          onPointerDown={(event) => start(event, index)}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerCancel={() => { dragRef.current = null; setDrag(null); }}
+          style={{
+            transform: drag?.index === index ? "translate(" + drag.dx + "px, " + drag.dy + "px) scale(1.045)" : undefined,
+            zIndex: drag?.index === index ? 2 : 1,
+          }}>
+          {images[piece.id - 1] && <img src={images[piece.id - 1]} alt="" draggable={false} />}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -419,7 +475,8 @@ export default function ActivityRunModal({
     useState("");
 
   const [contestPieces, setContestPieces] =
-    useState<(CrawlContestPiece | null)[]>([]);
+    useState<CrawlContestPiece[]>([]);
+  const [contestSpawned, setContestSpawned] = useState(0);
 
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
@@ -638,6 +695,15 @@ export default function ActivityRunModal({
     crawlExpiresAt,
   ]);
 
+  // One Contest fragment appears during each encounter.
+  useEffect(() => {
+    if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "contest") return;
+    const timeouts = [1, 2, 3, 4].map((count, index) =>
+      window.setTimeout(() => setContestSpawned(count), index * ENCOUNTER_MS)
+    );
+    return () => timeouts.forEach(window.clearTimeout);
+  }, [phase, crawlRunId, result?.secret?.challenge?.type]);
+
   // Spawn seven total eyes in waves of one or two during encounters.
   useEffect(() => {
     if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "nether") return;
@@ -704,7 +770,7 @@ export default function ActivityRunModal({
           () => {
             crawlRevealDone.current = true;
             if (!crawlPending.current) { setPhase("complete"); finish(); }
-            else if (delayedCrawlSecret.current) setPhase("secret");
+            else if (delayedCrawlSecret.current || run.secret?.challenge?.type === "contest") setPhase("secret");
           },
           duration,
         ),
@@ -946,6 +1012,7 @@ export default function ActivityRunModal({
           );
         }
 
+        setContestSpawned(0);
         setNetherExpired(false);
         setClickedEyes([]);
         setNetherSpawned(0);
@@ -1072,7 +1139,7 @@ export default function ActivityRunModal({
 
     if (challenge.type === "contest") {
       void resolveCrawlSecret(
-        contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id),
+        contestPieces.map((piece) => piece.id),
       );
       return;
     }
@@ -1524,41 +1591,16 @@ export default function ActivityRunModal({
 
         {/* Secret objects are interactive during the activity itself. */}
         {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "contest" && (
-          <div className="activity-run-inline-contest" style={{position:"relative",zIndex:12,maxWidth:420,margin:"12px auto",padding:12,background:"rgba(9,14,22,.94)"}}>
-            <strong>CONTEST FRAGMENTS · {crawlSecondsLeft}s</strong>
-              {true && (
-                <div className="activity-run-contest-secret">
-                  <p>
-                    Slide fragments into the empty space until they read 1, 2, 3, 4.
-                  </p>
-
-                  <div className="activity-run-contest-grid" style={{gridTemplateColumns:"repeat(3, minmax(0, 1fr))"}}>
-                    {contestPieces.map((piece,index) => piece ? (
-                      <button key={piece.id} type="button" disabled={resolvingSecret} aria-label={`Slide fragment ${piece.label}`}
-                        onClick={() => setContestPieces(current => {
-                          const blank=current.indexOf(null);
-                          const adjacent=(Math.abs(blank-index)===3)||(Math.abs(blank-index)===1&&Math.floor(blank/3)===Math.floor(index/3));
-                          if(!adjacent)return current;
-                          const next=[...current];
-                          [next[index],next[blank]]=[next[blank],next[index]];
-                          return next;
-                        })}>
-                        {contestImages[piece.id-1] && <img src={contestImages[piece.id-1]} alt={`Fragment ${piece.id}`} draggable={false}/>}
-                        <span>FRAGMENT {piece.id}</span>
-                      </button>
-                    ) : <div key="blank" aria-label="Empty slider space" style={{border:"1px dashed rgba(255,255,255,.3)",minHeight:90}} />)}
-                  </div>
-                  <div className="activity-run-contest-actions">
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => scrambleContestSlider(current.filter((piece): piece is CrawlContestPiece => piece !== null)))}>
-                      SHUFFLE
-                    </button>
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id))}>
-                      CONFIRM ORDER
-                    </button>
-                  </div>
-                </div>
-              )}
-
+          <div className="activity-run-contest-clue-layer" aria-label="Contest fragments appearing during the activity">
+            {result.secret.challenge.pieces.slice(0, contestSpawned).map((piece, index) => (
+              <div className="activity-run-contest-clue" key={piece.id} style={{
+                left: [12, 67, 24, 73][index] + "%",
+                top: [14, 27, 64, 72][index] + "%",
+                transform: "rotate(" + [-12, 9, 7, -8][index] + "deg)",
+              }}>
+                {contestImages[piece.id - 1] && <img src={contestImages[piece.id - 1]} alt="" />}
+              </div>
+            ))}
           </div>
         )}
         {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "nether" && (
@@ -1632,7 +1674,7 @@ export default function ActivityRunModal({
         {/* CRAWL SECRET                                                   */}
         {/* -------------------------------------------------------------- */}
 
-        {(phase === "secret" || (phase === "encounters" && result?.secret?.challenge?.type === "coil" && crawlRevealDone.current)) &&
+        {phase === "secret" &&
           result?.secret?.challenge && (
             <div className="activity-run-crawl-secret">
               <div className="activity-run-crawl-secret-top">
@@ -1719,6 +1761,20 @@ export default function ActivityRunModal({
                 </div>
               )}
 
+              {result.secret.challenge.type === "contest" && (
+                <div className="activity-run-contest-secret">
+                  <p>Reassemble the image. Drag a fragment onto another to slide them into place.</p>
+                  <ContestSlidePuzzle pieces={contestPieces} onChange={setContestPieces}
+                    images={contestImages} disabled={resolvingSecret} />
+                  <div className="activity-run-contest-actions">
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret}
+                      onClick={() => setContestPieces(scrambleContestSlider([...contestPieces]))}>SHUFFLE</button>
+                    <button type="button" className="activity-run-contest-reset"
+                      disabled={resolvingSecret || contestPieces.length !== 4}
+                      onClick={() => void resolveCrawlSecret(contestPieces.map(piece => piece.id))}>CONFIRM IMAGE</button>
+                  </div>
+                </div>
+              )}
               {resolvingSecret && (
                 <div className="activity-run-crawl-resolving">
                   RESOLVING SECRET...
