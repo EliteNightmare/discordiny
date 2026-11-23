@@ -2694,7 +2694,7 @@ async function resetVaultAchievementCycle(db: D1Database, userId: number, weapon
   }
 }
 
-async function publishVaultAchievements(db: D1Database, userId: number, weaponName: string, includeWeapon: boolean) {
+async function publishVaultAchievements(db: D1Database, userId: number, weaponName: string, includeWeapon: boolean, sourceOverride?: string) {
   const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
   const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
   const levels = new Map((owned.results ?? []).map(row => [row.weapon_name.trim().toLowerCase(), Number(row.masterwork)]));
@@ -2733,7 +2733,7 @@ async function publishVaultAchievements(db: D1Database, userId: number, weaponNa
   if (includeWeapon) {
     await announce(weaponName, "masterwork", "ACHIEVEMENT", weaponName);
   }
-  const source = (catalog.results ?? []).find(row => getVaultBaseWeaponName(row.name).toLowerCase() === getVaultBaseWeaponName(weaponName).toLowerCase())?.source?.trim().toLowerCase();
+  const source = sourceOverride?.trim().toLowerCase() ?? (catalog.results ?? []).find(row => row.name.trim().toLowerCase() === weaponName.trim().toLowerCase())?.source?.trim().toLowerCase() ?? (catalog.results ?? []).find(row => getVaultBaseWeaponName(row.name).toLowerCase() === getVaultBaseWeaponName(weaponName).toLowerCase())?.source?.trim().toLowerCase();
   if (!source || !complete(source)) return;
   await announce(VAULT_SOURCE_NAMES[source] ?? source.toUpperCase(), "legendary_achievement", "LEGENDARY ACHIEVEMENT", null);
   for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS)) {
@@ -3604,16 +3604,24 @@ app.get("/api/game/weapons", async (c) => {
 
   // Compare against the displayed normal + special rows, not only
   // literal catalog entries (which may omit the special variant).
-  if (weapons.length > 0 && weapons.every(weapon =>
-    weapon.normal.masterwork >= VAULT_MAX_MASTERWORK &&
-    weapon.adept.masterwork >= VAULT_MAX_MASTERWORK
-  )) {
-    await publishVaultAchievements(c.env.DB, session.user_id, weapons[0].name, false);
+  const missingMasterworks = weapons.flatMap(weapon => [
+    ...(weapon.normal.masterwork < VAULT_MAX_MASTERWORK ? [weapon.name] : []),
+    ...(weapon.adept.masterwork < VAULT_MAX_MASTERWORK ? [`${weapon.name} (${weapon.variantSuffix})`] : []),
+  ]);
+  const sourceFullyMasterworked = weapons.length > 0 && missingMasterworks.length === 0;
+  if (sourceFullyMasterworked) {
+    await publishVaultAchievements(c.env.DB, session.user_id, weapons[0].name, false, source);
   }
+  const legendaryName = VAULT_SOURCE_NAMES[source.trim().toLowerCase()] ?? source.trim().toUpperCase();
+  const legendaryEvent = await c.env.DB.prepare(`SELECT id, created_at FROM global_activity_feed
+    WHERE user_id = ? AND activity_type = 'legendary_achievement' AND activity_name = ?
+    ORDER BY id DESC LIMIT 1`).bind(session.user_id, legendaryName).first<{id:number;created_at:string}>();
+
 
   return c.json({
     authenticated: true,
     canManageVault: Number(session.user_id) === 1,
+    legendaryAchievement: { complete: sourceFullyMasterworked, missing: missingMasterworks, announced: Boolean(legendaryEvent), lastAnnouncedAt: legendaryEvent?.created_at ?? null },
     source,
     weapons,
   });
