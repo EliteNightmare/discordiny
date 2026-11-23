@@ -1117,3 +1117,27 @@
 .weapon-vault-focused { outline:2px solid #b7d0ed!important; outline-offset:3px; animation:vaultFocusPulse 1.3s ease-out; }
 @keyframes vaultFocusPulse { 0% { box-shadow:0 0 0 8px rgba(183,208,237,.25); } 100% { box-shadow:0 0 0 0 transparent; } }
 @media(prefers-reduced-motion:reduce){.weapon-vault-focused{animation:none}}
+
+
+.weapon-masterwork-next-cost {
+  margin: 12px 0 14px;
+  padding: 12px 13px;
+  border: 1px solid rgba(255,215,125,.34);
+  border-radius: 10px;
+  background: linear-gradient(120deg,rgba(158,111,38,.13),rgba(255,255,255,.025));
+}
+.weapon-masterwork-next-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  color: #e8c77d;
+}
+.weapon-masterwork-next-heading strong { color: #ffe18a; }
+.weapon-masterwork-next-materials { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 3px 12px; }
+.weapon-masterwork-next-materials .vault-rank-cost-row { min-width: 0; }
+@media (max-width: 450px) { .weapon-masterwork-next-materials { grid-template-columns: 1fr; } }
