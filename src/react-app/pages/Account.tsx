@@ -3,6 +3,7 @@ import "./Account.css";
 import TopBar from "../components/TopBar";
 import background from "../assets/background.jpg";
 import discordIcon from "../assets/discord_icon.png";
+import { PREVIEW_CLOSED, PREVIEW_REGULAR, isPreviewEnabled, setPreviewEnabled } from "../components/betaPreview";
 
 type User = {
   id: number;
@@ -25,6 +26,8 @@ export default function Account() {
   const [betaMessage, setBetaMessage] = useState("");
   const [betaStatus, setBetaStatus] = useState<{ active: boolean; hasAccess: boolean; isAdmin: boolean } | null>(null);
   const [betaBusy, setBetaBusy] = useState(false);
+  const betaHost = window.location.hostname.startsWith("beta.");
+  const [regularPreview, setRegularPreview] = useState(() => isPreviewEnabled(PREVIEW_REGULAR));
   useEffect(() => {
     fetch("/api/beta/status", { credentials: "include" })
       .then(r => r.ok ? r.json() : null)
@@ -354,7 +357,9 @@ export default function Account() {
           <div className="account-beta-access">
             <h2>Beta Access</h2>
             <p>{betaStatus?.isAdmin ? "Administrator access is enabled for your Discord account." : betaStatus?.hasAccess ? "Your Discord account has beta access." : "Enter a 15-digit invitation code to join the beta."}</p>
-            {(betaStatus?.isAdmin || (betaStatus?.hasAccess && betaStatus.active)) && <a href="https://beta.discordiny.com/">Enter Beta</a>}
+            {betaHost && <a className="account-link-button" href="https://discordiny.com/account" style={{ display: "inline-block", textDecoration: "none", marginBottom: 12 }}>Switch to Main Website</a>}
+            {!betaHost && betaStatus?.active && (betaStatus?.isAdmin || betaStatus?.hasAccess) && <a className="account-link-button" href="https://beta.discordiny.com/account" style={{ display: "inline-block", textDecoration: "none", marginBottom: 12 }}>Switch to Beta Website</a>}
+            {betaHost && betaStatus?.isAdmin && <div style={{ marginTop: 14 }}><label style={{ display: "flex", gap: 10, alignItems: "center" }}><input type="checkbox" checked={regularPreview} onChange={e => { setRegularPreview(e.target.checked); setPreviewEnabled(PREVIEW_CLOSED, false); setPreviewEnabled(PREVIEW_REGULAR, e.target.checked); if (e.target.checked) window.location.href = "/"; }} /> Simulate non-admin account without an invitation</label><p style={{ opacity: .7 }}>This is a visual preview only. It does not alter your account permissions or beta status.</p></div>}}
             {!betaStatus?.isAdmin && !betaStatus?.hasAccess && <form onSubmit={e => { e.preventDefault(); void betaAction("/api/beta/redeem", { code: betaCode }); }}>
               <input aria-label="15-digit beta code" inputMode="numeric" maxLength={15} pattern="[0-9]{15}" placeholder="15-digit beta code" value={betaCode} onChange={e => setBetaCode(e.target.value.replace(/\D/g, "").slice(0, 15))} />
               <button type="submit" disabled={betaBusy || betaCode.length !== 15}>Redeem code</button>
