@@ -379,6 +379,7 @@ function getVanguardRewardPreview(
       "Armor Plating",
       "Enhancement Core",
       "Enhancement Prism",
+      "Ascendant Alloy",
     ];
   }
 
@@ -386,6 +387,7 @@ function getVanguardRewardPreview(
     return [
       "Synthweave",
       "Spoils of Conquest",
+      "Ascendant Alloy",
       "Dungeon Materials",
       "Raid Materials",
     ];
