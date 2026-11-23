@@ -2680,6 +2680,20 @@ const VAULT_SOURCE_NAMES: Record<string, string> = {
   "se": "Salvation's Edge",
   "fishing": "Fishing",
 };
+async function resetVaultAchievementCycle(db: D1Database, userId: number, weaponName: string) {
+  const row = await db.prepare("SELECT source FROM weapons WHERE lower(name) = lower(?) OR lower(name) = lower(?) LIMIT 1")
+    .bind(weaponName, getVaultBaseWeaponName(weaponName)).first<{source:string|null}>();
+  const source = row?.source?.trim().toLowerCase();
+  if (!source) return;
+  const names = [VAULT_SOURCE_NAMES[source] ?? source.toUpperCase()];
+  for (const [category, sources] of Object.entries(VAULT_ACHIEVEMENT_GROUPS))
+    if (sources.includes(source)) names.push(category);
+  for (const name of names) {
+    await db.prepare(`INSERT INTO global_activity_feed (user_id,activity_name,activity_type,result,weapon_name,weapon_adept)
+      VALUES (?,?,'achievement_reset','RESET',NULL,0)`).bind(userId,name).run();
+  }
+}
+
 async function publishVaultAchievements(db: D1Database, userId: number, weaponName: string, includeWeapon: boolean) {
   const catalog = await db.prepare("SELECT name, source FROM weapons WHERE source IS NOT NULL").all<{name:string;source:string}>();
   const owned = await db.prepare("SELECT weapon_name, masterwork FROM player_weapons WHERE user_id = ?").bind(userId).all<{weapon_name:string;masterwork:number}>();
@@ -2698,10 +2712,18 @@ async function publishVaultAchievements(db: D1Database, userId: number, weaponNa
     );
   };
   const announce = async (activityName: string, activityType: string, result: string, name: string | null) => {
+    // Individual weapon achievements are repeatable on every new 77/77.
+    // Source/category achievements are repeatable only after a reset.
     await db.prepare(`INSERT INTO global_activity_feed (user_id,activity_name,activity_type,result,weapon_name,weapon_adept)
-      SELECT ?,?,?,?, ?,0 WHERE NOT EXISTS (
-        SELECT 1 FROM global_activity_feed WHERE user_id = ? AND activity_type = ? AND activity_name = ? AND result = ?
-      )`).bind(userId,activityName,activityType,result,name,userId,activityType,activityName,result).run();
+      SELECT ?,?,?,?, ?,0 WHERE ? = 'masterwork' OR NOT EXISTS (
+        SELECT 1 FROM global_activity_feed earned
+        WHERE earned.user_id = ? AND earned.activity_type = ? AND earned.activity_name = ?
+          AND earned.id > COALESCE((
+            SELECT MAX(reset.id) FROM global_activity_feed reset
+            WHERE reset.user_id = ? AND reset.activity_type = 'achievement_reset'
+              AND reset.activity_name = ?
+          ), 0)
+      )`).bind(userId,activityName,activityType,result,name,activityType,userId,activityType,activityName,userId,activityName).run();
   };
   if (includeWeapon) {
     await announce(weaponName, "masterwork", "ACHIEVEMENT", weaponName);
@@ -2945,6 +2967,8 @@ app.post("/api/game/vault/admin-weapon", async (c) => {
   await c.env.DB.prepare(`INSERT INTO player_weapons (user_id,weapon_name,masterwork)
     VALUES (?,?,?) ON CONFLICT(user_id,weapon_name) DO UPDATE SET masterwork = excluded.masterwork`)
     .bind(session.user_id, variant ? base + " (" + variant + ")" : base, level).run();
+  if ((prior?.masterwork ?? -1) >= VAULT_MAX_MASTERWORK && level < VAULT_MAX_MASTERWORK)
+    await resetVaultAchievementCycle(c.env.DB, session.user_id, weaponName);
   if ((prior?.masterwork ?? -1) < VAULT_MAX_MASTERWORK && level === VAULT_MAX_MASTERWORK)
     await publishVaultAchievements(c.env.DB, session.user_id, weaponName, true);
   return c.json({ success: true, weaponName, masterwork: level });
