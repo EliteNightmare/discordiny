@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import TopBar from "../components/TopBar";
 import ArticleManagement from "./ArticleManagement";
 import "./AdminPanel.css";
+import { PREVIEW_CLOSED, PREVIEW_REGULAR, setPreviewEnabled } from "../components/betaPreview";
 
 type Asset = { path: string; url: string; mime_type: string; byte_size: number; created_at: string };
 const betaHost = window.location.hostname.startsWith("beta.");
@@ -53,6 +54,8 @@ function BetaAdministration() {
       <button disabled={busy} onClick={() => void action("/api/beta/admin/generate", {})}>Generate invitation code</button>
       <button disabled={busy} onClick={() => void action("/api/beta/admin/toggle", { enabled: !active })}>{active ? "Close beta" : "Open beta"}</button>
       <button disabled={busy} onClick={() => void refresh().catch(e => setError(String(e)))}>Refresh list</button>
+      {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_REGULAR, false); setPreviewEnabled(PREVIEW_CLOSED, true); window.location.href = "/"; }}>Preview closed beta (no actual shutdown)</button>}
+      {betaHost && <button type="button" onClick={() => { setPreviewEnabled(PREVIEW_CLOSED, false); setPreviewEnabled(PREVIEW_REGULAR, true); window.location.href = "/"; }}>Preview regular account (no code)</button>}
     </div>
     {newCode && <p role="status">New invitation code: <strong>{newCode}</strong> <button onClick={() => void navigator.clipboard.writeText(newCode)}>Copy</button><br/><small>Save this code now. Only its SHA-256 hash is stored; the full code cannot be retrieved later.</small></p>}
     <div className="dc-admin-list-head"><h2>Invitations ({codes.length})</h2><label>Show <select aria-label="Filter beta invitations" value={filter} onChange={e => setFilter(e.target.value as typeof filter)}><option value="all">All</option><option value="used">Used</option><option value="unused">Unused</option></select></label></div>
