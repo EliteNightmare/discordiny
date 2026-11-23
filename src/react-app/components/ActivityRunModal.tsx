@@ -477,6 +477,8 @@ export default function ActivityRunModal({
   const [contestPieces, setContestPieces] =
     useState<CrawlContestPiece[]>([]);
   const [contestSpawned, setContestSpawned] = useState(0);
+  const [contestCollected, setContestCollected] = useState<number[]>([]);
+  const contestCollectedRef = useRef<Set<number>>(new Set());
 
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
@@ -770,7 +772,10 @@ export default function ActivityRunModal({
           () => {
             crawlRevealDone.current = true;
             if (!crawlPending.current) { setPhase("complete"); finish(); }
-            else if (delayedCrawlSecret.current || run.secret?.challenge?.type === "contest") setPhase("secret");
+            else if (run.secret?.challenge?.type === "contest") {
+              if (contestCollectedRef.current.size === 4) setPhase("secret");
+              else void resolveCrawlSecret([]); // Missing fragments: no puzzle.
+            } else if (delayedCrawlSecret.current) setPhase("secret");
           },
           duration,
         ),
@@ -1013,6 +1018,8 @@ export default function ActivityRunModal({
         }
 
         setContestSpawned(0);
+        setContestCollected([]);
+        contestCollectedRef.current = new Set();
         setNetherExpired(false);
         setClickedEyes([]);
         setNetherSpawned(0);
@@ -1592,30 +1599,32 @@ export default function ActivityRunModal({
         {/* Secret objects are interactive during the activity itself. */}
         {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "contest" && (
           <div className="activity-run-contest-clue-layer" aria-label="Contest fragments appearing during the activity">
-            {result.secret.challenge.pieces.slice(0, contestSpawned).map((piece, index) => (
-              <div className="activity-run-contest-clue" key={piece.id} style={{
-                left: [12, 67, 24, 73][index] + "%",
-                top: [14, 27, 64, 72][index] + "%",
-                transform: "rotate(" + [-12, 9, 7, -8][index] + "deg)",
-              }}>
-                {contestImages[piece.id - 1] && <img src={contestImages[piece.id - 1]} alt="" />}
-              </div>
-            ))}
+            {result.secret.challenge.pieces.slice(0, contestSpawned).filter(piece => !contestCollected.includes(piece.id)).map((piece) => {
+              const index = result.secret!.challenge!.type === "contest"
+                ? result.secret!.challenge!.pieces.findIndex(item => item.id === piece.id) : 0;
+              return (
+                <button type="button" className="activity-run-contest-clue" key={piece.id}
+                  aria-label="Collect hidden fragment"
+                  onClick={() => {
+                    if (contestCollectedRef.current.has(piece.id)) return;
+                    contestCollectedRef.current.add(piece.id);
+                    setContestCollected([...contestCollectedRef.current]);
+                  }}
+                  style={{
+                    left: [12, 67, 24, 73][index] + "%",
+                    top: [14, 27, 64, 72][index] + "%",
+                    transform: "rotate(" + [-12, 9, 7, -8][index] + "deg)",
+                  }}>
+                  {contestImages[piece.id - 1] && <img src={contestImages[piece.id - 1]} alt="" />}
+                </button>
+              );
+            })}
           </div>
         )}
         {phase === "encounters" && crawlRunId && result?.secret?.challenge?.type === "nether" && (
           <div className="activity-run-inline-nether" style={{position:"absolute",inset:0,zIndex:12,pointerEvents:"none"}}>
               {true && (
                 <div className="activity-run-nether-secret">
-                  <div className="activity-run-nether-counter">
-                    <span>EYES REMAINING</span>
-                    <strong>
-                      {Math.max(
-                        0,
-                        5 - clickedEyes.length,
-                      )}
-                    </strong>
-                  </div>
 
                   <div className="activity-run-nether-field" style={{ position: "absolute", inset: 0, zIndex: 8, pointerEvents: "none" }}>
                     {result.secret.challenge.eyes.slice(0, netherSpawned).map(
