@@ -2174,3 +2174,48 @@
 @media (prefers-reduced-motion: reduce) {
   .global-activity-feed .global-activity-event-masterwork::before { animation: none; }
 }
+
+
+/* Private exploration timer control, rendered only for account ID 1. */
+.exploration-admin-timer {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(238,192,100,.55);
+  border-radius: 9px;
+  background: linear-gradient(120deg,rgba(103,71,24,.3),rgba(22,24,30,.85));
+}
+.exploration-admin-timer label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #e8c77d;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+.exploration-admin-timer input[type="range"] {
+  display: block;
+  width: 100%;
+  margin: 13px 0 9px;
+  accent-color: #f0c76c;
+  cursor: pointer;
+}
+.exploration-admin-timer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #e4c68c;
+  font-size: .75rem;
+}
+.exploration-admin-timer-actions button {
+  border: 1px solid #d6a84c;
+  border-radius: 5px;
+  background: #6e4a14;
+  color: #fff0bf;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+.exploration-admin-timer-actions button:disabled { opacity: .5; cursor: wait; }
+.exploration-admin-timer p[role="alert"] { color: #ffb1a8; font-size: .75rem; }
