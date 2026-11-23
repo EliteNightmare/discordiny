@@ -284,50 +284,6 @@ function number(
   );
 }
 
-function shuffleContestPieces(
-  pieces: CrawlContestPiece[],
-): CrawlContestPiece[] {
-  const shuffled = [...pieces];
-
-  for (
-    let index = shuffled.length - 1;
-    index > 0;
-    index -= 1
-  ) {
-    const swapIndex = Math.floor(
-      Math.random() * (index + 1),
-    );
-
-    [
-      shuffled[index],
-      shuffled[swapIndex],
-    ] = [
-      shuffled[swapIndex],
-      shuffled[index],
-    ];
-  }
-
-  const unchanged =
-    shuffled.length > 1 &&
-    shuffled.every(
-      (piece, index) =>
-        piece.id === pieces[index]?.id,
-    );
-
-  if (unchanged) {
-    [
-      shuffled[0],
-      shuffled[1],
-    ] = [
-      shuffled[1],
-      shuffled[0],
-    ];
-  }
-
-  return shuffled;
-}
-
-
 function scrambleContestSlider(pieces: CrawlContestPiece[]): (CrawlContestPiece | null)[] {
   const cells: (CrawlContestPiece | null)[] = [...pieces.sort((a,b)=>a.id-b.id), null];
   let previous = -1;
@@ -461,9 +417,6 @@ export default function ActivityRunModal({
 
   const [coilAnswer, setCoilAnswer] =
     useState("");
-
-  const [contestDragIndex, setContestDragIndex] =
-    useState<number | null>(null);
 
   const [contestPieces, setContestPieces] =
     useState<(CrawlContestPiece | null)[]>([]);
