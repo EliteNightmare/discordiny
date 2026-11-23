@@ -1547,3 +1547,28 @@ to {
 @media (prefers-reduced-motion: reduce) {
   .activity-run-contest-clue, .activity-run-contest-slide-tile { animation: none; transition: none; }
 }
+
+/* Nether eyes are intentionally subtle; no visible progress indicator. */
+.activity-run-nether-eye {
+  width: clamp(24px, 3vw, 38px);
+  height: clamp(24px, 3vw, 38px);
+}
+@media (max-width: 600px) {
+  .activity-run-nether-eye { width: 30px; height: 30px; }
+}
+/* Contest fragments must be collected during encounters to unlock the puzzle. */
+.activity-run-contest-clue-layer { pointer-events: none; }
+.activity-run-contest-clue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.activity-run-contest-clue:hover { filter: brightness(1.35) drop-shadow(0 0 9px rgba(255,221,130,.6)); }
+.activity-run-contest-clue:focus-visible { outline: 2px solid #ffdd82; outline-offset: 4px; }
