@@ -6578,6 +6578,7 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             DAILY_SHOWDOWN_MAX_CHARGES -
             dailyShowdownUsed,
+          nextChargeAt: dailyShowdownChargeState.nextChargeAt,
         },
       },
 
@@ -6634,6 +6635,7 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             ENDGAME_DAILY_MAX_CHARGES -
             dailyDungeonUsed,
+          nextChargeAt: dailyDungeonChargeState.nextChargeAt,
         },
 
         dailyRaid: {
@@ -6646,6 +6648,7 @@ app.get("/api/game/activities", async (c) => {
           remainingCharges:
             ENDGAME_DAILY_MAX_CHARGES -
             dailyRaidUsed,
+          nextChargeAt: dailyRaidChargeState.nextChargeAt,
         },
       },
     },
