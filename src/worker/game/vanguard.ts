@@ -56,6 +56,7 @@ const NIGHTFALL_REWARDS = {
   upgrades: {
     "Enhancement Core": [10, 25],
     "Enhancement Prism": [5, 10],
+    "Ascendant Alloy": [2, 4],
   },
 
   xp: 10000,
@@ -213,6 +214,9 @@ export function rollVanguardRewards(
     ) {
       rewards[name] = 150;
     }
+
+    // Grandmasters are the strongest repeatable source of Ascendant Alloy.
+    rewards["Ascendant Alloy"] = randomInt(5, 10);
 
     rewards.Synthweave =
       1500;
