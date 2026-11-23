@@ -379,14 +379,15 @@ function WeaponVault({
 
 
   const [requestedRanks, setRequestedRanks] = useState(1);
+  const remainingRanks = selectedWeapon ? MAX_MASTERWORK - selectedWeapon.masterwork : 0;
+  const safeRanks = Math.min(Math.max(1, requestedRanks), Math.max(1, remainingRanks));
+  const selectedPreview = useMemo(() => selectedWeapon && profile
+    ? getMasterworkPreview(selectedWeapon, safeRanks, profile.currencies ?? {}, profile.upgradeMaterials ?? {})
+    : null, [selectedWeapon, profile, safeRanks]);
   const affordablePreview = useMemo(() => selectedWeapon && profile
     ? getMasterworkPreview(selectedWeapon, "max", profile.currencies ?? {}, profile.upgradeMaterials ?? {})
     : null, [selectedWeapon, profile]);
   const maxAffordableRanks = affordablePreview?.ranks ?? 0;
-  const safeRanks = Math.min(Math.max(1, requestedRanks), Math.max(1, maxAffordableRanks));
-  const selectedPreview = useMemo(() => selectedWeapon && profile && maxAffordableRanks > 0
-    ? getMasterworkPreview(selectedWeapon, safeRanks, profile.currencies ?? {}, profile.upgradeMaterials ?? {})
-    : null, [selectedWeapon, profile, safeRanks, maxAffordableRanks]);
 
   useEffect(() => {
     if (!weaponSource) {
@@ -936,13 +937,26 @@ function WeaponVault({
                       </div>
                     ) : (
                       <>
+                        <div className="vault-rank-picker">
+                          <label htmlFor="vault-rank-input">Ranks to masterwork</label>
+                          <div className="vault-rank-picker-row">
+                            <input aria-label="Masterwork ranks slider" type="range" min={1} max={remainingRanks}
+                              value={safeRanks} disabled={masterworking}
+                              onChange={event => setRequestedRanks(Number(event.target.value))} />
+                            <input id="vault-rank-input" aria-label="Masterwork ranks amount" type="number" inputMode="numeric"
+                              min={1} max={remainingRanks} value={safeRanks}
+                              disabled={masterworking}
+                              onChange={event => setRequestedRanks(Math.min(Math.max(1, Number(event.target.value) || 1), remainingRanks))} />
+                          </div>
+                          <p>Maximum affordable: <strong>{maxAffordableRanks}</strong> ranks · Target: <strong>{Math.min(MAX_MASTERWORK, selectedWeapon.masterwork + safeRanks)}/{MAX_MASTERWORK}</strong></p>
+                        </div>
                         <div className="weapon-masterwork-next-cost">
                           <div className="weapon-masterwork-next-heading">
-                            <span>NEXT MASTERWORK RANK</span>
-                            <strong>{selectedWeapon.masterwork + 1} / {MAX_MASTERWORK}</strong>
+                            <span>MASTERWORK COSTS</span>
+                            <strong>+{safeRanks} RANK{safeRanks === 1 ? "" : "S"}</strong>
                           </div>
                           <div className="weapon-masterwork-next-materials">
-                            {Object.entries(costForMasterworkRank(selectedWeapon, selectedWeapon.masterwork)).map(([name, amount]) => {
+                            {Object.entries(selectedPreview?.cost ?? {}).map(([name, amount]) => {
                               const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
                               return <div className="vault-rank-cost-row" key={name}>
                                 {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
@@ -953,32 +967,10 @@ function WeaponVault({
                               </div>;
                             })}
                           </div>
-                        </div>
-                        <div className="vault-rank-picker">
-                          <label htmlFor="vault-rank-input">Ranks to masterwork</label>
-                          <div className="vault-rank-picker-row">
-                            <input aria-label="Masterwork ranks slider" type="range" min={1} max={Math.max(1, maxAffordableRanks)}
-                              value={safeRanks} disabled={masterworking || maxAffordableRanks === 0}
-                              onChange={event => setRequestedRanks(Number(event.target.value))} />
-                            <input id="vault-rank-input" aria-label="Masterwork ranks amount" type="number" inputMode="numeric"
-                              min={1} max={Math.max(1, maxAffordableRanks)} value={safeRanks}
-                              disabled={masterworking || maxAffordableRanks === 0}
-                              onChange={event => setRequestedRanks(Math.min(Math.max(1, Number(event.target.value) || 1), Math.max(1, maxAffordableRanks)))} />
-                          </div>
-                          <p>Maximum affordable: <strong>{maxAffordableRanks}</strong> ranks · Target: <strong>{Math.min(MAX_MASTERWORK, selectedWeapon.masterwork + safeRanks)}/{MAX_MASTERWORK}</strong></p>
-                        </div>
-                        <div className="vault-rank-cost-list">
-                          {Object.entries(selectedPreview?.cost ?? {}).map(([name, amount]) => {
-                            const available = profile?.currencies?.[name] ?? profile?.upgradeMaterials?.[name] ?? 0;
-                            return <div key={name} className="vault-rank-cost-row">
-                              {getMasterworkMaterialIcon(name) && <img src={getMasterworkMaterialIcon(name)} alt="" />}
-                              <span>{name}</span><strong>{amount.toLocaleString()} / {available.toLocaleString()}</strong>
-                            </div>;
-                          })}
-                          {maxAffordableRanks === 0 && <p className="weapon-masterwork-unaffordable">Not enough materials for another rank.</p>}
+                          {!selectedPreview?.affordable && <p className="weapon-masterwork-unaffordable">Not enough materials for the selected ranks.</p>}
                         </div>
                         <button type="button" className="weapon-masterwork-upgrade vault-rank-confirm"
-                          disabled={masterworking || maxAffordableRanks === 0 || !selectedPreview?.affordable}
+                          disabled={masterworking || !selectedPreview?.affordable}
                           onClick={() => void masterworkWeapon(safeRanks)}>
                           {masterworking ? "UPGRADING..." : `MASTERWORK +${safeRanks}`}
                         </button>
