@@ -478,6 +478,7 @@ export default function ActivityRunModal({
     useState<CrawlContestPiece[]>([]);
   const [contestSpawned, setContestSpawned] = useState(0);
   const [contestCollected, setContestCollected] = useState<number[]>([]);
+  const [contestMissing, setContestMissing] = useState(false);
   const contestCollectedRef = useRef<Set<number>>(new Set());
 
   const [clickedEyes, setClickedEyes] =
@@ -706,6 +707,12 @@ export default function ActivityRunModal({
     return () => timeouts.forEach(window.clearTimeout);
   }, [phase, crawlRunId, result?.secret?.challenge?.type]);
 
+  // The Worker records a failed secret when not all fragments were collected.
+  // Resolve from an effect so the callback has the current run ID.
+  useEffect(() => {
+    if (contestMissing && crawlRunId && !resolvingSecret) void resolveCrawlSecret([]);
+  }, [contestMissing, crawlRunId]);
+
   // Spawn seven total eyes in waves of one or two during encounters.
   useEffect(() => {
     if (phase !== "encounters" || !crawlRunId || result?.secret?.challenge?.type !== "nether") return;
@@ -774,7 +781,7 @@ export default function ActivityRunModal({
             if (!crawlPending.current) { setPhase("complete"); finish(); }
             else if (run.secret?.challenge?.type === "contest") {
               if (contestCollectedRef.current.size === 4) setPhase("secret");
-              else void resolveCrawlSecret([]); // Missing fragments: no puzzle.
+              else setContestMissing(true); // Missing fragments: no puzzle.
             } else if (delayedCrawlSecret.current) setPhase("secret");
           },
           duration,
@@ -1019,6 +1026,7 @@ export default function ActivityRunModal({
 
         setContestSpawned(0);
         setContestCollected([]);
+        setContestMissing(false);
         contestCollectedRef.current = new Set();
         setNetherExpired(false);
         setClickedEyes([]);
