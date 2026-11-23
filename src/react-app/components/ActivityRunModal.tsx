@@ -327,6 +327,23 @@ function shuffleContestPieces(
   return shuffled;
 }
 
+
+function scrambleContestSlider(pieces: CrawlContestPiece[]): (CrawlContestPiece | null)[] {
+  const cells: (CrawlContestPiece | null)[] = [...pieces.sort((a,b)=>a.id-b.id), null];
+  let previous = -1;
+  for(let step=0;step<35;step++){
+    const blank=cells.indexOf(null);
+    const adjacent=[blank-1,blank+1,blank-3,blank+3].filter(i=>i>=0&&i<5&&(
+      (Math.abs(i-blank)===1&&Math.floor(i/3)===Math.floor(blank/3))||Math.abs(i-blank)===3
+    )&&i!==previous);
+    if(!adjacent.length)continue;
+    const chosen=adjacent[Math.floor(Math.random()*adjacent.length)];
+    [cells[blank],cells[chosen]]=[cells[chosen],cells[blank]];
+    previous=blank;
+  }
+  return cells;
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              REWARD PREVIEWS                               */
 /* -------------------------------------------------------------------------- */
@@ -449,7 +466,7 @@ export default function ActivityRunModal({
     useState<number | null>(null);
 
   const [contestPieces, setContestPieces] =
-    useState<CrawlContestPiece[]>([]);
+    useState<(CrawlContestPiece | null)[]>([]);
 
   const [clickedEyes, setClickedEyes] =
     useState<number[]>([]);
@@ -954,8 +971,8 @@ export default function ActivityRunModal({
           "contest"
         ) {
           setContestPieces(
-            shuffleContestPieces(
-              data.result.secret.challenge.pieces,
+            scrambleContestSlider(
+              [...data.result.secret.challenge.pieces],
             ),
           );
         }
@@ -1086,7 +1103,7 @@ export default function ActivityRunModal({
 
     if (challenge.type === "contest") {
       void resolveCrawlSecret(
-        contestPieces.map((piece) => piece.id),
+        contestPieces.filter((piece): piece is CrawlContestPiece => piece !== null).map((piece) => piece.id),
       );
       return;
     }
@@ -1635,65 +1652,30 @@ export default function ActivityRunModal({
               {result.secret.challenge.type === "contest" && (
                 <div className="activity-run-contest-secret">
                   <p>
-                    Drag the fragments into reading order: 1 2 on top, 3 4 below.
+                    Slide fragments into the empty space until they read 1, 2, 3, 4.
                   </p>
 
-                  <div className="activity-run-contest-grid">
-                    {contestPieces.map((piece, index) => (
-                      <button
-                        key={piece.id}
-                        type="button"
-                        className={contestDragIndex === index ? "dragging" : ""}
-                        draggable={!resolvingSecret}
-                        disabled={resolvingSecret}
-                        aria-label={`Position ${index + 1}: fragment ${piece.label}. Drag to reorder.`}
-                        onDragStart={(event) => {
-                          setContestDragIndex(index);
-                          event.dataTransfer.effectAllowed = "move";
-                          event.dataTransfer.setData("text/plain", String(index));
-                        }}
-                        onDragOver={(event) => {
-                          event.preventDefault();
-                          event.dataTransfer.dropEffect = "move";
-                        }}
-                        onDrop={(event) => {
-                          event.preventDefault();
-                          const from = Number(event.dataTransfer.getData("text/plain"));
-                          if (!Number.isInteger(from) || from < 0 || from >= contestPieces.length || from === index) return;
-                          setContestPieces((current) => {
-                            const next = [...current];
-                            const [moved] = next.splice(from, 1);
-                            next.splice(index, 0, moved);
-                            return next;
-                          });
-                          setContestDragIndex(null);
-                        }}
-                        onDragEnd={() => setContestDragIndex(null)}
-                        onKeyDown={(event) => {
-                          if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
-                          event.preventDefault();
-                          const offset = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : event.key === "ArrowUp" ? -2 : 2;
-                          const target = index + offset;
-                          if (target < 0 || target >= contestPieces.length) return;
-                          setContestPieces((current) => {
-                            const next = [...current];
-                            [next[index], next[target]] = [next[target], next[index]];
-                            return next;
-                          });
-                        }}
-                      >
-                        {contestImages[piece.id - 1] && (
-                          <img src={contestImages[piece.id - 1]} alt={`Fragment ${piece.id}`} draggable={false} />
-                        )}
-                        <span>POSITION {index + 1}</span>
+                  <div className="activity-run-contest-grid" style={{gridTemplateColumns:"repeat(3, minmax(0, 1fr))"}}>
+                    {contestPieces.map((piece,index) => piece ? (
+                      <button key={piece.id} type="button" disabled={resolvingSecret} aria-label={`Slide fragment ${piece.label}`}
+                        onClick={() => setContestPieces(current => {
+                          const blank=current.indexOf(null);
+                          const adjacent=(Math.abs(blank-index)===3)||(Math.abs(blank-index)===1&&Math.floor(blank/3)===Math.floor(index/3));
+                          if(!adjacent)return current;
+                          const next=[...current];
+                          [next[index],next[blank]]=[next[blank],next[index]];
+                          return next;
+                        })}>
+                        {contestImages[piece.id-1] && <img src={contestImages[piece.id-1]} alt={`Fragment ${piece.id}`} draggable={false}/>}
+                        <span>FRAGMENT {piece.id}</span>
                       </button>
-                    ))}
+                    ) : <div key="blank" aria-label="Empty slider space" style={{border:"1px dashed rgba(255,255,255,.3)",minHeight:90}} />)}
                   </div>
                   <div className="activity-run-contest-actions">
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => shuffleContestPieces(current))}>
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret} onClick={() => setContestPieces((current) => scrambleContestSlider(current.filter((piece): piece is CrawlContestPiece => piece !== null)))}>
                       SHUFFLE
                     </button>
-                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 4} onClick={() => void resolveCrawlSecret(contestPieces.map((piece) => piece.id))}>
+                    <button type="button" className="activity-run-contest-reset" disabled={resolvingSecret || contestPieces.length !== 5} onClick={() => void resolveCrawlSecret(contestPieces.map((piece) => piece.id))}>
                       CONFIRM ORDER
                     </button>
                   </div>
