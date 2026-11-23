@@ -8501,7 +8501,7 @@ app.post("/api/game/activity/run", async (c) => {
     ).bind(session.user_id, cooldownKey, nowSeconds + cooldownSeconds));
 
     const currencies = new Set(["Glimmer", "Lumia Leaves", "Armor Plating", "Synthweave", "Spoils of Conquest"]);
-    const upgrades = new Set(["Enhancement Core", "Enhancement Prism"]);
+    const upgrades = new Set(["Enhancement Core", "Enhancement Prism", "Ascendant Alloy"]);
     const dungeonMaterials = new Set(["avaricious treasure", "ahamkara bone", "haunted vestige", "corrupted sliver", "scarlet shaving", "anomalous data", "remnant wormspore", "ghost remains", "curious tablet"]);
     const raidMaterials = new Set(["ebisu alloyment", "cabal gold", "wishing coin", "tethered radiolaria", "herealways piece", "resonant splinter", "shadow terminal", "dissipated entropy"]);
 
