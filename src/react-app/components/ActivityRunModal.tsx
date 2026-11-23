@@ -852,7 +852,6 @@ export default function ActivityRunModal({
     setCrawlExpiresAt(null);
     setCrawlSecondsLeft(0);
     setCoilAnswer("");
-    setContestDragIndex(null);
     setContestPieces([]);
     setClickedEyes([]);
     setResolvingSecret(false);
