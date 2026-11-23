@@ -2323,3 +2323,69 @@
   border: 0 !important;
   box-shadow: none !important;
 }
+
+
+/* Exotic achievements: celebratory gold shine and periodic confetti bursts. */
+.global-activity-feed .global-activity-event-exotic {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid #ffdf27 !important;
+  background: linear-gradient(115deg, #4d3500 0%, #a36e00 46%, #493100 100%) !important;
+  box-shadow: 0 0 13px rgba(255,222,20,.7), inset 0 0 22px rgba(255,239,76,.26) !important;
+  animation: vault-exotic-glow 4.8s ease-in-out infinite;
+}
+.global-activity-feed .global-activity-event-exotic .global-activity-event-activity,
+.global-activity-feed .global-activity-event-exotic .global-activity-event-result {
+  color: #fff56d !important;
+  text-shadow: 0 0 7px #ffdd00, 0 0 15px rgba(255,196,0,.8) !important;
+}
+.global-activity-feed .global-activity-event-exotic::before {
+  content: "";
+  position: absolute;
+  inset: -80% auto -80% -80%;
+  width: 35%;
+  transform: rotate(24deg) translateX(0);
+  background: linear-gradient(90deg, transparent, rgba(255,255,190,.1), rgba(255,255,255,.75), rgba(255,255,190,.1), transparent);
+  pointer-events: none;
+  z-index: 2;
+  animation: vault-exotic-shine 6s ease-in-out infinite;
+}
+.global-activity-feed .global-activity-event-exotic::after {
+  content: "";
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: 5px;
+  height: 9px;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 3;
+  opacity: 0;
+  box-shadow:
+    -70px -20px #ffed28, 55px -30px #ff6cba, -24px -48px #67e7ff,
+    88px 15px #fdfd91, -92px 34px #ff9a38, 26px 47px #9cff7a,
+    -50px 58px #a6a2ff, 110px -48px #fff, -110px -56px #ffc940,
+    5px -68px #ff6d5b, 70px 64px #80eaff, -8px 75px #ffe400;
+  animation: vault-exotic-confetti 9s ease-out infinite;
+}
+@keyframes vault-exotic-glow {
+  0%, 100% { box-shadow: 0 0 11px rgba(255,222,20,.55), inset 0 0 18px rgba(255,239,76,.2); }
+  50% { box-shadow: 0 0 24px rgba(255,234,25,.95), 0 0 8px #ffd900, inset 0 0 30px rgba(255,239,76,.42); }
+}
+@keyframes vault-exotic-shine {
+  0%, 12% { transform: rotate(24deg) translateX(0); opacity: 0; }
+  17% { opacity: 1; }
+  35%, 100% { transform: rotate(24deg) translateX(900%); opacity: 0; }
+}
+@keyframes vault-exotic-confetti {
+  0%, 69%, 100% { opacity: 0; transform: translateY(15px) scale(.3) rotate(0deg); }
+  72% { opacity: 1; transform: translateY(-8px) scale(1.2) rotate(25deg); }
+  80% { opacity: 1; transform: translateY(12px) scale(1) rotate(110deg); }
+  88% { opacity: 0; transform: translateY(65px) scale(.6) rotate(250deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .global-activity-feed .global-activity-event-exotic,
+  .global-activity-feed .global-activity-event-exotic::before,
+  .global-activity-feed .global-activity-event-exotic::after { animation: none !important; }
+}
